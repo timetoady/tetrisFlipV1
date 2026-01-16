@@ -1,8 +1,9 @@
 import { GAME_CONFIG, OWNERS } from "../constants.js";
 import { Randomizer } from "../utils/randomizer.js";
 import { drawCell, drawGrid } from "../utils/drawing.js";
-import { createPiece, getBlocks, rotate } from "../entities/piece.js";
+import { createPiece, getBlocks } from "../entities/piece.js";
 import { Board } from "../entities/board.js";
+import { getKickOffsets } from "../utils/srs.js";
 
 export class GameLoop {
   constructor(ctx, input) {
@@ -28,6 +29,10 @@ export class GameLoop {
     this.gridOffsetBaseBottom = 0;
     this.gridParallaxTimer = 0;
     this.gridParallaxDuration = 140;
+    this.leftHold = 0;
+    this.rightHold = 0;
+    this.leftRepeat = 0;
+    this.rightRepeat = 0;
     this.activePiece = this.spawnPiece();
   }
 
@@ -247,6 +252,32 @@ export class GameLoop {
     this.lockPiece();
   }
 
+  tryMoveHorizontal(dx) {
+    if (!this.collides(this.activePiece, dx, 0)) {
+      this.activePiece.x += dx;
+      return true;
+    }
+    return false;
+  }
+
+  tryRotate(dir) {
+    const from = this.activePiece.rotation;
+    const to = (from + dir + 4) % 4;
+    const offsets = getKickOffsets(this.activePiece.type, from, to);
+    for (const [ox, oy] of offsets) {
+      if (!this.collides(this.activePiece, ox, oy, to)) {
+        this.activePiece = {
+          ...this.activePiece,
+          x: this.activePiece.x + ox,
+          y: this.activePiece.y + oy,
+          rotation: to
+        };
+        return true;
+      }
+    }
+    return false;
+  }
+
   update(delta) {
     if (this.input.hasAnyActivity()) {
       this.ensureAudioContext();
@@ -268,30 +299,59 @@ export class GameLoop {
       if (this.handleFlipJam()) return;
     }
 
-    if (this.input.consumePress("ArrowLeft")) {
-      if (!this.collides(this.activePiece, -1, 0)) {
-        this.activePiece.x -= 1;
-      }
+    const leftPressed = this.input.consumePress("ArrowLeft");
+    const rightPressed = this.input.consumePress("ArrowRight");
+    const leftHeld = this.input.isDown("ArrowLeft");
+    const rightHeld = this.input.isDown("ArrowRight");
+
+    if (leftPressed) {
+      this.tryMoveHorizontal(-1);
+      this.leftHold = 0;
+      this.leftRepeat = 0;
     }
 
-    if (this.input.consumePress("ArrowRight")) {
-      if (!this.collides(this.activePiece, 1, 0)) {
-        this.activePiece.x += 1;
+    if (rightPressed) {
+      this.tryMoveHorizontal(1);
+      this.rightHold = 0;
+      this.rightRepeat = 0;
+    }
+
+    if (leftHeld && !rightHeld) {
+      this.leftHold += delta;
+      if (this.leftHold >= GAME_CONFIG.DAS_DELAY) {
+        this.leftRepeat += delta;
+        while (this.leftRepeat >= GAME_CONFIG.DAS_ARR) {
+          this.leftRepeat -= GAME_CONFIG.DAS_ARR;
+          if (!this.tryMoveHorizontal(-1)) break;
+        }
       }
+    } else {
+      this.leftHold = 0;
+      this.leftRepeat = 0;
+    }
+
+    if (rightHeld && !leftHeld) {
+      this.rightHold += delta;
+      if (this.rightHold >= GAME_CONFIG.DAS_DELAY) {
+        this.rightRepeat += delta;
+        while (this.rightRepeat >= GAME_CONFIG.DAS_ARR) {
+          this.rightRepeat -= GAME_CONFIG.DAS_ARR;
+          if (!this.tryMoveHorizontal(1)) break;
+        }
+      }
+    } else {
+      this.rightHold = 0;
+      this.rightRepeat = 0;
     }
 
     if (this.input.consumePress("KeyZ")) {
-      const rotated = rotate(this.activePiece, -1);
-      if (!this.collides(rotated, 0, 0, rotated.rotation)) {
-        this.activePiece = rotated;
+      if (this.tryRotate(-1)) {
         this.playRotateSound();
       }
     }
 
     if (this.input.consumePress("KeyX")) {
-      const rotated = rotate(this.activePiece, 1);
-      if (!this.collides(rotated, 0, 0, rotated.rotation)) {
-        this.activePiece = rotated;
+      if (this.tryRotate(1)) {
         this.playRotateSound();
       }
     }

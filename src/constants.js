@@ -6,6 +6,8 @@ export const GAME_CONFIG = {
   VISIBLE_ROWS_TOP: 18,
   VISIBLE_ROWS_BOTTOM: 18,
   SPAWN_BUFFER: 4,
+  DAS_DELAY: 160,
+  DAS_ARR: 30,
   COLORS: [
     null,
     "#00f0f0", // I

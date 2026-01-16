@@ -11,11 +11,11 @@
 
 ## Phase 2: Inputs
 
-- [ ] Left/Right movement (DAS + ARR)
+- [x] Left/Right movement (DAS + ARR)
 - [x] Soft drop (hold)
 - [x] Hard drop (instant lock)
 - [x] Basic rotation
-- [ ] SRS wall kicks
+- [x] SRS wall kicks
 
 ## Phase 3: Flip Mechanic
 

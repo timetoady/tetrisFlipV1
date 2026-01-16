@@ -26,12 +26,13 @@ Open the URL printed by Vite.
 - Rotate CW: X
 - Rotate CCW: Z
 - Flip: Space / Shift
-- Pause: Esc (planned)
+- Pause: P / Esc
 
 ## Notes
 
 - Rendering uses a 2D canvas with a 10x40 logical grid.
 - Inactive field blocks are drawn with reduced opacity.
+- Flipping late can cause a jam and immediate lock, with a visual/sound cue.
 
 ## Docs
 

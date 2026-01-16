@@ -2,39 +2,39 @@
 
 ## Phase 1: Engine
 
-- [ ] Vite project bootstrapped and running
-- [ ] Canvas setup and scaling
-- [ ] Static grid render
-- [ ] 7-bag piece generator
-- [ ] Basic gravity and lock
-- [ ] Basic collision (walls/floor)
+- [x] Vite project bootstrapped and running
+- [x] Canvas setup and scaling
+- [x] Static grid render
+- [x] 7-bag piece generator
+- [x] Basic gravity and lock
+- [x] Basic collision (walls/floor)
 
 ## Phase 2: Inputs
 
 - [ ] Left/Right movement (DAS + ARR)
-- [ ] Soft drop (hold)
-- [ ] Hard drop (instant lock)
-- [ ] Basic rotation
+- [x] Soft drop (hold)
+- [x] Hard drop (instant lock)
+- [x] Basic rotation
 - [ ] SRS wall kicks
 
 ## Phase 3: Flip Mechanic
 
-- [ ] Field owner tagging for locked blocks
-- [ ] Flip toggle with active-owner swap
-- [ ] Collision ignores inactive field blocks
-- [ ] Ghosting / overlap handling
+- [x] Field owner tagging for locked blocks
+- [x] Flip toggle with active-owner swap
+- [x] Collision ignores inactive field blocks
+- [x] Ghosting / overlap handling
 
 ## Phase 4: Rules and UI
 
-- [ ] Line clears (active field only)
+- [x] Line clears (active field only)
 - [ ] Scoring and leveling
 - [ ] Next queue + Hold
 - [ ] HUD (score/level/lines)
-- [ ] Pause
+- [x] Pause
 
 ## Phase 5: Polish
 
 - [ ] Ghost piece
-- [ ] Spawn zone visualization (debug)
+- [x] Spawn zone visualization (debug)
 - [ ] Color-blind pattern overlays
-- [ ] Audio stubs
+- [x] Audio stubs

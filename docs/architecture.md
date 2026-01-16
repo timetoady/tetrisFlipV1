@@ -31,6 +31,7 @@
    - Read held actions (soft drop).
 2. Update phase
    - Apply flip toggle (swap active owner).
+   - If flip causes overlap, shove the piece up and lock immediately.
    - Apply horizontal movement if not colliding.
    - Apply rotation if not colliding (kicks later).
    - Apply gravity and lock delay (lock delay planned).
@@ -38,9 +39,11 @@
    - Clear full lines that belong entirely to the active owner.
 3. Render phase
    - Clear canvas.
+   - Draw field tints (top/bottom) and spawn zone gap.
    - Draw inactive field with low opacity.
    - Draw active field with full opacity.
    - Draw active piece and ghost piece (ghost planned).
+   - Draw flip jam flash/outline animation (if triggered).
    - Draw HUD (planned).
 
 ## Flip Rules
@@ -48,3 +51,4 @@
 - Flip does not change piece coordinates or grid contents.
 - Collision checks only consider blocks owned by the active (bottom) field.
 - Inactive field blocks are drawn with reduced opacity to allow planning.
+- Grid background parallax offsets briefly on flip to indicate state change.

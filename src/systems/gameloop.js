@@ -248,7 +248,7 @@ export class GameLoop {
   }
 
   update(delta) {
-    if (this.input.hasAnyPress()) {
+    if (this.input.hasAnyActivity()) {
       this.ensureAudioContext();
     }
 
@@ -432,7 +432,6 @@ export class GameLoop {
 
     if (this.paused) {
       ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       ctx.fillStyle = "#ffffff";

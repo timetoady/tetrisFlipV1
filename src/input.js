@@ -27,6 +27,7 @@ export function createInput(target = window) {
     if (!DEFAULT_KEYS.has(e.code)) return;
     e.preventDefault();
     down.delete(e.code);
+    pressed.delete(e.code);
   }
 
   target.addEventListener("keydown", onKeyDown);
@@ -36,8 +37,8 @@ export function createInput(target = window) {
     isDown(code) {
       return down.has(code);
     },
-    hasAnyPress() {
-      return pressed.size > 0;
+    hasAnyActivity() {
+      return pressed.size > 0 || down.size > 0;
     },
     consumePress(code) {
       if (!pressed.has(code)) return false;

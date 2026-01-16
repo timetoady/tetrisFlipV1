@@ -34,7 +34,7 @@
 
 ## Phase 5: Polish
 
-- [ ] Ghost piece
+- [x] Ghost piece
 - [x] Spawn zone visualization (debug)
 - [ ] Color-blind pattern overlays
 - [x] Audio stubs

@@ -252,6 +252,14 @@ export class GameLoop {
     this.lockPiece();
   }
 
+  getGhostY() {
+    let offset = 0;
+    while (!this.collides(this.activePiece, 0, offset + 1)) {
+      offset += 1;
+    }
+    return this.activePiece.y + offset;
+  }
+
   tryMoveHorizontal(dx) {
     if (!this.collides(this.activePiece, dx, 0)) {
       this.activePiece.x += dx;
@@ -450,6 +458,22 @@ export class GameLoop {
       const y = this.activePiece.y + block.y;
       if (y < 0) continue;
       drawCell(ctx, x, y, GAME_CONFIG.COLORS[this.activePiece.type], 1);
+    }
+
+    const ghostY = this.getGhostY();
+    if (ghostY !== this.activePiece.y) {
+      ctx.save();
+      ctx.strokeStyle = GAME_CONFIG.COLORS[this.activePiece.type];
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = 2;
+      for (const block of blocks) {
+        const x = this.activePiece.x + block.x;
+        const y = ghostY + block.y;
+        if (y < 0) continue;
+        const size = GAME_CONFIG.BLOCK_SIZE;
+        ctx.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      }
+      ctx.restore();
     }
 
     if (this.jamAnimPiece && this.jamAnimTimer > 0) {

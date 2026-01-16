@@ -9,31 +9,78 @@ export function drawCell(ctx, x, y, color, alpha = 1) {
   ctx.globalAlpha = alpha;
   ctx.fillStyle = color;
   ctx.fillRect(px, py, size, size);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(px + 1, py + 1, size - 2, size - 2);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(px + 2, py + 2);
+  ctx.lineTo(px + size - 2, py + 2);
+  ctx.moveTo(px + 2, py + 2);
+  ctx.lineTo(px + 2, py + size - 2);
+  ctx.stroke();
   ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-  ctx.strokeRect(px + 0.5, py + 0.5, size - 1, size - 1);
+  ctx.beginPath();
+  ctx.moveTo(px + 3, py + size - 4);
+  ctx.lineTo(px + size - 4, py + 3);
+  ctx.stroke();
   ctx.restore();
 }
 
-export function drawGrid(ctx) {
+function drawGridBand(ctx, offsetY, startRow, endRow) {
+  const { COLS, BLOCK_SIZE } = GAME_CONFIG;
+  const width = COLS * BLOCK_SIZE;
+  const height = (endRow - startRow) * BLOCK_SIZE;
+  const baseY = startRow * BLOCK_SIZE;
+
+  for (let x = -1; x <= COLS + 1; x += 1) {
+    const px = x * BLOCK_SIZE + 0.5;
+    if (px < 0 || px > width) continue;
+    ctx.beginPath();
+    ctx.moveTo(px, baseY);
+    ctx.lineTo(px, baseY + height);
+    ctx.stroke();
+  }
+
+  for (let y = 0; y <= endRow - startRow; y += 1) {
+    const py = baseY + y * BLOCK_SIZE + offsetY + 0.5;
+    if (py < baseY || py > baseY + height) continue;
+    ctx.beginPath();
+    ctx.moveTo(0, py);
+    ctx.lineTo(width, py);
+    ctx.stroke();
+  }
+}
+
+export function drawGrid(ctx, topOffset = 0, bottomOffset = 0) {
   const { COLS, ROWS, BLOCK_SIZE } = GAME_CONFIG;
   ctx.save();
   ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
   ctx.lineWidth = 1;
 
-  for (let x = 0; x <= COLS; x += 1) {
-    const px = x * BLOCK_SIZE + 0.5;
-    ctx.beginPath();
-    ctx.moveTo(px, 0);
-    ctx.lineTo(px, ROWS * BLOCK_SIZE);
-    ctx.stroke();
-  }
+  const halfRows = ROWS / 2;
+  drawGridBand(ctx, topOffset, 0, halfRows);
+  drawGridBand(ctx, bottomOffset, halfRows, ROWS);
 
-  for (let y = 0; y <= ROWS; y += 1) {
-    const py = y * BLOCK_SIZE + 0.5;
-    ctx.beginPath();
-    ctx.moveTo(0, py);
-    ctx.lineTo(COLS * BLOCK_SIZE, py);
-    ctx.stroke();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+  ctx.font = "10px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  const spawnStart = ROWS / 2 - GAME_CONFIG.SPAWN_BUFFER / 2;
+  const spawnEnd = spawnStart + GAME_CONFIG.SPAWN_BUFFER - 1;
+  for (let y = 0; y < ROWS; y += 1) {
+    const py = y * BLOCK_SIZE + BLOCK_SIZE / 2;
+    let label = 0;
+    if (y < spawnStart) {
+      label = spawnStart - y;
+    } else if (y > spawnEnd) {
+      label = -(y - spawnEnd);
+    }
+    ctx.fillText(String(label), -8, py);
+    ctx.textAlign = "left";
+    ctx.fillText(String(label), COLS * BLOCK_SIZE + 8, py);
+    ctx.textAlign = "right";
   }
 
   ctx.restore();

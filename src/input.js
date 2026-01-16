@@ -5,7 +5,9 @@ const DEFAULT_KEYS = new Set([
   "ArrowUp",
   "KeyZ",
   "KeyX",
+  "KeyP",
   "Space",
+  "Escape",
   "ShiftLeft",
   "ShiftRight"
 ]);
@@ -33,6 +35,9 @@ export function createInput(target = window) {
   return {
     isDown(code) {
       return down.has(code);
+    },
+    hasAnyPress() {
+      return pressed.size > 0;
     },
     consumePress(code) {
       if (!pressed.has(code)) return false;

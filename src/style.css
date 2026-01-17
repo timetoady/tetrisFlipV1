@@ -1,0 +1,225 @@
+:root {
+  --bg: #1a1a1a;
+  --fg: #e6e6e6;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+}
+.wrap {
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+.wrap {
+  position: relative;
+}
+canvas {
+  image-rendering: pixelated;
+  background: #111;
+  border: 2px solid #2a2a2a;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 4;
+}
+.overlay[hidden] {
+  display: none;
+}
+.menu {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 3;
+}
+.menu[hidden] {
+  display: none;
+}
+.menu-screen {
+  display: none;
+  text-align: center;
+  color: var(--fg);
+}
+.menu-screen.is-active {
+  display: block;
+}
+.menu-panel {
+  padding: 22px 26px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(12, 12, 12, 0.9);
+  min-width: 360px;
+}
+.menu-wide {
+  width: min(800px, 92vw);
+}
+.menu-title {
+  font-size: 22px;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+}
+.menu-sub {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-top: 12px;
+}
+.menu-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+.menu-actions button {
+  font: inherit;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: #1f1f1f;
+  color: var(--fg);
+  cursor: pointer;
+}
+.menu-actions button.is-selected {
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+.menu-actions button:hover {
+  background: #2a2a2a;
+}
+.menu-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  margin: 6px 0;
+  opacity: 0.85;
+}
+.menu-option.is-selected {
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+  opacity: 1;
+}
+.menu-option.is-disabled {
+  opacity: 0.35;
+}
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.score-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  font-size: 14px;
+}
+.score-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.score-rank {
+  opacity: 0.6;
+  width: 24px;
+}
+.score-name {
+  flex: 1;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.score-value {
+  opacity: 0.85;
+}
+.splash-image {
+  width: min(760px, 90vw);
+  height: auto;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.splash-author {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+.marathon-value {
+  font-size: 28px;
+  letter-spacing: 1px;
+  margin: 10px 0 6px;
+}
+.name-modal {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 5;
+}
+.name-modal[hidden] {
+  display: none;
+}
+.name-panel {
+  padding: 20px 24px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(10, 10, 10, 0.95);
+  min-width: 260px;
+  text-align: center;
+}
+.name-panel input {
+  width: 100%;
+  margin: 12px 0;
+  padding: 8px 10px;
+  font: inherit;
+  background: #0f0f0f;
+  color: var(--fg);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.panel {
+  padding: 24px 28px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: rgba(12, 12, 12, 0.9);
+  text-align: center;
+  min-width: 200px;
+}
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.title {
+  font-size: 20px;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+}
+#retry,
+#back {
+  font: inherit;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: #1f1f1f;
+  color: var(--fg);
+  cursor: pointer;
+}
+#retry.is-selected,
+#back.is-selected {
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+#retry:hover,
+#back:hover {
+  background: #2a2a2a;
+}

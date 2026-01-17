@@ -25,6 +25,46 @@ npm run preview
 
 Open the URL printed by Vite preview.
 
+## Desktop App (Electron)
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the desktop app in dev mode (Vite + Electron):
+
+```bash
+npm run electron:dev
+```
+
+Package the desktop app (builds the renderer first):
+
+```bash
+npm run dist
+```
+
+Artifacts are created in `dist/` by electron-builder. Auto-updates are configured to use GitHub Releases.
+
+On Windows, packaging requires Developer Mode (or running the terminal as Administrator) so the build tools can create symbolic links.
+
+## Running the Release Zip
+
+The release zip contains a static build and must be served by a local web server. Opening `index.html` directly will show a blank screen because browsers block module scripts and asset loading from `file://`.
+
+From the unzipped folder, run one of these:
+
+```bash
+# Option A: Python (built-in)
+python -m http.server 4173
+
+# Option B: Node (if installed)
+npx serve -l 4173
+```
+
+Then open `http://localhost:4173/`.
+
 ## Controls (current + planned)
 
 - Left/Right: Arrow Left/Right

@@ -32,6 +32,10 @@ const nameSave = document.getElementById("name-save");
 /** @type {HTMLButtonElement} */
 const nameSkip = document.getElementById("name-skip");
 
+const baseUrl = import.meta.env.BASE_URL || "/";
+const splashWideSrc = `${baseUrl}assets/tetrisflip1.png`;
+const splashTallSrc = `${baseUrl}assets/tetrisflip2.png`;
+
 overlay.hidden = true;
 menu.hidden = false;
 nameModal.hidden = true;
@@ -373,7 +377,7 @@ renderScores(loadScores());
 
 function setSplashImage() {
   const wide = window.innerWidth > window.innerHeight;
-  splashImage.src = wide ? "/assets/tetrisflip1.png" : "/assets/tetrisflip2.png";
+  splashImage.src = wide ? splashWideSrc : splashTallSrc;
 }
 
 setSplashImage();

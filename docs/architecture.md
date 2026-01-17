@@ -37,6 +37,7 @@
    - Apply rotation if not colliding (kicks applied).
    - Apply gravity and lock delay (grounded timer, reset cap, cooldown).
    - When locked, write blocks with the active owner.
+   - If the active field blocks the spawn zone, trigger game over.
    - Clear full lines that belong entirely to the active owner.
    - Update score, lines, and level based on clears and drops.
 3. Render phase

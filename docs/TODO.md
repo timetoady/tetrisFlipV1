@@ -27,6 +27,7 @@
 ## Phase 4: Rules and UI
 
 - [x] Line clears (active field only)
+- [x] Game over (spawn blocked)
 - [x] Scoring and leveling
 - [x] Lock delay (500ms reset on grounded moves, max grounded time, limit 15)
 - [x] Next queue + Hold

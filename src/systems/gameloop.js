@@ -6,9 +6,10 @@ import { Board } from "../entities/board.js";
 import { getKickOffsets } from "../utils/srs.js";
 
 export class GameLoop {
-  constructor(ctx, input) {
+  constructor(ctx, input, callbacks = {}) {
     this.ctx = ctx;
     this.input = input;
+    this.onGameOver = callbacks.onGameOver || (() => {});
     this.board = new Board();
     this.randomizer = new Randomizer();
     this.queueSize = 3;
@@ -53,6 +54,7 @@ export class GameLoop {
     this.lockResetCooldown = 0;
     this.isGrounded = false;
     this.refillQueue();
+    this.gameOver = false;
     this.activePiece = this.spawnPiece();
   }
 
@@ -87,6 +89,30 @@ export class GameLoop {
     this.nextQueue = [];
     this.refillQueue();
     this.resetLockState();
+    this.gameOver = false;
+  }
+
+  reset() {
+    this.resetGameState();
+    this.activePiece = this.spawnPiece();
+  }
+
+  isSpawnBlocked() {
+    const activeOwner = this.board.getActiveOwner();
+    const halfRows = GAME_CONFIG.ROWS / 2;
+    const spawnStart = halfRows - GAME_CONFIG.SPAWN_BUFFER / 2;
+    const spawnEnd = spawnStart + GAME_CONFIG.SPAWN_BUFFER - 1;
+    for (let localRow = 0; localRow < halfRows; localRow += 1) {
+      const worldRow = halfRows + localRow;
+      if (worldRow < spawnStart || worldRow > spawnEnd) continue;
+      for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
+        const cell = this.board.getCellForOwner(activeOwner, localRow, x);
+        if (cell && cell.value !== 0) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   refillQueue() {
@@ -122,9 +148,10 @@ export class GameLoop {
     const x = Math.floor(GAME_CONFIG.COLS / 2);
     const y = 18;
     let piece = createPiece(type, x, y);
-    if (this.collides(piece, 0, 0)) {
-      this.resetGameState();
-      piece = createPiece(this.takeNextType(), x, y);
+    if (this.isSpawnBlocked()) {
+      this.gameOver = true;
+      this.onGameOver();
+      return piece;
     }
     return piece;
   }
@@ -350,13 +377,15 @@ export class GameLoop {
     if (this.holdType === null) {
       this.holdType = this.activePiece.type;
       this.activePiece = this.spawnPiece();
+      if (this.gameOver) return;
     } else {
       const swap = this.holdType;
       this.holdType = this.activePiece.type;
       const piece = createPiece(swap, Math.floor(GAME_CONFIG.COLS / 2), 18);
-      if (this.collides(piece, 0, 0)) {
-        this.resetGameState();
-        this.activePiece = createPiece(this.takeNextType(), Math.floor(GAME_CONFIG.COLS / 2), 18);
+      if (this.isSpawnBlocked()) {
+        this.gameOver = true;
+        this.onGameOver();
+        return;
       } else {
         this.activePiece = piece;
       }
@@ -410,6 +439,7 @@ export class GameLoop {
   }
 
   update(delta) {
+    if (this.gameOver) return;
     if (this.input.hasAnyActivity()) {
       this.ensureAudioContext();
     }

@@ -60,7 +60,7 @@
 
 - [x] Line clear animation (pause during animation)
 - [x] Tetris celebration (announcement + visual splash)
-- [ ] Blank out pieces on playing field during pause
+- [x] Blank out pieces on playing field during pause
 
 ## Menus
 

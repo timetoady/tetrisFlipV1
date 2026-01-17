@@ -186,6 +186,23 @@ export class GameLoop {
     osc.stop(now + 0.08);
   }
 
+  playPauseSound() {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    const now = ctx.currentTime;
+    gain.gain.value = 0.06;
+    osc.connect(gain).connect(ctx.destination);
+    osc.frequency.setValueAtTime(520, now);
+    osc.frequency.setValueAtTime(320, now + 0.32);
+    osc.frequency.setValueAtTime(520, now + 0.64);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+    osc.start(now);
+    osc.stop(now + 1.0);
+  }
+
   playRotateSound() {
     const ctx = this.ensureAudioContext();
     if (!ctx) return;
@@ -214,6 +231,100 @@ export class GameLoop {
 
     osc.start(now);
     osc.stop(now + 0.12);
+  }
+
+  playGroundSound() {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.value = 140;
+    gain.gain.value = 0.08;
+    osc.connect(gain).connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.start(now);
+    osc.stop(now + 0.14);
+  }
+
+  playHardDropSound() {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    osc.type = "square";
+    osc.frequency.value = 75;
+    filter.type = "lowpass";
+    filter.frequency.value = 300;
+    filter.Q.value = 1.4;
+    gain.gain.value = 0.045;
+    osc.connect(filter).connect(gain).connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+    osc.start(now);
+    osc.stop(now + 0.44);
+  }
+
+  playLineClearSound(lines) {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    const base = 330;
+    const step = 70;
+    const freq = base + (lines - 1) * step;
+    osc.frequency.value = freq;
+    gain.gain.value = 0.09;
+    osc.connect(gain).connect(ctx.destination);
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.12, now + 0.9);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+    osc.start(now);
+    osc.stop(now + 1.05);
+  }
+
+  playTetrisSound() {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sawtooth";
+    const now = ctx.currentTime;
+    gain.gain.value = 0.12;
+    osc.connect(gain).connect(ctx.destination);
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.setValueAtTime(330, now + 0.4);
+    osc.frequency.setValueAtTime(440, now + 0.8);
+    osc.frequency.setValueAtTime(550, now + 1.1);
+    osc.frequency.setValueAtTime(660, now + 1.4);
+    osc.frequency.setValueAtTime(880, now + 1.8);
+    osc.frequency.setValueAtTime(990, now + 2.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
+    osc.start(now);
+    osc.stop(now + 2.45);
+  }
+
+  playLevelUpSound(delaySeconds = 0) {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    const now = ctx.currentTime + delaySeconds;
+    gain.gain.value = 0.12;
+    osc.connect(gain).connect(ctx.destination);
+    osc.frequency.setValueAtTime(330, now);
+    osc.frequency.setValueAtTime(415, now + 0.35);
+    osc.frequency.setValueAtTime(494, now + 0.7);
+    osc.frequency.setValueAtTime(659, now + 1.05);
+    osc.frequency.setValueAtTime(880, now + 1.4);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+    osc.start(now);
+    osc.stop(now + 1.9);
   }
 
   updateGridOffsets() {
@@ -343,12 +454,22 @@ export class GameLoop {
       const lineScores = [0, 100, 300, 500, 800];
       this.score += lineScores[cleared] * this.level;
       this.lines += cleared;
-      this.level = Math.floor(this.lines / 10) + 1;
+      if (cleared === 4) {
+        this.playTetrisSound();
+      } else {
+        this.playLineClearSound(cleared);
+      }
+      const nextLevel = Math.floor(this.lines / 10) + 1;
+      if (nextLevel !== this.level) {
+        this.playLevelUpSound(0.85);
+      }
+      this.level = nextLevel;
       this.dropInterval = this.getDropInterval(this.level);
     }
     this.activePiece = this.spawnPiece();
     this.resetLockState();
     this.holdUsed = false;
+    this.playGroundSound();
   }
 
   hardDrop() {
@@ -361,6 +482,7 @@ export class GameLoop {
       // Tuning hook: hard drop bonus.
       this.score += dropped * 2;
     }
+    this.playHardDropSound();
     this.lockPiece();
   }
 
@@ -446,6 +568,7 @@ export class GameLoop {
 
     if (this.input.consumePress("KeyP") || this.input.consumePress("Escape")) {
       this.paused = !this.paused;
+      this.playPauseSound();
       return;
     }
 

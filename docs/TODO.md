@@ -49,11 +49,12 @@
 
 ## Sound Effects
 
-- [ ] Line clear sound
-- [ ] Tetris sound (emphatic, celebration)
-- [ ] Level up sound (rising tone)
-- [ ] Grounding sound (soft thud)
-- [ ] Hard drop sound (thump)
+- [x] Line clear sound
+- [x] Tetris sound (emphatic, celebration)
+- [x] Level up sound (rising tone)
+- [x] Grounding sound (soft thud)
+- [x] Hard drop sound (thump)
+- [x] Pause/unpause sound
 
 ## Clearing Animation
 

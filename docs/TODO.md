@@ -29,7 +29,7 @@
 - [x] Line clears (active field only)
 - [x] Scoring and leveling
 - [x] Lock delay (500ms reset on grounded moves, max grounded time, limit 15)
-- [ ] Next queue + Hold
+- [x] Next queue + Hold
 - [x] HUD (score/level/lines)
 - [x] Pause
 

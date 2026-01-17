@@ -27,6 +27,7 @@ Open the URL printed by Vite.
 - Rotate CCW: Z
 - Flip: Space / Shift
 - Pause: P / Esc
+- Hold: C
 
 ## Notes
 

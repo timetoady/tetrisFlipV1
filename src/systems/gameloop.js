@@ -11,6 +11,10 @@ export class GameLoop {
     this.input = input;
     this.board = new Board();
     this.randomizer = new Randomizer();
+    this.queueSize = 3;
+    this.nextQueue = [];
+    this.holdType = null;
+    this.holdUsed = false;
     this.score = 0;
     this.lines = 0;
     this.level = 1;
@@ -48,6 +52,7 @@ export class GameLoop {
     this.lockResetCooldownMs = 80;
     this.lockResetCooldown = 0;
     this.isGrounded = false;
+    this.refillQueue();
     this.activePiece = this.spawnPiece();
   }
 
@@ -70,6 +75,35 @@ export class GameLoop {
     this.dropTimer = 0;
   }
 
+  resetHold() {
+    this.holdType = null;
+    this.holdUsed = false;
+  }
+
+  resetGameState() {
+    this.board.reset();
+    this.resetProgress();
+    this.resetHold();
+    this.nextQueue = [];
+    this.refillQueue();
+    this.resetLockState();
+  }
+
+  refillQueue() {
+    while (this.nextQueue.length < this.queueSize) {
+      this.nextQueue.push(this.randomizer.next());
+    }
+  }
+
+  takeNextType() {
+    if (this.nextQueue.length === 0) {
+      this.refillQueue();
+    }
+    const next = this.nextQueue.shift();
+    this.refillQueue();
+    return next;
+  }
+
   ensureAudioContext() {
     if (!this.audioCtx) {
       const w = /** @type {any} */ (window);
@@ -84,13 +118,13 @@ export class GameLoop {
   }
 
   spawnPiece() {
-    const type = this.randomizer.next();
+    const type = this.takeNextType();
     const x = Math.floor(GAME_CONFIG.COLS / 2);
     const y = 18;
-    const piece = createPiece(type, x, y);
+    let piece = createPiece(type, x, y);
     if (this.collides(piece, 0, 0)) {
-      this.board.reset();
-      this.resetProgress();
+      this.resetGameState();
+      piece = createPiece(this.takeNextType(), x, y);
     }
     return piece;
   }
@@ -286,11 +320,8 @@ export class GameLoop {
       this.dropInterval = this.getDropInterval(this.level);
     }
     this.activePiece = this.spawnPiece();
-    this.lockTimer = 0;
-    this.lockMoves = 0;
-    this.groundedTimer = 0;
-    this.lockResetCooldown = 0;
-    this.isGrounded = false;
+    this.resetLockState();
+    this.holdUsed = false;
   }
 
   hardDrop() {
@@ -304,6 +335,34 @@ export class GameLoop {
       this.score += dropped * 2;
     }
     this.lockPiece();
+  }
+
+  resetLockState() {
+    this.lockTimer = 0;
+    this.lockMoves = 0;
+    this.groundedTimer = 0;
+    this.lockResetCooldown = 0;
+    this.isGrounded = false;
+  }
+
+  handleHold() {
+    if (this.holdUsed) return;
+    if (this.holdType === null) {
+      this.holdType = this.activePiece.type;
+      this.activePiece = this.spawnPiece();
+    } else {
+      const swap = this.holdType;
+      this.holdType = this.activePiece.type;
+      const piece = createPiece(swap, Math.floor(GAME_CONFIG.COLS / 2), 18);
+      if (this.collides(piece, 0, 0)) {
+        this.resetGameState();
+        this.activePiece = createPiece(this.takeNextType(), Math.floor(GAME_CONFIG.COLS / 2), 18);
+      } else {
+        this.activePiece = piece;
+      }
+    }
+    this.resetLockState();
+    this.holdUsed = true;
   }
 
   getGhostY() {
@@ -369,6 +428,10 @@ export class GameLoop {
       this.updateGridOffsets();
       this.playFlipSound();
       if (this.handleFlipJam()) return;
+    }
+
+    if (this.input.consumePress("KeyC")) {
+      this.handleHold();
     }
 
     const leftPressed = this.input.consumePress("ArrowLeft");
@@ -645,6 +708,66 @@ export class GameLoop {
     hudY += 20;
     ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
     ctx.fillText(String(this.lines), hudX, hudY);
+    ctx.restore();
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#e6e6e6";
+    ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    const panelX = GAME_CONFIG.GRID_MARGIN * 2
+      + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
+      + 12;
+    let panelY = 190;
+    ctx.fillText("HOLD", panelX, panelY);
+    panelY += 18;
+    const holdBox = { x: panelX, y: panelY, w: 96, h: 96 };
+    ctx.save();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(holdBox.x, holdBox.y, holdBox.w, holdBox.h);
+    ctx.restore();
+    this.drawMiniPiece(ctx, this.holdType, holdBox.x, holdBox.y, holdBox.w, holdBox.h);
+    panelY += 116;
+    ctx.fillText("NEXT", panelX, panelY);
+    panelY += 18;
+    for (let i = 0; i < this.nextQueue.length; i += 1) {
+      this.drawMiniPiece(ctx, this.nextQueue[i], panelX, panelY, 80, 80);
+      panelY += 88;
+    }
+    ctx.restore();
+  }
+
+  drawMiniPiece(ctx, type, x, y, boxW = 60, boxH = 60) {
+    if (!type) return;
+    const cell = 18;
+    const piece = { type, x: 0, y: 0, rotation: 0 };
+    const blocks = getBlocks(piece);
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const block of blocks) {
+      if (block.x < minX) minX = block.x;
+      if (block.y < minY) minY = block.y;
+      if (block.x > maxX) maxX = block.x;
+      if (block.y > maxY) maxY = block.y;
+    }
+    const width = (maxX - minX + 1) * cell;
+    const height = (maxY - minY + 1) * cell;
+    const offsetX = x + (boxW - width) / 2;
+    const offsetY = y + (boxH - height) / 2;
+    ctx.save();
+    ctx.fillStyle = GAME_CONFIG.COLORS[type];
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = 2;
+    for (const block of blocks) {
+      const px = offsetX + (block.x - minX) * cell;
+      const py = offsetY + (block.y - minY) * cell;
+      ctx.fillRect(px, py, cell, cell);
+      ctx.strokeRect(px + 1, py + 1, cell - 2, cell - 2);
+    }
     ctx.restore();
   }
 }

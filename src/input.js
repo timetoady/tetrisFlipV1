@@ -5,6 +5,7 @@ const DEFAULT_KEYS = new Set([
   "ArrowUp",
   "KeyZ",
   "KeyX",
+  "KeyC",
   "KeyP",
   "Space",
   "Escape",

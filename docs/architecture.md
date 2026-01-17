@@ -17,6 +17,7 @@
 - `src/utils/randomizer.js` 7-bag generator.
 - `src/utils/srs.js` Rotation kick data (stubbed for v1).
 - `src/utils/drawing.js` Canvas helpers.
+- `src/systems/gameloop.js` also tracks next queue + hold state.
 
 ## Data Model Summary
 
@@ -46,6 +47,7 @@
    - Draw active piece and ghost piece.
    - Draw flip jam flash/outline animation (if triggered).
    - Draw HUD (score/level/lines).
+   - Draw hold and next queue panels.
 
 ## Flip Rules
 

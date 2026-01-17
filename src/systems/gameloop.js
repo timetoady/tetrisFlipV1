@@ -53,6 +53,11 @@ export class GameLoop {
     this.lockResetCooldownMs = 80;
     this.lockResetCooldown = 0;
     this.isGrounded = false;
+    this.isClearing = false;
+    this.clearTimer = 0;
+    this.clearDuration = 0;
+    this.clearRows = [];
+    this.clearOwner = null;
     this.refillQueue();
     this.gameOver = false;
     this.activePiece = this.spawnPiece();
@@ -90,6 +95,11 @@ export class GameLoop {
     this.refillQueue();
     this.resetLockState();
     this.gameOver = false;
+    this.isClearing = false;
+    this.clearTimer = 0;
+    this.clearDuration = 0;
+    this.clearRows = [];
+    this.clearOwner = null;
   }
 
   reset() {
@@ -448,8 +458,14 @@ export class GameLoop {
       this.board.setCellForOwner(activeOwner, localRow, x, this.activePiece.type);
     }
 
-    const cleared = this.board.clearLinesForOwner(activeOwner);
+    const linesToClear = this.board.findClearLinesForOwner(activeOwner);
+    const cleared = linesToClear.length;
     if (cleared > 0) {
+      this.isClearing = true;
+      this.clearTimer = 0;
+      this.clearDuration = cleared === 4 ? 900 : 420;
+      this.clearRows = linesToClear;
+      this.clearOwner = activeOwner;
       // Tuning hook: scoring table and multipliers for playtesting.
       const lineScores = [0, 100, 300, 500, 800];
       this.score += lineScores[cleared] * this.level;
@@ -466,10 +482,12 @@ export class GameLoop {
       this.level = nextLevel;
       this.dropInterval = this.getDropInterval(this.level);
     }
-    this.activePiece = this.spawnPiece();
-    this.resetLockState();
-    this.holdUsed = false;
-    this.playGroundSound();
+    if (!this.isClearing) {
+      this.activePiece = this.spawnPiece();
+      this.resetLockState();
+      this.holdUsed = false;
+      this.playGroundSound();
+    }
   }
 
   hardDrop() {
@@ -573,6 +591,23 @@ export class GameLoop {
     }
 
     if (this.paused) return;
+
+    if (this.isClearing) {
+      this.clearTimer += delta;
+      if (this.clearTimer >= this.clearDuration) {
+        this.board.clearLinesForOwner(this.clearOwner, this.clearRows);
+        this.isClearing = false;
+        this.clearTimer = 0;
+        this.clearDuration = 0;
+        this.clearRows = [];
+        this.clearOwner = null;
+        this.activePiece = this.spawnPiece();
+        this.resetLockState();
+        this.holdUsed = false;
+        this.playGroundSound();
+      }
+      return;
+    }
 
     if (this.input.consumePress("Space") ||
         this.input.consumePress("ShiftLeft") ||
@@ -761,40 +796,74 @@ export class GameLoop {
       }
     }
 
-    const blocks = getBlocks(this.activePiece);
-    for (const block of blocks) {
-      const x = this.activePiece.x + block.x;
-      const y = this.activePiece.y + block.y;
-      if (y < 0) continue;
-      drawCell(ctx, x, y, GAME_CONFIG.COLORS[this.activePiece.type], 1);
+    if (this.isClearing && this.clearOwner) {
+      const progress = Math.min(1, this.clearTimer / this.clearDuration);
+      const angle = Math.PI * progress;
+      const alpha = 1 - progress;
+      const baseY = this.clearOwner === activeOwner ? halfRows : 0;
+      for (const localRow of this.clearRows) {
+        for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
+          const cell = this.board.getCellForOwner(this.clearOwner, localRow, x);
+          if (!cell || cell.value === 0) continue;
+          const renderY = this.clearOwner === activeOwner
+            ? baseY + localRow
+            : maxIndex - localRow;
+          const centerX = (x + 0.5) * GAME_CONFIG.BLOCK_SIZE;
+          const centerY = (renderY + 0.5) * GAME_CONFIG.BLOCK_SIZE;
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          const scaleY = Math.cos(angle);
+          const skewX = Math.sin(angle) * 0.2;
+          ctx.transform(1, 0, skewX, scaleY, 0, 0);
+          const shade = 0.65 + 0.35 * Math.cos(angle);
+          ctx.globalAlpha = alpha * shade;
+          ctx.fillStyle = GAME_CONFIG.COLORS[cell.value];
+          const size = GAME_CONFIG.BLOCK_SIZE;
+          ctx.fillRect(-size / 2, -size / 2, size, size);
+          ctx.globalAlpha = alpha * (1 - shade) * 0.4;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(-size / 2, -size / 2, size, size);
+          ctx.restore();
+        }
+      }
     }
 
-    const ghostY = this.getGhostY();
-    if (ghostY !== this.activePiece.y) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(220, 220, 220, 0.7)";
-      ctx.globalAlpha = 0.8;
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = "rgba(220, 220, 220, 0.45)";
-      ctx.shadowBlur = 4;
+    if (!this.isClearing) {
+      const blocks = getBlocks(this.activePiece);
       for (const block of blocks) {
         const x = this.activePiece.x + block.x;
-        const y = ghostY + block.y;
+        const y = this.activePiece.y + block.y;
         if (y < 0) continue;
-        const size = GAME_CONFIG.BLOCK_SIZE;
-        ctx.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
+        drawCell(ctx, x, y, GAME_CONFIG.COLORS[this.activePiece.type], 1);
       }
-      ctx.shadowBlur = 0;
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = GAME_CONFIG.COLORS[this.activePiece.type];
-      for (const block of blocks) {
-        const x = this.activePiece.x + block.x;
-        const y = ghostY + block.y;
-        if (y < 0) continue;
-        const size = GAME_CONFIG.BLOCK_SIZE;
-        ctx.fillRect(x * size + 2, y * size + 2, size - 4, size - 4);
+
+      const ghostY = this.getGhostY();
+      if (ghostY !== this.activePiece.y) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(220, 220, 220, 0.7)";
+        ctx.globalAlpha = 0.8;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = "rgba(220, 220, 220, 0.45)";
+        ctx.shadowBlur = 4;
+        for (const block of blocks) {
+          const x = this.activePiece.x + block.x;
+          const y = ghostY + block.y;
+          if (y < 0) continue;
+          const size = GAME_CONFIG.BLOCK_SIZE;
+          ctx.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
+        }
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 0.16;
+        ctx.fillStyle = GAME_CONFIG.COLORS[this.activePiece.type];
+        for (const block of blocks) {
+          const x = this.activePiece.x + block.x;
+          const y = ghostY + block.y;
+          if (y < 0) continue;
+          const size = GAME_CONFIG.BLOCK_SIZE;
+          ctx.fillRect(x * size + 2, y * size + 2, size - 4, size - 4);
+        }
+        ctx.restore();
       }
-      ctx.restore();
     }
 
     if (this.jamAnimPiece && this.jamAnimTimer > 0) {

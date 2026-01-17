@@ -45,6 +45,7 @@
    - Draw field tints (top/bottom) and spawn zone gap.
    - Draw inactive field with low opacity.
    - Draw active field with full opacity.
+   - Animate line clears (vertical flip).
    - Draw active piece and ghost piece.
    - Draw flip jam flash/outline animation (if triggered).
    - Draw HUD (score/level/lines).

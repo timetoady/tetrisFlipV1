@@ -85,8 +85,8 @@ export class Board {
     this.grid[row][x].locked = value !== 0;
   }
 
-  clearLinesForOwner(owner) {
-    let cleared = 0;
+  findClearLinesForOwner(owner) {
+    const fullRows = [];
     const halfRows = this.getHalfRows();
     for (let localRow = halfRows - 1; localRow >= 0; localRow -= 1) {
       const rowIndex = this.mapLocalToRow(owner, localRow);
@@ -98,24 +98,34 @@ export class Board {
           break;
         }
       }
-
       if (full) {
-        for (let r = localRow; r > 0; r -= 1) {
-          const fromIndex = this.mapLocalToRow(owner, r - 1);
-          const toIndex = this.mapLocalToRow(owner, r);
-          this.grid[toIndex] = this.grid[fromIndex].map((cell) => ({ ...cell }));
-        }
-        const topIndex = this.mapLocalToRow(owner, 0);
-        this.grid[topIndex] = Array.from({ length: GAME_CONFIG.COLS }, () => ({
-          value: 0,
-          owner: OWNERS.NONE,
-          locked: false
-        }));
-        cleared += 1;
-        localRow += 1;
+        fullRows.push(localRow);
       }
     }
+    return fullRows;
+  }
 
-    return cleared;
+  clearLinesForOwner(owner, localRows) {
+    if (!localRows || localRows.length === 0) return 0;
+    const sorted = [...localRows].sort((a, b) => a - b);
+    const halfRows = this.getHalfRows();
+    const isCleared = new Set(sorted);
+    let writeRow = halfRows - 1;
+    for (let localRow = halfRows - 1; localRow >= 0; localRow -= 1) {
+      if (isCleared.has(localRow)) continue;
+      const fromIndex = this.mapLocalToRow(owner, localRow);
+      const toIndex = this.mapLocalToRow(owner, writeRow);
+      this.grid[toIndex] = this.grid[fromIndex].map((cell) => ({ ...cell }));
+      writeRow -= 1;
+    }
+    for (let r = writeRow; r >= 0; r -= 1) {
+      const rowIndex = this.mapLocalToRow(owner, r);
+      this.grid[rowIndex] = Array.from({ length: GAME_CONFIG.COLS }, () => ({
+        value: 0,
+        owner: OWNERS.NONE,
+        locked: false
+      }));
+    }
+    return sorted.length;
   }
 }

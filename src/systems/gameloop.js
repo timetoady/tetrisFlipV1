@@ -649,15 +649,27 @@ export class GameLoop {
     const ghostY = this.getGhostY();
     if (ghostY !== this.activePiece.y) {
       ctx.save();
-      ctx.strokeStyle = GAME_CONFIG.COLORS[this.activePiece.type];
-      ctx.globalAlpha = 0.5;
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(220, 220, 220, 0.7)";
+      ctx.globalAlpha = 0.8;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = "rgba(220, 220, 220, 0.45)";
+      ctx.shadowBlur = 4;
       for (const block of blocks) {
         const x = this.activePiece.x + block.x;
         const y = ghostY + block.y;
         if (y < 0) continue;
         const size = GAME_CONFIG.BLOCK_SIZE;
         ctx.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      }
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = GAME_CONFIG.COLORS[this.activePiece.type];
+      for (const block of blocks) {
+        const x = this.activePiece.x + block.x;
+        const y = ghostY + block.y;
+        if (y < 0) continue;
+        const size = GAME_CONFIG.BLOCK_SIZE;
+        ctx.fillRect(x * size + 2, y * size + 2, size - 4, size - 4);
       }
       ctx.restore();
     }

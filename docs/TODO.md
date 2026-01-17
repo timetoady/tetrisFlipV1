@@ -27,7 +27,6 @@
 ## Phase 4: Rules and UI
 
 - [x] Line clears (active field only)
-- [x] Game over (spawn blocked)
 - [x] Scoring and leveling
 - [x] Lock delay (500ms reset on grounded moves, max grounded time, limit 15)
 - [x] Next queue + Hold
@@ -41,9 +40,12 @@
 - [ ] Color-blind pattern overlays
 - [x] Audio stubs
 
+## Lose round condition
+- [x] Add lose condition/lose screen
+
 ## UX Improvements
 
-- [ ] Drop shadow with stronger white outline (dark colors readability)
+- [x] Ghost piece with stronger white outline (dark colors readability)
 
 ## Sound Effects
 

@@ -9,10 +9,10 @@ export function drawCell(ctx, x, y, color, alpha = 1) {
   ctx.globalAlpha = alpha;
   ctx.fillStyle = color;
   ctx.fillRect(px, py, size, size);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.lineWidth = 3;
   ctx.strokeRect(px + 1, py + 1, size - 2, size - 2);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(px + 2, py + 2);
@@ -20,11 +20,13 @@ export function drawCell(ctx, x, y, color, alpha = 1) {
   ctx.moveTo(px + 2, py + 2);
   ctx.lineTo(px + 2, py + size - 2);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
   ctx.beginPath();
   ctx.moveTo(px + 3, py + size - 4);
   ctx.lineTo(px + size - 4, py + 3);
   ctx.stroke();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+  ctx.fillRect(px + 3, py + 3, size - 6, size - 6);
   ctx.restore();
 }
 

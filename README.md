@@ -87,3 +87,4 @@ Then open `http://localhost:4173/`.
 - Requirements: `docs/requirements-plan.md`
 - Architecture: `docs/architecture.md`
 - TODO: `docs/TODO.md`
+- Workflow: `WORKFLOW.md`

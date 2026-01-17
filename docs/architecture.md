@@ -18,6 +18,8 @@
 - `src/utils/srs.js` Rotation kick data (stubbed for v1).
 - `src/utils/drawing.js` Canvas helpers.
 - `src/systems/gameloop.js` also tracks next queue + hold state.
+- `electron/main.cjs` Electron main process (window creation + auto-updater).
+- `electron/preload.cjs` Reserved for future IPC bridges.
 
 ## Data Model Summary
 
@@ -59,3 +61,11 @@
 - Collision checks only consider blocks owned by the active (bottom) field.
 - Inactive field blocks are drawn with reduced opacity to allow planning.
 - Grid background parallax offsets briefly on flip to indicate state change.
+
+## Build and Distribution
+
+- Vite builds the renderer into `dist/` with a relative `base` (`vite.config.js`).
+- Static assets are served from `public/assets/` and referenced with `BASE_URL`.
+- Electron packages the app and outputs to `release/` (configured in `package.json`).
+- Auto-updates use GitHub Releases via `electron-updater`.
+- `patch-package` is used to patch `@electron/rebuild` for ESM tar imports.

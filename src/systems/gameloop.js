@@ -11,7 +11,10 @@ export class GameLoop {
     this.input = input;
     this.board = new Board();
     this.randomizer = new Randomizer();
-    this.dropInterval = 800;
+    this.score = 0;
+    this.lines = 0;
+    this.level = 1;
+    this.dropInterval = this.getDropInterval(this.level);
     this.dropTimer = 0;
     this.paused = false;
     this.audioCtx = null;
@@ -36,6 +39,25 @@ export class GameLoop {
     this.activePiece = this.spawnPiece();
   }
 
+  getDropInterval(level) {
+    // Tuning hook: adjust base slope and milestone bumps after playtesting.
+    const baseFrames = Math.max(1, 48 - (level - 1) * 2);
+    let frames = baseFrames;
+    if (level >= 5) frames -= 2;
+    if (level >= 10) frames -= 2;
+    if (level >= 15) frames -= 2;
+    if (level >= 20) frames = 1;
+    return Math.max(1, frames) * (1000 / 60);
+  }
+
+  resetProgress() {
+    this.score = 0;
+    this.lines = 0;
+    this.level = 1;
+    this.dropInterval = this.getDropInterval(this.level);
+    this.dropTimer = 0;
+  }
+
   ensureAudioContext() {
     if (!this.audioCtx) {
       const w = /** @type {any} */ (window);
@@ -56,6 +78,7 @@ export class GameLoop {
     const piece = createPiece(type, x, y);
     if (this.collides(piece, 0, 0)) {
       this.board.reset();
+      this.resetProgress();
     }
     return piece;
   }
@@ -241,13 +264,27 @@ export class GameLoop {
       this.board.setCellForOwner(activeOwner, localRow, x, this.activePiece.type);
     }
 
-    this.board.clearLinesForOwner(activeOwner);
+    const cleared = this.board.clearLinesForOwner(activeOwner);
+    if (cleared > 0) {
+      // Tuning hook: scoring table and multipliers for playtesting.
+      const lineScores = [0, 100, 300, 500, 800];
+      this.score += lineScores[cleared] * this.level;
+      this.lines += cleared;
+      this.level = Math.floor(this.lines / 10) + 1;
+      this.dropInterval = this.getDropInterval(this.level);
+    }
     this.activePiece = this.spawnPiece();
   }
 
   hardDrop() {
+    let dropped = 0;
     while (!this.collides(this.activePiece, 0, 1)) {
       this.activePiece.y += 1;
+      dropped += 1;
+    }
+    if (dropped > 0) {
+      // Tuning hook: hard drop bonus.
+      this.score += dropped * 2;
     }
     this.lockPiece();
   }
@@ -397,6 +434,9 @@ export class GameLoop {
       this.dropTimer = 0;
       if (!this.collides(this.activePiece, 0, 1)) {
         this.activePiece.y += 1;
+        if (softDrop) {
+          this.score += 1;
+        }
       } else {
         this.lockPiece();
       }
@@ -525,5 +565,33 @@ export class GameLoop {
       ctx.fillText("PAUSED", ctx.canvas.width / 2, ctx.canvas.height / 2);
       ctx.restore();
     }
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#e6e6e6";
+    ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    const hudX = GAME_CONFIG.GRID_MARGIN * 2
+      + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
+      + 12;
+    let hudY = 12;
+    ctx.fillText("SCORE", hudX, hudY);
+    hudY += 20;
+    ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+    ctx.fillText(String(this.score).padStart(6, "0"), hudX, hudY);
+    hudY += 32;
+    ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+    ctx.fillText("LEVEL", hudX, hudY);
+    hudY += 20;
+    ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+    ctx.fillText(String(this.level), hudX, hudY);
+    hudY += 30;
+    ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+    ctx.fillText("LINES", hudX, hudY);
+    hudY += 20;
+    ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+    ctx.fillText(String(this.lines), hudX, hudY);
+    ctx.restore();
   }
 }

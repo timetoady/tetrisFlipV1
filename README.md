@@ -2,7 +2,7 @@
 
 Tetris Flip is a single-player, browser-based puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into two fields (Top/Bottom). You can flip which field is active so pieces fall into the current bottom field.
 
-Status: early scaffolding. Core loop, basic falling pieces, and flip toggling are in place. Inputs, scoring, line clears, and polish are next.
+Status: core loop, flip mechanic, inputs, scoring/leveling, and HUD are in place. Hold/next, lock delay, and additional polish are next.
 
 ## Requirements
 

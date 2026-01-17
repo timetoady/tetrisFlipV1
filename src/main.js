@@ -5,7 +5,9 @@ import { GameLoop } from "./systems/gameloop.js";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-canvas.width = GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE + GAME_CONFIG.GRID_MARGIN * 2;
+canvas.width = GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
+  + GAME_CONFIG.GRID_MARGIN * 2
+  + GAME_CONFIG.HUD_WIDTH;
 canvas.height = GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE;
 
 const input = createInput(window);

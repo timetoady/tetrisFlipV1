@@ -33,10 +33,11 @@
    - Apply flip toggle (swap active owner).
    - If flip causes overlap, shove the piece up and lock immediately.
    - Apply horizontal movement if not colliding.
-   - Apply rotation if not colliding (kicks later).
+   - Apply rotation if not colliding (kicks applied).
    - Apply gravity and lock delay (lock delay planned).
    - When locked, write blocks with the active owner.
    - Clear full lines that belong entirely to the active owner.
+   - Update score, lines, and level based on clears and drops.
 3. Render phase
    - Clear canvas.
    - Draw field tints (top/bottom) and spawn zone gap.
@@ -44,7 +45,7 @@
    - Draw active field with full opacity.
    - Draw active piece and ghost piece.
    - Draw flip jam flash/outline animation (if triggered).
-   - Draw HUD (planned).
+   - Draw HUD (score/level/lines).
 
 ## Flip Rules
 

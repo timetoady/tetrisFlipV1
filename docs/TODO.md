@@ -27,9 +27,9 @@
 ## Phase 4: Rules and UI
 
 - [x] Line clears (active field only)
-- [ ] Scoring and leveling
+- [x] Scoring and leveling
 - [ ] Next queue + Hold
-- [ ] HUD (score/level/lines)
+- [x] HUD (score/level/lines)
 - [x] Pause
 
 ## Phase 5: Polish

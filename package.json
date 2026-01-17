@@ -29,6 +29,7 @@
     "appId": "com.timetoady.tetrisflip",
     "productName": "Tetris Flip",
     "directories": {
+      "output": "release",
       "buildResources": "assets"
     },
     "files": [

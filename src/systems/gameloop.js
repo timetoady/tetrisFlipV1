@@ -10,6 +10,7 @@ export class GameLoop {
     this.ctx = ctx;
     this.input = input;
     this.onGameOver = callbacks.onGameOver || (() => {});
+    this.onPauseBack = callbacks.onPauseBack || (() => {});
     this.board = new Board();
     this.randomizer = new Randomizer();
     this.queueSize = 3;
@@ -64,6 +65,7 @@ export class GameLoop {
     this.tetrisTextDuration = 0;
     this.refillQueue();
     this.gameOver = false;
+    this.pauseButtons = null;
     this.activePiece = this.spawnPiece();
   }
 
@@ -113,6 +115,21 @@ export class GameLoop {
   reset() {
     this.resetGameState();
     this.activePiece = this.spawnPiece();
+  }
+
+  handlePauseClick(x, y) {
+    if (!this.paused || !this.pauseButtons) return;
+    const { restart, back } = this.pauseButtons;
+    if (x >= restart.x && x <= restart.x + restart.w &&
+        y >= restart.y && y <= restart.y + restart.h) {
+      this.paused = false;
+      this.reset();
+      return;
+    }
+    if (x >= back.x && x <= back.x + back.w &&
+        y >= back.y && y <= back.y + back.h) {
+      this.onPauseBack();
+    }
   }
 
   isSpawnBlocked() {
@@ -923,18 +940,6 @@ export class GameLoop {
       ctx.restore();
     }
 
-    if (this.paused) {
-      ctx.save();
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "24px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("PAUSED", ctx.canvas.width / 2, ctx.canvas.height / 2);
-      ctx.restore();
-    }
-
     if (this.tetrisFlashTimer > 0) {
       const t = 1 - this.tetrisFlashTimer / this.tetrisFlashDuration;
       const pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
@@ -1017,6 +1022,54 @@ export class GameLoop {
       panelY += 88;
     }
     ctx.restore();
+
+    if (this.paused) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = "rgba(0, 0, 0, 1.0)";
+      ctx.fillRect(
+        GAME_CONFIG.GRID_MARGIN,
+        0,
+        GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE,
+        GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE
+      );
+      const panelW = 260;
+      const panelH = 140;
+      const panelX = (ctx.canvas.width - panelW) / 2;
+      const panelY = (ctx.canvas.height - panelH) / 2;
+      ctx.fillStyle = "rgba(10, 10, 10, 0.95)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.fillRect(panelX, panelY, panelW, panelH);
+      ctx.strokeRect(panelX, panelY, panelW, panelH);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "24px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("PAUSED", ctx.canvas.width / 2, panelY + 36);
+
+      const buttonW = 100;
+      const buttonH = 32;
+      const restartX = panelX + 24;
+      const backX = panelX + panelW - buttonW - 24;
+      const buttonsY = panelY + panelH - 52;
+      ctx.fillStyle = "#1f1f1f";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(restartX, buttonsY, buttonW, buttonH);
+      ctx.strokeRect(restartX, buttonsY, buttonW, buttonH);
+      ctx.fillRect(backX, buttonsY, buttonW, buttonH);
+      ctx.strokeRect(backX, buttonsY, buttonW, buttonH);
+      ctx.fillStyle = "#e6e6e6";
+      ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText("RESTART", restartX + buttonW / 2, buttonsY + buttonH / 2);
+      ctx.fillText("BACK", backX + buttonW / 2, buttonsY + buttonH / 2);
+      this.pauseButtons = {
+        restart: { x: restartX, y: buttonsY, w: buttonW, h: buttonH },
+        back: { x: backX, y: buttonsY, w: buttonW, h: buttonH }
+      };
+      ctx.restore();
+    }
   }
 
   drawMiniPiece(ctx, type, x, y, boxW = 60, boxH = 60) {

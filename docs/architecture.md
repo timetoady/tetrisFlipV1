@@ -47,6 +47,7 @@
    - Draw active field with full opacity.
    - Animate line clears (vertical flip).
    - Draw active piece and ghost piece.
+   - Draw Tetris celebration overlay (flash + text).
    - Draw flip jam flash/outline animation (if triggered).
    - Draw HUD (score/level/lines).
    - Draw hold and next queue panels.

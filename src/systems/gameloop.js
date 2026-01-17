@@ -58,6 +58,10 @@ export class GameLoop {
     this.clearDuration = 0;
     this.clearRows = [];
     this.clearOwner = null;
+    this.tetrisFlashTimer = 0;
+    this.tetrisFlashDuration = 0;
+    this.tetrisTextTimer = 0;
+    this.tetrisTextDuration = 0;
     this.refillQueue();
     this.gameOver = false;
     this.activePiece = this.spawnPiece();
@@ -100,6 +104,10 @@ export class GameLoop {
     this.clearDuration = 0;
     this.clearRows = [];
     this.clearOwner = null;
+    this.tetrisFlashTimer = 0;
+    this.tetrisFlashDuration = 0;
+    this.tetrisTextTimer = 0;
+    this.tetrisTextDuration = 0;
   }
 
   reset() {
@@ -472,6 +480,10 @@ export class GameLoop {
       this.lines += cleared;
       if (cleared === 4) {
         this.playTetrisSound();
+        this.tetrisFlashDuration = this.clearDuration;
+        this.tetrisFlashTimer = this.tetrisFlashDuration;
+        this.tetrisTextDuration = this.clearDuration + 500;
+        this.tetrisTextTimer = this.tetrisTextDuration;
       } else {
         this.playLineClearSound(cleared);
       }
@@ -591,6 +603,13 @@ export class GameLoop {
     }
 
     if (this.paused) return;
+
+    if (this.tetrisFlashTimer > 0) {
+      this.tetrisFlashTimer = Math.max(0, this.tetrisFlashTimer - delta);
+    }
+    if (this.tetrisTextTimer > 0) {
+      this.tetrisTextTimer = Math.max(0, this.tetrisTextTimer - delta);
+    }
 
     if (this.isClearing) {
       this.clearTimer += delta;
@@ -913,6 +932,33 @@ export class GameLoop {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("PAUSED", ctx.canvas.width / 2, ctx.canvas.height / 2);
+      ctx.restore();
+    }
+
+    if (this.tetrisFlashTimer > 0) {
+      const t = 1 - this.tetrisFlashTimer / this.tetrisFlashDuration;
+      const pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.06 + 0.1 * pulse})`;
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      ctx.restore();
+    }
+
+    if (this.tetrisTextTimer > 0) {
+      const t = 1 - this.tetrisTextTimer / this.tetrisTextDuration;
+      const fade = Math.max(0, 1 - t);
+      const driftX = 40 * t;
+      const driftY = 20 * t;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * fade})`;
+      ctx.font = "55px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
+      ctx.shadowBlur = 8;
+      ctx.fillText("TETRIS!", ctx.canvas.width / 2 + driftX, ctx.canvas.height / 2 - 40 + driftY);
       ctx.restore();
     }
 

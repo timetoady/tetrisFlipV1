@@ -36,6 +36,18 @@ export class GameLoop {
     this.rightHold = 0;
     this.leftRepeat = 0;
     this.rightRepeat = 0;
+    this.lockDelayMs = 500;
+    this.lockDelayMinMs = 0;
+    this.lockDegradeAfter = 3;
+    this.lockDegradeStepMs = 40;
+    this.lockTimer = 0;
+    this.lockMoves = 0;
+    this.lockMoveLimit = 15;
+    this.groundedTimer = 0;
+    this.groundedMaxMs = 1500;
+    this.lockResetCooldownMs = 80;
+    this.lockResetCooldown = 0;
+    this.isGrounded = false;
     this.activePiece = this.spawnPiece();
   }
 
@@ -274,6 +286,11 @@ export class GameLoop {
       this.dropInterval = this.getDropInterval(this.level);
     }
     this.activePiece = this.spawnPiece();
+    this.lockTimer = 0;
+    this.lockMoves = 0;
+    this.groundedTimer = 0;
+    this.lockResetCooldown = 0;
+    this.isGrounded = false;
   }
 
   hardDrop() {
@@ -300,6 +317,7 @@ export class GameLoop {
   tryMoveHorizontal(dx) {
     if (!this.collides(this.activePiece, dx, 0)) {
       this.activePiece.x += dx;
+      this.registerLockReset();
       return true;
     }
     return false;
@@ -317,10 +335,19 @@ export class GameLoop {
           y: this.activePiece.y + oy,
           rotation: to
         };
+        this.registerLockReset();
         return true;
       }
     }
     return false;
+  }
+
+  registerLockReset() {
+    if (!this.collides(this.activePiece, 0, 1)) return;
+    if (this.lockResetCooldown > 0) return;
+    this.lockTimer = 0;
+    this.lockMoves += 1;
+    this.lockResetCooldown = this.lockResetCooldownMs;
   }
 
   update(delta) {
@@ -437,9 +464,35 @@ export class GameLoop {
         if (softDrop) {
           this.score += 1;
         }
-      } else {
+        this.isGrounded = false;
+      }
+    }
+
+    const currentlyGrounded = this.collides(this.activePiece, 0, 1);
+    if (currentlyGrounded) {
+      this.isGrounded = true;
+      this.lockTimer += delta;
+      this.groundedTimer += delta;
+      if (this.lockResetCooldown > 0) {
+        this.lockResetCooldown = Math.max(0, this.lockResetCooldown - delta);
+      }
+      const extraMoves = Math.max(0, this.lockMoves - this.lockDegradeAfter);
+      const effectiveDelay = Math.max(
+        this.lockDelayMinMs,
+        this.lockDelayMs - extraMoves * this.lockDegradeStepMs
+      );
+      if (this.lockTimer >= effectiveDelay ||
+          this.lockMoves >= this.lockMoveLimit ||
+          this.groundedTimer >= this.groundedMaxMs) {
         this.lockPiece();
       }
+    } else {
+      if (!this.isGrounded) {
+        this.lockTimer = 0;
+        this.lockMoves = 0;
+      }
+      this.groundedTimer = 0;
+      this.lockResetCooldown = 0;
     }
   }
 

@@ -68,3 +68,9 @@
 - [x] Mode selection (Marathon only for now)
 - [x] Marathon menu: pick starting gravity (1-19)
 - [x] High score entry (top 10 list per mode)
+
+## Next Up
+
+- [ ] Controller compatibility
+- [ ] Garbage clearing mode
+- [ ] 2 player mode

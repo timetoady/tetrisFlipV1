@@ -1,8 +1,6 @@
-# Tetris Flip (v1)
+# Tetris Flip (v1.0.0)
 
-Tetris Flip is a single-player, browser-based puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into two fields (Top/Bottom). You can flip which field is active so pieces fall into the current bottom field.
-
-Status: core loop, flip mechanic, inputs, scoring/leveling, and HUD are in place. Hold/next, lock delay, and additional polish are next.
+Tetris Flip is a single-player, browser-based puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into top/bottom fields, and you can flip which field is active so pieces fall into the current bottom. Marathon mode includes scoring/levels, hold/next, HUD, game over handling, and a local top-10 leaderboard.
 
 ## Requirements
 
@@ -17,6 +15,15 @@ npm run dev
 ```
 
 Open the URL printed by Vite.
+
+## Build
+
+```bash
+npm run build
+npm run preview
+```
+
+Open the URL printed by Vite preview.
 
 ## Controls (current + planned)
 

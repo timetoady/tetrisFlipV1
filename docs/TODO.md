@@ -39,3 +39,27 @@
 - [x] Spawn zone visualization (debug)
 - [ ] Color-blind pattern overlays
 - [x] Audio stubs
+
+## UX Improvements
+
+- [ ] Drop shadow with stronger white outline (dark colors readability)
+
+## Sound Effects
+
+- [ ] Line clear sound
+- [ ] Tetris sound (emphatic, celebration)
+- [ ] Level up sound (rising tone)
+- [ ] Grounding sound (soft thud)
+- [ ] Hard drop sound (thump)
+
+## Clearing Animation
+
+- [ ] Line clear animation (pause during animation)
+- [ ] Tetris celebration (announcement + visual splash)
+- [ ] Blank out pieces on playing field during pause
+
+## Menus
+
+- [ ] Start splash page (image provided by user)
+- [ ] Mode selection (Marathon only for now)
+- [ ] Marathon menu: pick starting gravity (1-19)

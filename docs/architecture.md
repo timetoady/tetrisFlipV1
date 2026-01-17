@@ -51,6 +51,7 @@
    - Draw flip jam flash/outline animation (if triggered).
    - Draw HUD (score/level/lines).
    - Draw hold and next queue panels.
+   - Render menu overlays (splash/mode/marathon) when active.
 
 ## Flip Rules
 

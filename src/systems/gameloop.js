@@ -17,6 +17,7 @@ export class GameLoop {
     this.nextQueue = [];
     this.holdType = null;
     this.holdUsed = false;
+    this.startingLevel = 1;
     this.score = 0;
     this.lines = 0;
     this.level = 1;
@@ -66,6 +67,9 @@ export class GameLoop {
     this.refillQueue();
     this.gameOver = false;
     this.pauseButtons = null;
+    this.pauseActionIndex = 0;
+    this.pauseConfirmActive = false;
+    this.pauseConfirmIndex = 0;
     this.activePiece = this.spawnPiece();
   }
 
@@ -82,10 +86,21 @@ export class GameLoop {
 
   resetProgress() {
     this.score = 0;
+    this.level = this.startingLevel;
     this.lines = 0;
-    this.level = 1;
     this.dropInterval = this.getDropInterval(this.level);
     this.dropTimer = 0;
+  }
+
+  setStartingLevel(level) {
+    this.startingLevel = Math.min(35, Math.max(0, level));
+  }
+
+  getLevelForLines(lines) {
+    const start = this.startingLevel;
+    const threshold = start <= 1 ? 10 : (start + 1) * 10;
+    if (lines < threshold) return start;
+    return Math.floor((lines - threshold) / 10) + start + 1;
   }
 
   resetHold() {
@@ -117,18 +132,28 @@ export class GameLoop {
     this.activePiece = this.spawnPiece();
   }
 
+  getScoreState() {
+    return {
+      score: this.score,
+      lines: this.lines,
+      level: this.level
+    };
+  }
+
   handlePauseClick(x, y) {
     if (!this.paused || !this.pauseButtons) return;
     const { restart, back } = this.pauseButtons;
+    this.pauseActionIndex = x < back.x ? 0 : 1;
     if (x >= restart.x && x <= restart.x + restart.w &&
         y >= restart.y && y <= restart.y + restart.h) {
       this.paused = false;
+      this.pauseConfirmActive = false;
       this.reset();
       return;
     }
     if (x >= back.x && x <= back.x + back.w &&
         y >= back.y && y <= back.y + back.h) {
-      this.onPauseBack();
+      this.pauseConfirmActive = true;
     }
   }
 
@@ -504,7 +529,7 @@ export class GameLoop {
       } else {
         this.playLineClearSound(cleared);
       }
-      const nextLevel = Math.floor(this.lines / 10) + 1;
+      const nextLevel = this.getLevelForLines(this.lines);
       if (nextLevel !== this.level) {
         this.playLevelUpSound(0.85);
       }
@@ -615,11 +640,51 @@ export class GameLoop {
 
     if (this.input.consumePress("KeyP") || this.input.consumePress("Escape")) {
       this.paused = !this.paused;
+      if (this.paused) {
+        this.pauseActionIndex = 0;
+        this.pauseConfirmActive = false;
+      }
       this.playPauseSound();
       return;
     }
 
-    if (this.paused) return;
+    if (this.paused) {
+      if (this.pauseConfirmActive) {
+        if (this.input.consumePress("ArrowLeft") || this.input.consumePress("ArrowRight")) {
+          this.pauseConfirmIndex = this.pauseConfirmIndex === 0 ? 1 : 0;
+        }
+        if (this.input.consumePress("KeyX") || this.input.consumePress("Enter")) {
+          if (this.pauseConfirmIndex === 0) {
+            this.pauseConfirmActive = false;
+            this.paused = false;
+            this.onPauseBack();
+          } else {
+            this.pauseConfirmActive = false;
+          }
+        }
+        if (this.input.consumePress("KeyZ")) {
+          this.pauseConfirmActive = false;
+        }
+      } else {
+        if (this.input.consumePress("ArrowLeft") || this.input.consumePress("ArrowRight")) {
+          this.pauseActionIndex = this.pauseActionIndex === 0 ? 1 : 0;
+        }
+        if (this.input.consumePress("KeyX") || this.input.consumePress("Enter")) {
+          if (this.pauseActionIndex === 0) {
+            this.paused = false;
+            this.reset();
+          } else {
+            this.pauseConfirmActive = true;
+            this.pauseConfirmIndex = 0;
+          }
+        }
+        if (this.input.consumePress("KeyZ")) {
+          this.pauseConfirmActive = true;
+          this.pauseConfirmIndex = 0;
+        }
+      }
+      return;
+    }
 
     if (this.tetrisFlashTimer > 0) {
       this.tetrisFlashTimer = Math.max(0, this.tetrisFlashTimer - delta);
@@ -1060,6 +1125,15 @@ export class GameLoop {
       ctx.strokeRect(restartX, buttonsY, buttonW, buttonH);
       ctx.fillRect(backX, buttonsY, buttonW, buttonH);
       ctx.strokeRect(backX, buttonsY, buttonW, buttonH);
+      if (this.pauseActionIndex === 0) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(restartX - 2, buttonsY - 2, buttonW + 4, buttonH + 4);
+      } else {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(backX - 2, buttonsY - 2, buttonW + 4, buttonH + 4);
+      }
       ctx.fillStyle = "#e6e6e6";
       ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
       ctx.fillText("RESTART", restartX + buttonW / 2, buttonsY + buttonH / 2);
@@ -1069,6 +1143,45 @@ export class GameLoop {
         back: { x: backX, y: buttonsY, w: buttonW, h: buttonH }
       };
       ctx.restore();
+
+      if (this.pauseConfirmActive) {
+        const confirmW = 280;
+        const confirmH = 120;
+        const confirmX = (ctx.canvas.width - confirmW) / 2;
+        const confirmY = (ctx.canvas.height - confirmH) / 2;
+        ctx.save();
+        ctx.fillStyle = "rgba(5, 5, 5, 0.96)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+        ctx.lineWidth = 2;
+        ctx.fillRect(confirmX, confirmY, confirmW, confirmH);
+        ctx.strokeRect(confirmX, confirmY, confirmW, confirmH);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("EXIT TO MENU?", confirmX + confirmW / 2, confirmY + 30);
+        const btnW = 80;
+        const btnH = 28;
+        const yesX = confirmX + 28;
+        const noX = confirmX + confirmW - btnW - 28;
+        const btnY = confirmY + confirmH - 46;
+        ctx.fillStyle = "#1f1f1f";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(yesX, btnY, btnW, btnH);
+        ctx.strokeRect(yesX, btnY, btnW, btnH);
+        ctx.fillRect(noX, btnY, btnW, btnH);
+        ctx.strokeRect(noX, btnY, btnW, btnH);
+        ctx.fillStyle = "#e6e6e6";
+        ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText("YES", yesX + btnW / 2, btnY + btnH / 2);
+        ctx.fillText("NO", noX + btnW / 2, btnY + btnH / 2);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.lineWidth = 2;
+        const highlightX = this.pauseConfirmIndex === 0 ? yesX : noX;
+        ctx.strokeRect(highlightX - 2, btnY - 2, btnW + 4, btnH + 4);
+        ctx.restore();
+      }
     }
   }
 

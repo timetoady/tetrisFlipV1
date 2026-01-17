@@ -64,6 +64,7 @@
 
 ## Menus
 
-- [ ] Start splash page (image provided by user)
-- [ ] Mode selection (Marathon only for now)
-- [ ] Marathon menu: pick starting gravity (1-19)
+- [x] Start splash page (image provided by user)
+- [x] Mode selection (Marathon only for now)
+- [x] Marathon menu: pick starting gravity (1-19)
+- [x] High score entry (top 10 list per mode)

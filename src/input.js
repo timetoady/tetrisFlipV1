@@ -26,8 +26,8 @@ const GAMEPAD_BASE = [
 ];
 
 const ROTATE_LAYOUTS = {
-  southEast: { rotateCW: 0, rotateCCW: 1, hold: 2 }, // A/B rotate, X hold
-  southWest: { rotateCW: 0, rotateCCW: 2, hold: 1 } // A/X rotate, B hold
+  southEast: { rotateCW: 0, rotateCCW: 1, hold: 2, flip: 3 }, // A/B rotate, X hold, Y flip
+  southWest: { rotateCW: 0, rotateCCW: 2, hold: 1, flip: 3 } // A/X rotate, B hold, Y flip
 };
 
 export function createInput(target = window, pointerTarget = window) {
@@ -36,9 +36,18 @@ export function createInput(target = window, pointerTarget = window) {
   const pressed = new Set();
   const virtualState = new Map();
   let rotateLayout = "southEast";
+  let mouseScheme = "classic";
+
+  function isEditableTarget(targetEl) {
+    if (!targetEl || !(targetEl instanceof HTMLElement)) return false;
+    const tag = targetEl.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return true;
+    return targetEl.isContentEditable;
+  }
 
   function onKeyDown(e) {
     if (!DEFAULT_KEYS.has(e.code)) return;
+    if (e.code === "Backspace" && isEditableTarget(e.target)) return;
     e.preventDefault();
     if (!keyboardDown.has(e.code)) pressed.add(e.code);
     keyboardDown.add(e.code);
@@ -46,6 +55,7 @@ export function createInput(target = window, pointerTarget = window) {
 
   function onKeyUp(e) {
     if (!DEFAULT_KEYS.has(e.code)) return;
+    if (e.code === "Backspace" && isEditableTarget(e.target)) return;
     e.preventDefault();
     keyboardDown.delete(e.code);
     pressed.delete(e.code);
@@ -78,16 +88,26 @@ export function createInput(target = window, pointerTarget = window) {
       ...GAMEPAD_BASE,
       { index: layout.rotateCW, code: "KeyX" },
       { index: layout.rotateCCW, code: "KeyZ" },
-      { index: layout.hold, code: "KeyC" }
+      { index: layout.hold, code: "KeyC" },
+      { index: layout.flip, code: "Space" }
     ];
     if (!pad) {
       mapping.forEach(({ code }) => setVirtual(code, false));
       return;
     }
 
+    const nextState = new Map();
     mapping.forEach(({ index, code }) => {
       const button = pad.buttons[index];
-      setVirtual(code, Boolean(button && button.pressed));
+      const pressedNow = Boolean(button && button.pressed);
+      if (!nextState.has(code)) {
+        nextState.set(code, pressedNow);
+      } else if (pressedNow) {
+        nextState.set(code, true);
+      }
+    });
+    nextState.forEach((pressedNow, code) => {
+      setVirtual(code, pressedNow);
     });
   }
 
@@ -97,6 +117,21 @@ export function createInput(target = window, pointerTarget = window) {
   const swipeThreshold = 24;
   const longPressMs = 380;
   const holdCodes = ["ArrowLeft", "ArrowRight", "ArrowDown"];
+  const mouseDragThreshold = 8;
+  const mouseDragStep = 24;
+  const mouseState = {
+    active: false,
+    dragging: false,
+    mode: null,
+    button: -1,
+    startX: 0,
+    startY: 0
+    ,
+    lastX: 0,
+    lastY: 0,
+    accumX: 0,
+    accumY: 0
+  };
 
   function clearLongPress() {
     if (longPressTimer) {
@@ -116,8 +151,16 @@ export function createInput(target = window, pointerTarget = window) {
 
   function onPointerDown(e) {
     if (e.pointerType === "mouse") {
-      if (e.button === 0) pressVirtual("KeyX");
-      if (e.button === 2) pressVirtual("KeyZ");
+      mouseState.active = true;
+      mouseState.dragging = false;
+      mouseState.mode = null;
+      mouseState.button = e.button;
+      mouseState.startX = e.clientX;
+      mouseState.startY = e.clientY;
+      mouseState.lastX = e.clientX;
+      mouseState.lastY = e.clientY;
+      mouseState.accumX = 0;
+      mouseState.accumY = 0;
       return;
     }
 
@@ -164,6 +207,43 @@ export function createInput(target = window, pointerTarget = window) {
   }
 
   function onPointerMove(e) {
+    if (e.pointerType === "mouse") {
+      if (!mouseState.active) return;
+      const dxTotal = e.clientX - mouseState.startX;
+      const dyTotal = e.clientY - mouseState.startY;
+      const dx = e.clientX - mouseState.lastX;
+      const dy = e.clientY - mouseState.lastY;
+      mouseState.lastX = e.clientX;
+      mouseState.lastY = e.clientY;
+      if (!mouseState.dragging) {
+        if (Math.abs(dxTotal) < mouseDragThreshold &&
+            Math.abs(dyTotal) < mouseDragThreshold) {
+          return;
+        }
+        mouseState.dragging = true;
+        mouseState.mode = Math.abs(dxTotal) >= Math.abs(dyTotal)
+          ? "horizontal"
+          : "vertical";
+      }
+      if (mouseState.mode === "horizontal") {
+        setVirtual("ArrowDown", false);
+        mouseState.accumX += dx;
+        while (Math.abs(mouseState.accumX) >= mouseDragStep) {
+          if (mouseState.accumX > 0) {
+            pressVirtual("ArrowRight");
+            mouseState.accumX -= mouseDragStep;
+          } else {
+            pressVirtual("ArrowLeft");
+            mouseState.accumX += mouseDragStep;
+          }
+        }
+      } else if (mouseState.mode === "vertical") {
+        mouseState.accumY += dy;
+        const shouldDrop = dyTotal > mouseDragStep;
+        setVirtual("ArrowDown", shouldDrop);
+      }
+      return;
+    }
     if (e.pointerType !== "touch") return;
     const state = pointerState.get(e.pointerId);
     if (!state) return;
@@ -180,7 +260,28 @@ export function createInput(target = window, pointerTarget = window) {
   }
 
   function onPointerUp(e) {
-    if (e.pointerType === "mouse") return;
+    if (e.pointerType === "mouse") {
+      if (mouseState.dragging) {
+        setVirtual("ArrowDown", false);
+      } else if (mouseState.active) {
+        if (mouseState.button === 0) {
+          pressVirtual("KeyX");
+        }
+        if (mouseState.button === 2) {
+          if (mouseScheme === "alternate") {
+            pressVirtual("ArrowUp");
+          } else {
+            pressVirtual("KeyZ");
+          }
+        }
+        if (mouseState.button === 1) pressVirtual("Space");
+      }
+      mouseState.active = false;
+      mouseState.dragging = false;
+      mouseState.mode = null;
+      mouseState.button = -1;
+      return;
+    }
     const state = pointerState.get(e.pointerId);
     if (!state) return;
     state.lastX = e.clientX;
@@ -227,6 +328,14 @@ export function createInput(target = window, pointerTarget = window) {
   }
 
   function onWheel(e) {
+    if (mouseScheme === "alternate") {
+      if (e.deltaY > 0) {
+        pressVirtual("KeyZ");
+      } else if (e.deltaY < 0) {
+        pressVirtual("KeyX");
+      }
+      return;
+    }
     if (e.deltaY > 0) {
       pressVirtual("ArrowDown");
     } else if (e.deltaY < 0) {
@@ -260,6 +369,12 @@ export function createInput(target = window, pointerTarget = window) {
     },
     update() {
       pollGamepad();
+    },
+    pressVirtual,
+    setMouseScheme(scheme) {
+      if (scheme === "classic" || scheme === "alternate") {
+        mouseScheme = scheme;
+      }
     },
     setGamepadRotateLayout(layout) {
       if (ROTATE_LAYOUTS[layout]) {

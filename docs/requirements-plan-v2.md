@@ -98,6 +98,16 @@ Notes:
 | Click UI Flip Button | Flip |
 | Click UI Hold Button | Hold |
 
+### 5.4 Mouse Mapping (Alternate)
+
+| Input | Action |
+| --- | --- |
+| Drag | Move Left/Right, Soft Drop |
+| Mouse Wheel Up | Rotate CW |
+| Mouse Wheel Down | Rotate CCW |
+| Right Click | Hard Drop |
+| Middle Click | Flip |
+
 ---
 
 ## 6. UI Additions
@@ -105,6 +115,7 @@ Notes:
 - Input settings panel:
   - Toggle gamepad analog stick support.
   - Choose rotate layout (South+East or South+West).
+  - Choose mouse scheme (Classic or Alternate).
   - Enable/disable touch controls.
 - Mobile HUD:
   - Minimal buttons: Pause, Flip, Hold.

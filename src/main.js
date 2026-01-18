@@ -23,6 +23,12 @@ const marathonBack = document.getElementById("marathon-back");
 const optionsRotateRow = document.getElementById("options-rotate");
 /** @type {HTMLElement} */
 const optionsRotateValue = document.getElementById("options-rotate-value");
+/** @type {HTMLImageElement} */
+const optionsController = document.getElementById("options-controller");
+/** @type {HTMLElement} */
+const optionsMouseRow = document.getElementById("options-mouse");
+/** @type {HTMLElement} */
+const optionsMouseValue = document.getElementById("options-mouse-value");
 /** @type {HTMLButtonElement} */
 const optionsBack = document.getElementById("options-back");
 /** @type {HTMLElement} */
@@ -37,14 +43,22 @@ const nameInput = document.getElementById("name-input");
 const nameSave = document.getElementById("name-save");
 /** @type {HTMLButtonElement} */
 const nameSkip = document.getElementById("name-skip");
+/** @type {HTMLButtonElement | null} */
+let touchFlip = document.getElementById("touch-flip");
 
 const baseUrl = import.meta.env.BASE_URL || "/";
 const splashWideSrc = `${baseUrl}assets/tetrisflip1.png`;
 const splashTallSrc = `${baseUrl}assets/tetrisflip2.png`;
+const controllerStandardSrc = `${baseUrl}assets/standard%20controller.png`;
+const controllerAlternateSrc = `${baseUrl}assets/alternate%20controller.png`;
 
 overlay.hidden = true;
 menu.hidden = false;
 nameModal.hidden = true;
+if (touchFlip) {
+  touchFlip.remove();
+  touchFlip = null;
+}
 
 const screens = document.querySelectorAll("[data-screen]");
 const modeOptions = Array.from(document.querySelectorAll("[data-mode]"));
@@ -66,6 +80,12 @@ const ROTATE_LAYOUTS = [
 ];
 const ROTATE_LAYOUT_KEY = "tetrisflip:input:rotateLayout";
 let rotateLayoutIndex = 0;
+const MOUSE_SCHEMES = [
+  { id: "alternate", label: "Alternate (Wheel Rotate)" },
+  { id: "classic", label: "Classic (Wheel Drop)" }
+];
+const MOUSE_SCHEME_KEY = "tetrisflip:input:mouseScheme";
+let mouseSchemeIndex = 0;
 
 const SCORE_STORAGE_KEY = "tetrisflip:marathon:scores";
 gravityValue.textContent = String(startingGravity);
@@ -93,6 +113,11 @@ function openMenu(name) {
   menuActive = true;
   menu.hidden = false;
   canvas.style.visibility = "hidden";
+  canvas.style.pointerEvents = "none";
+  if (touchFlip) {
+    touchFlip.remove();
+    touchFlip = null;
+  }
   showScreen(name);
 }
 
@@ -100,6 +125,8 @@ function closeMenu() {
   menuActive = false;
   menu.hidden = true;
   canvas.style.visibility = "visible";
+  canvas.style.pointerEvents = "auto";
+  ensureTouchFlip();
   input.clearPressed();
 }
 
@@ -129,7 +156,10 @@ function updateMarathonSelection() {
 function updateOptionsSelection() {
   if (!optionsRotateRow || !optionsBack) return;
   optionsRotateRow.classList.toggle("is-selected", optionsIndex === 0);
-  optionsBack.classList.toggle("is-selected", optionsIndex === 1);
+  if (optionsMouseRow) {
+    optionsMouseRow.classList.toggle("is-selected", optionsIndex === 1);
+  }
+  optionsBack.classList.toggle("is-selected", optionsIndex === 2);
 }
 
 function updateGameOverSelection() {
@@ -222,11 +252,31 @@ function applyRotateLayout(index) {
   rotateLayoutIndex = (index + ROTATE_LAYOUTS.length) % ROTATE_LAYOUTS.length;
   const layout = ROTATE_LAYOUTS[rotateLayoutIndex];
   optionsRotateValue.textContent = layout.label;
+  if (optionsController) {
+    optionsController.src = layout.id === "southWest"
+      ? controllerStandardSrc
+      : controllerAlternateSrc;
+  }
   if (input.setGamepadRotateLayout) {
     input.setGamepadRotateLayout(layout.id);
   }
   try {
     localStorage.setItem(ROTATE_LAYOUT_KEY, layout.id);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function applyMouseScheme(index) {
+  if (!optionsMouseValue) return;
+  mouseSchemeIndex = (index + MOUSE_SCHEMES.length) % MOUSE_SCHEMES.length;
+  const scheme = MOUSE_SCHEMES[mouseSchemeIndex];
+  optionsMouseValue.textContent = scheme.label;
+  if (input.setMouseScheme) {
+    input.setMouseScheme(scheme.id);
+  }
+  try {
+    localStorage.setItem(MOUSE_SCHEME_KEY, scheme.id);
   } catch {
     // Ignore storage failures.
   }
@@ -256,6 +306,13 @@ try {
   applyRotateLayout(storedIndex >= 0 ? storedIndex : 0);
 } catch {
   applyRotateLayout(0);
+}
+try {
+  const stored = localStorage.getItem(MOUSE_SCHEME_KEY);
+  const storedIndex = MOUSE_SCHEMES.findIndex((entry) => entry.id === stored);
+  applyMouseScheme(storedIndex >= 0 ? storedIndex : 0);
+} catch {
+  applyMouseScheme(0);
 }
 const game = new GameLoop(ctx, input, {
   onGameOver() {
@@ -330,16 +387,54 @@ menu.addEventListener("click", (event) => {
   }
 });
 
+function ensureTouchFlip() {
+  if (touchFlip) return;
+  const button = document.createElement("button");
+  button.className = "touch-flip";
+  button.id = "touch-flip";
+  button.type = "button";
+  button.textContent = "FLIP!";
+  button.addEventListener("click", () => {
+    input.pressVirtual("Space");
+  });
+  document.body.appendChild(button);
+  touchFlip = button;
+  positionTouchFlip();
+}
+
 modeOptions.forEach((option, index) => {
   option.addEventListener("click", () => {
     modeIndex = index;
     updateModeSelection();
+    if (option.classList.contains("is-disabled")) return;
+    const selected = option.dataset.mode;
+    if (selected === "options") {
+      showScreen("options");
+    } else if (selected === "marathon") {
+      showScreen("marathon");
+    }
   });
 });
 
 if (optionsBack) {
   optionsBack.addEventListener("click", () => {
     showScreen("mode");
+  });
+}
+
+if (optionsRotateRow) {
+  optionsRotateRow.addEventListener("click", () => {
+    optionsIndex = 0;
+    updateOptionsSelection();
+    applyRotateLayout(rotateLayoutIndex + 1);
+  });
+}
+
+if (optionsMouseRow) {
+  optionsMouseRow.addEventListener("click", () => {
+    optionsIndex = 1;
+    updateOptionsSelection();
+    applyMouseScheme(mouseSchemeIndex + 1);
   });
 }
 
@@ -350,8 +445,27 @@ function setSplashImage() {
   splashImage.src = wide ? splashWideSrc : splashTallSrc;
 }
 
+function positionTouchFlip() {
+  if (!touchFlip || touchFlip.hidden) return;
+  const rect = canvas.getBoundingClientRect();
+  const hudLeft = rect.left
+    + GAME_CONFIG.GRID_MARGIN * 2
+    + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
+    + 12;
+  const hudRight = rect.right - 12;
+  const padding = 28;
+  const buttonWidth = touchFlip.offsetWidth || 110;
+  const buttonHeight = touchFlip.offsetHeight || 84;
+  const center = hudLeft + (hudRight - hudLeft) / 2;
+  const left = center - buttonWidth / 2;
+  const top = rect.bottom - buttonHeight - padding;
+  touchFlip.style.left = `${Math.max(rect.left + 8, left)}px`;
+  touchFlip.style.top = `${Math.max(rect.top + 8, top)}px`;
+}
+
 setSplashImage();
 window.addEventListener("resize", setSplashImage);
+window.addEventListener("resize", positionTouchFlip);
 canvas.style.visibility = "hidden";
 
 function handleMenuInput() {
@@ -441,8 +555,11 @@ function handleMenuInput() {
     const confirm = input.consumePress("KeyX") ||
       input.consumePress("Enter") ||
       input.consumePress("KeyP");
-    if (input.consumePress("ArrowUp") || input.consumePress("ArrowDown")) {
-      optionsIndex = optionsIndex === 0 ? 1 : 0;
+    if (input.consumePress("ArrowUp")) {
+      optionsIndex = (optionsIndex + 2) % 3;
+      updateOptionsSelection();
+    } else if (input.consumePress("ArrowDown")) {
+      optionsIndex = (optionsIndex + 1) % 3;
       updateOptionsSelection();
     }
     const left = input.consumePress("ArrowLeft");
@@ -454,7 +571,14 @@ function handleMenuInput() {
       } else if (confirm) {
         applyRotateLayout(rotateLayoutIndex + 1);
       }
-    } else if (optionsIndex === 1 && confirm) {
+    } else if (optionsIndex === 1) {
+      if (left || right) {
+        const delta = right ? 1 : -1;
+        applyMouseScheme(mouseSchemeIndex + delta);
+      } else if (confirm) {
+        applyMouseScheme(mouseSchemeIndex + 1);
+      }
+    } else if (optionsIndex === 2 && confirm) {
       showScreen("mode");
     }
     if (input.consumePress("KeyZ") ||
@@ -498,6 +622,13 @@ function frame(now) {
     input.update(delta);
   }
   handleMenuInput();
+  if (touchFlip) {
+    const menuVisible = menu && !menu.hidden;
+    if (menuVisible || gameOverActive || nameEntryActive || game.paused) {
+      touchFlip.remove();
+      touchFlip = null;
+    }
+  }
   if (!menuActive) {
     game.update(delta);
   }

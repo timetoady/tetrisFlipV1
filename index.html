@@ -54,6 +54,15 @@
               <span>Rotate Layout</span>
               <span id="options-rotate-value">South / East</span>
             </div>
+            <img
+              class="options-controller"
+              id="options-controller"
+              alt="Controller layout preview"
+            />
+            <div class="menu-option" data-option="mouse-scheme" id="options-mouse">
+              <span>Mouse Controls</span>
+              <span id="options-mouse-value">Classic</span>
+            </div>
             <div class="menu-actions">
               <button id="options-back">Back</button>
             </div>
@@ -93,6 +102,9 @@
       </div>
       <canvas id="game"></canvas>
     </div>
+    <button class="touch-flip" id="touch-flip" type="button" hidden>
+      FLIP!
+    </button>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

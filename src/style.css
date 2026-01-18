@@ -24,6 +24,7 @@ canvas {
   background: #111;
   border: 2px solid #2a2a2a;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  touch-action: none;
 }
 .overlay {
   position: absolute;

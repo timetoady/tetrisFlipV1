@@ -32,6 +32,10 @@
               <span>Marathon</span>
               <span>Ready</span>
             </div>
+            <div class="menu-option" data-mode="options">
+              <span>Options</span>
+              <span>Config</span>
+            </div>
             <div class="menu-option is-disabled" data-mode="garbage">
               <span>Garbage</span>
               <span>Soon</span>
@@ -41,6 +45,19 @@
               <span>Soon</span>
             </div>
             <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
+          </div>
+        </div>
+        <div class="menu-screen" data-screen="options">
+          <div class="menu-panel">
+            <div class="menu-title">OPTIONS</div>
+            <div class="menu-option is-selected" data-option="rotate-layout" id="options-rotate">
+              <span>Rotate Layout</span>
+              <span id="options-rotate-value">South / East</span>
+            </div>
+            <div class="menu-actions">
+              <button id="options-back">Back</button>
+            </div>
+            <div class="menu-sub">Left/Right to change. X confirm, Z back</div>
           </div>
         </div>
         <div class="menu-screen" data-screen="marathon">

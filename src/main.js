@@ -20,6 +20,12 @@ const marathonStart = document.getElementById("marathon-start");
 /** @type {HTMLButtonElement} */
 const marathonBack = document.getElementById("marathon-back");
 /** @type {HTMLElement} */
+const optionsRotateRow = document.getElementById("options-rotate");
+/** @type {HTMLElement} */
+const optionsRotateValue = document.getElementById("options-rotate-value");
+/** @type {HTMLButtonElement} */
+const optionsBack = document.getElementById("options-back");
+/** @type {HTMLElement} */
 const gravityValue = document.getElementById("gravity-value");
 /** @type {HTMLElement} */
 const marathonScores = document.getElementById("marathon-scores");
@@ -52,6 +58,14 @@ let gameOverIndex = 0;
 let nameEntryActive = false;
 let pendingScore = null;
 let nameEntryIndex = 0;
+let optionsIndex = 0;
+
+const ROTATE_LAYOUTS = [
+  { id: "southEast", label: "South / East (A/B)" },
+  { id: "southWest", label: "South / West (A/X)" }
+];
+const ROTATE_LAYOUT_KEY = "tetrisflip:input:rotateLayout";
+let rotateLayoutIndex = 0;
 
 const SCORE_STORAGE_KEY = "tetrisflip:marathon:scores";
 gravityValue.textContent = String(startingGravity);
@@ -69,6 +83,10 @@ function showScreen(name) {
     marathonActionIndex = 0;
     updateMarathonSelection();
   }
+  if (menuState === "options") {
+    optionsIndex = 0;
+    updateOptionsSelection();
+  }
 }
 
 function openMenu(name) {
@@ -82,6 +100,7 @@ function closeMenu() {
   menuActive = false;
   menu.hidden = true;
   canvas.style.visibility = "visible";
+  input.clearPressed();
 }
 
 function updateGravity(delta) {
@@ -105,6 +124,12 @@ function updateModeSelection() {
 function updateMarathonSelection() {
   marathonStart.classList.toggle("is-selected", marathonActionIndex === 0);
   marathonBack.classList.toggle("is-selected", marathonActionIndex === 1);
+}
+
+function updateOptionsSelection() {
+  if (!optionsRotateRow || !optionsBack) return;
+  optionsRotateRow.classList.toggle("is-selected", optionsIndex === 0);
+  optionsBack.classList.toggle("is-selected", optionsIndex === 1);
 }
 
 function updateGameOverSelection() {
@@ -192,6 +217,21 @@ function updateNameEntrySelection() {
   nameSkip.classList.toggle("is-selected", nameEntryIndex === 1);
 }
 
+function applyRotateLayout(index) {
+  if (!optionsRotateValue) return;
+  rotateLayoutIndex = (index + ROTATE_LAYOUTS.length) % ROTATE_LAYOUTS.length;
+  const layout = ROTATE_LAYOUTS[rotateLayoutIndex];
+  optionsRotateValue.textContent = layout.label;
+  if (input.setGamepadRotateLayout) {
+    input.setGamepadRotateLayout(layout.id);
+  }
+  try {
+    localStorage.setItem(ROTATE_LAYOUT_KEY, layout.id);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 function commitNameEntry() {
   if (pendingScore == null) return;
   const scores = loadScores();
@@ -209,7 +249,14 @@ canvas.width = GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
   + GAME_CONFIG.HUD_WIDTH;
 canvas.height = GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE;
 
-const input = createInput(window);
+const input = createInput(window, canvas);
+try {
+  const stored = localStorage.getItem(ROTATE_LAYOUT_KEY);
+  const storedIndex = ROTATE_LAYOUTS.findIndex((entry) => entry.id === stored);
+  applyRotateLayout(storedIndex >= 0 ? storedIndex : 0);
+} catch {
+  applyRotateLayout(0);
+}
 const game = new GameLoop(ctx, input, {
   onGameOver() {
     overlay.hidden = false;
@@ -224,7 +271,7 @@ const game = new GameLoop(ctx, input, {
   },
   onPauseBack() {
     game.paused = false;
-    openMenu("mode");
+    openMenu("marathon");
   }
 });
 
@@ -275,89 +322,6 @@ marathonBack.addEventListener("click", () => {
   showScreen("mode");
 });
 
-window.addEventListener("keydown", (event) => {
-  if (nameEntryActive) {
-    if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
-      nameEntryIndex = nameEntryIndex === 0 ? 1 : 0;
-      updateNameEntrySelection();
-    } else if (event.code === "ArrowUp") {
-      nameEntryIndex = 0;
-      updateNameEntrySelection();
-    } else if (event.code === "ArrowDown") {
-      nameEntryIndex = 1;
-      updateNameEntrySelection();
-    } else if (event.code === "KeyX" || event.code === "Enter") {
-      if (nameEntryIndex === 0) {
-        commitNameEntry();
-      } else {
-        closeNameEntry();
-      }
-    } else if (event.code === "Escape") {
-      closeNameEntry();
-    } else {
-      return;
-    }
-    event.preventDefault();
-    return;
-  }
-  if (gameOverActive) {
-    if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
-      gameOverIndex = gameOverIndex === 0 ? 1 : 0;
-      updateGameOverSelection();
-    } else if (event.code === "KeyX" || event.code === "Enter") {
-      if (gameOverIndex === 0) {
-        overlay.hidden = true;
-        gameOverActive = false;
-        game.reset();
-      } else {
-        overlay.hidden = true;
-        gameOverActive = false;
-        openMenu("mode");
-      }
-    }
-    return;
-  }
-  if (!menuActive) return;
-  if (menuState === "splash") {
-    event.preventDefault();
-    showScreen("mode");
-    return;
-  }
-  if (menuState === "mode") {
-    if (event.code === "ArrowUp") {
-      modeIndex = Math.max(0, modeIndex - 1);
-      updateModeSelection();
-    } else if (event.code === "ArrowDown") {
-      modeIndex = Math.min(modeOptions.length - 1, modeIndex + 1);
-      updateModeSelection();
-    } else if (event.code === "KeyX" || event.code === "Enter") {
-      if (modeOptions[modeIndex].classList.contains("is-disabled")) return;
-      showScreen("marathon");
-    } else if (event.code === "KeyZ" || event.code === "Escape") {
-      backToSplash();
-    }
-    return;
-  }
-  if (menuState === "marathon") {
-    if (event.code === "ArrowUp") {
-      updateGravity(1);
-    } else if (event.code === "ArrowDown") {
-      updateGravity(-1);
-    } else if (event.code === "ArrowLeft" || event.code === "ArrowRight") {
-      marathonActionIndex = marathonActionIndex === 0 ? 1 : 0;
-      updateMarathonSelection();
-    } else if (event.code === "KeyX" || event.code === "Enter") {
-      if (marathonActionIndex === 0) {
-        startGame();
-      } else {
-        showScreen("mode");
-      }
-    } else if (event.code === "KeyZ" || event.code === "Escape") {
-      showScreen("mode");
-    }
-  }
-});
-
 menu.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -373,6 +337,12 @@ modeOptions.forEach((option, index) => {
   });
 });
 
+if (optionsBack) {
+  optionsBack.addEventListener("click", () => {
+    showScreen("mode");
+  });
+}
+
 renderScores(loadScores());
 
 function setSplashImage() {
@@ -384,10 +354,150 @@ setSplashImage();
 window.addEventListener("resize", setSplashImage);
 canvas.style.visibility = "hidden";
 
+function handleMenuInput() {
+  if (nameEntryActive) {
+    if (input.consumePress("ArrowLeft") || input.consumePress("ArrowRight")) {
+      nameEntryIndex = nameEntryIndex === 0 ? 1 : 0;
+      updateNameEntrySelection();
+    } else if (input.consumePress("ArrowUp")) {
+      nameEntryIndex = 0;
+      updateNameEntrySelection();
+    } else if (input.consumePress("ArrowDown")) {
+      nameEntryIndex = 1;
+      updateNameEntrySelection();
+    } else if (input.consumePress("KeyX") || input.consumePress("Enter")) {
+      if (nameEntryIndex === 0) {
+        commitNameEntry();
+      } else {
+        closeNameEntry();
+      }
+    } else if (input.consumePress("Escape")) {
+      closeNameEntry();
+    }
+    return;
+  }
+
+  if (gameOverActive) {
+    if (input.consumePress("ArrowLeft") || input.consumePress("ArrowRight")) {
+      gameOverIndex = gameOverIndex === 0 ? 1 : 0;
+      updateGameOverSelection();
+    } else if (input.consumePress("KeyX") || input.consumePress("Enter")) {
+      if (gameOverIndex === 0) {
+        overlay.hidden = true;
+        gameOverActive = false;
+        game.reset();
+      } else {
+        overlay.hidden = true;
+        gameOverActive = false;
+        openMenu("mode");
+      }
+    }
+    return;
+  }
+
+  if (!menuActive) return;
+
+  if (menuState === "splash") {
+    if (input.consumePress("KeyX") ||
+        input.consumePress("Enter") ||
+        input.consumePress("KeyP") ||
+        input.consumePress("Space") ||
+        input.consumePress("ArrowUp") ||
+        input.consumePress("ArrowDown") ||
+        input.consumePress("ArrowLeft") ||
+        input.consumePress("ArrowRight")) {
+      showScreen("mode");
+    }
+    return;
+  }
+
+  if (menuState === "mode") {
+    const confirm = input.consumePress("KeyX") ||
+      input.consumePress("Enter") ||
+      input.consumePress("KeyP");
+    if (input.consumePress("ArrowUp")) {
+      modeIndex = Math.max(0, modeIndex - 1);
+      updateModeSelection();
+    } else if (input.consumePress("ArrowDown")) {
+      modeIndex = Math.min(modeOptions.length - 1, modeIndex + 1);
+      updateModeSelection();
+    } else if (confirm) {
+      if (modeOptions[modeIndex].classList.contains("is-disabled")) return;
+      const selected = modeOptions[modeIndex].dataset.mode;
+      if (selected === "options") {
+        showScreen("options");
+      } else {
+        showScreen("marathon");
+      }
+    } else if (input.consumePress("KeyZ") ||
+               input.consumePress("Escape") ||
+               input.consumePress("Backspace")) {
+      backToSplash();
+    }
+    return;
+  }
+
+  if (menuState === "options") {
+    const confirm = input.consumePress("KeyX") ||
+      input.consumePress("Enter") ||
+      input.consumePress("KeyP");
+    if (input.consumePress("ArrowUp") || input.consumePress("ArrowDown")) {
+      optionsIndex = optionsIndex === 0 ? 1 : 0;
+      updateOptionsSelection();
+    }
+    const left = input.consumePress("ArrowLeft");
+    const right = input.consumePress("ArrowRight");
+    if (optionsIndex === 0) {
+      if (left || right) {
+        const delta = right ? 1 : -1;
+        applyRotateLayout(rotateLayoutIndex + delta);
+      } else if (confirm) {
+        applyRotateLayout(rotateLayoutIndex + 1);
+      }
+    } else if (optionsIndex === 1 && confirm) {
+      showScreen("mode");
+    }
+    if (input.consumePress("KeyZ") ||
+        input.consumePress("Escape") ||
+        input.consumePress("Backspace")) {
+      showScreen("mode");
+    }
+    return;
+  }
+
+  if (menuState === "marathon") {
+    const confirm = input.consumePress("KeyX") ||
+      input.consumePress("Enter") ||
+      input.consumePress("KeyP");
+    if (input.consumePress("ArrowUp")) {
+      updateGravity(1);
+    } else if (input.consumePress("ArrowDown")) {
+      updateGravity(-1);
+    } else if (input.consumePress("ArrowLeft") || input.consumePress("ArrowRight")) {
+      marathonActionIndex = marathonActionIndex === 0 ? 1 : 0;
+      updateMarathonSelection();
+    } else if (confirm) {
+      if (marathonActionIndex === 0) {
+        startGame();
+      } else {
+        showScreen("mode");
+      }
+    } else if (input.consumePress("KeyZ") ||
+               input.consumePress("Escape") ||
+               input.consumePress("Backspace")) {
+      showScreen("mode");
+    }
+  }
+}
+
 let last = performance.now();
 function frame(now) {
   const delta = now - last;
   last = now;
+  if (input.update) {
+    input.update(delta);
+  }
+  handleMenuInput();
   if (!menuActive) {
     game.update(delta);
   }

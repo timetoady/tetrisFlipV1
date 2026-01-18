@@ -650,7 +650,9 @@ export class GameLoop {
 
     if (this.paused) {
       if (this.pauseConfirmActive) {
-        if (this.input.consumePress("ArrowLeft") || this.input.consumePress("ArrowRight")) {
+        if (this.input.consumePress("ArrowLeft") ||
+            this.input.consumePress("ArrowRight") ||
+            this.input.consumePress("Backspace")) {
           this.pauseConfirmIndex = this.pauseConfirmIndex === 0 ? 1 : 0;
         }
         if (this.input.consumePress("KeyX") || this.input.consumePress("Enter")) {
@@ -666,7 +668,9 @@ export class GameLoop {
           this.pauseConfirmActive = false;
         }
       } else {
-        if (this.input.consumePress("ArrowLeft") || this.input.consumePress("ArrowRight")) {
+        if (this.input.consumePress("ArrowLeft") ||
+            this.input.consumePress("ArrowRight") ||
+            this.input.consumePress("Backspace")) {
           this.pauseActionIndex = this.pauseActionIndex === 0 ? 1 : 0;
         }
         if (this.input.consumePress("KeyX") || this.input.consumePress("Enter")) {

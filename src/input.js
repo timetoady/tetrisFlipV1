@@ -125,11 +125,12 @@ export function createInput(target = window, pointerTarget = window) {
   const pointerState = new Map();
   let multiStart = null;
   let longPressTimer = null;
-  const swipeThreshold = 24;
+  const swipeThreshold = 16;
   const longPressMs = 380;
   const holdCodes = ["ArrowLeft", "ArrowRight", "ArrowDown"];
   const mouseDragThreshold = 8;
   const mouseDragStep = 24;
+  const touchTrackpadStep = 18;
   const mouseState = {
     active: false,
     dragging: false,
@@ -244,9 +245,9 @@ export function createInput(target = window, pointerTarget = window) {
   function applyTouchMode(state, dx, dy) {
     if (Math.abs(dx) < swipeThreshold && Math.abs(dy) < swipeThreshold) return;
     if (Math.abs(dx) > Math.abs(dy)) {
-      state.mode = dx > 0 ? "right" : "left";
-      state.holdCode = dx > 0 ? "ArrowRight" : "ArrowLeft";
-      setVirtual(state.holdCode, true);
+      state.mode = "trackpad";
+      state.holdCode = null;
+      state.accumX = 0;
     } else {
       state.mode = dy > 0 ? "down" : "up";
       if (dy > 0) {
@@ -303,6 +304,8 @@ export function createInput(target = window, pointerTarget = window) {
     if (e.pointerType !== "touch") return;
     const state = pointerState.get(e.pointerId);
     if (!state) return;
+    const prevX = state.lastX;
+    const prevY = state.lastY;
     state.lastX = e.clientX;
     state.lastY = e.clientY;
 
@@ -310,6 +313,19 @@ export function createInput(target = window, pointerTarget = window) {
       const dx = e.clientX - state.startX;
       const dy = e.clientY - state.startY;
       if (!state.mode) applyTouchMode(state, dx, dy);
+      if (state.mode === "trackpad") {
+        const deltaX = e.clientX - prevX;
+        state.accumX = (state.accumX || 0) + deltaX;
+        while (Math.abs(state.accumX) >= touchTrackpadStep) {
+          if (state.accumX > 0) {
+            pressVirtual("ArrowRight");
+            state.accumX -= touchTrackpadStep;
+          } else {
+            pressVirtual("ArrowLeft");
+            state.accumX += touchTrackpadStep;
+          }
+        }
+      }
     } else if (pointerState.size === 2) {
       // Two-finger gestures handled on release.
     }

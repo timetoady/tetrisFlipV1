@@ -82,10 +82,12 @@ const ROTATE_LAYOUT_KEY = "tetrisflip:input:rotateLayout";
 let rotateLayoutIndex = 0;
 const MOUSE_SCHEMES = [
   { id: "alternate", label: "Alternate (Wheel Rotate)" },
-  { id: "classic", label: "Classic (Wheel Drop)" }
+  { id: "classic", label: "Classic (Wheel Drop)" },
+  { id: "tetris", label: "Tetris.com" }
 ];
 const MOUSE_SCHEME_KEY = "tetrisflip:input:mouseScheme";
 let mouseSchemeIndex = 0;
+let mouseSchemeId = MOUSE_SCHEMES[0].id;
 
 const SCORE_STORAGE_KEY = "tetrisflip:marathon:scores";
 gravityValue.textContent = String(startingGravity);
@@ -272,6 +274,7 @@ function applyMouseScheme(index) {
   mouseSchemeIndex = (index + MOUSE_SCHEMES.length) % MOUSE_SCHEMES.length;
   const scheme = MOUSE_SCHEMES[mouseSchemeIndex];
   optionsMouseValue.textContent = scheme.label;
+  mouseSchemeId = scheme.id;
   if (input.setMouseScheme) {
     input.setMouseScheme(scheme.id);
   }
@@ -364,6 +367,9 @@ canvas.addEventListener("click", (event) => {
   const rect = canvas.getBoundingClientRect();
   const x = (event.clientX - rect.left) * (canvas.width / rect.width);
   const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+  if (!menuActive && !game.paused && mouseSchemeId === "tetris") {
+    if (game.handleHoldClick(x, y)) return;
+  }
   game.handlePauseClick(x, y);
 });
 

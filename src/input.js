@@ -32,6 +32,7 @@ const ROTATE_LAYOUTS = {
 
 export function createInput(target = window, pointerTarget = window) {
   const keyboardDown = new Set();
+  const gamepadDown = new Set();
   const virtualDown = new Set();
   const pressed = new Set();
   const virtualState = new Map();
@@ -72,6 +73,16 @@ export function createInput(target = window, pointerTarget = window) {
     virtualState.set(code, isDown);
   }
 
+  function setGamepad(code, isDown) {
+    const wasDown = gamepadDown.has(code);
+    if (isDown && !wasDown) pressed.add(code);
+    if (isDown) {
+      gamepadDown.add(code);
+    } else {
+      gamepadDown.delete(code);
+    }
+  }
+
   function pressVirtual(code) {
     pressed.add(code);
   }
@@ -92,7 +103,7 @@ export function createInput(target = window, pointerTarget = window) {
       { index: layout.flip, code: "Space" }
     ];
     if (!pad) {
-      mapping.forEach(({ code }) => setVirtual(code, false));
+      mapping.forEach(({ code }) => setGamepad(code, false));
       return;
     }
 
@@ -107,7 +118,7 @@ export function createInput(target = window, pointerTarget = window) {
       }
     });
     nextState.forEach((pressedNow, code) => {
-      setVirtual(code, pressedNow);
+      setGamepad(code, pressedNow);
     });
   }
 
@@ -130,8 +141,18 @@ export function createInput(target = window, pointerTarget = window) {
     lastX: 0,
     lastY: 0,
     accumX: 0,
-    accumY: 0
+    accumY: 0,
+    lastPointerDownAt: 0,
+    lastPointerUpAt: 0,
+    lastRightDownAt: 0,
+    rightDown: false,
+    leftDown: false,
+    lastHoldAt: 0,
+    lastWheelUpAt: 0,
+    softDropWheelTimer: null,
+    lastWheelDownAt: 0
   };
+  const hardDropWindowMs = 320;
 
   function clearLongPress() {
     if (longPressTimer) {
@@ -149,8 +170,7 @@ export function createInput(target = window, pointerTarget = window) {
     }, longPressMs);
   }
 
-  function onPointerDown(e) {
-    if (e.pointerType === "mouse") {
+  function handleMouseDown(e) {
       mouseState.active = true;
       mouseState.dragging = false;
       mouseState.mode = null;
@@ -161,6 +181,39 @@ export function createInput(target = window, pointerTarget = window) {
       mouseState.lastY = e.clientY;
       mouseState.accumX = 0;
       mouseState.accumY = 0;
+      if (e.button === 0) {
+        mouseState.leftDown = true;
+      }
+      if (e.button === 2) {
+        mouseState.rightDown = true;
+      }
+      if (e.button === 2 && mouseScheme === "alternate") {
+        const now = Date.now();
+        if (mouseState.lastRightDownAt &&
+            now - mouseState.lastRightDownAt <= hardDropWindowMs) {
+          pressVirtual("ArrowUp");
+          mouseState.lastRightDownAt = 0;
+        } else {
+          mouseState.lastRightDownAt = now;
+          setVirtual("ArrowDown", true);
+        }
+      }
+      if (mouseScheme === "alternate" &&
+          mouseState.rightDown &&
+          mouseState.leftDown) {
+        const now = Date.now();
+        if (!mouseState.lastHoldAt || now - mouseState.lastHoldAt > 150) {
+          pressVirtual("KeyC");
+          mouseState.lastHoldAt = now;
+        }
+      }
+  }
+
+  function onPointerDown(e) {
+    if (e.pointerType === "mouse") {
+      if (e.button === 2) e.preventDefault();
+      mouseState.lastPointerDownAt = Date.now();
+      handleMouseDown(e);
       return;
     }
 
@@ -221,12 +274,19 @@ export function createInput(target = window, pointerTarget = window) {
           return;
         }
         mouseState.dragging = true;
-        mouseState.mode = Math.abs(dxTotal) >= Math.abs(dyTotal)
-          ? "horizontal"
-          : "vertical";
+        if (mouseScheme === "tetris") {
+          mouseState.mode = Math.abs(dxTotal) >= Math.abs(dyTotal)
+            ? "horizontal"
+            : "vertical";
+        } else {
+          mouseState.mode = "horizontal";
+        }
+      }
+      if (mouseScheme === "tetris" && mouseState.mode === "vertical") {
+        setVirtual("ArrowDown", dyTotal > mouseDragThreshold);
+        return;
       }
       if (mouseState.mode === "horizontal") {
-        setVirtual("ArrowDown", false);
         mouseState.accumX += dx;
         while (Math.abs(mouseState.accumX) >= mouseDragStep) {
           if (mouseState.accumX > 0) {
@@ -237,10 +297,6 @@ export function createInput(target = window, pointerTarget = window) {
             mouseState.accumX += mouseDragStep;
           }
         }
-      } else if (mouseState.mode === "vertical") {
-        mouseState.accumY += dy;
-        const shouldDrop = dyTotal > mouseDragStep;
-        setVirtual("ArrowDown", shouldDrop);
       }
       return;
     }
@@ -259,27 +315,48 @@ export function createInput(target = window, pointerTarget = window) {
     }
   }
 
-  function onPointerUp(e) {
-    if (e.pointerType === "mouse") {
+  function handleMouseUp(e) {
+      if (e.button === 0) {
+        mouseState.leftDown = false;
+      }
+      if (e.button === 2) {
+        mouseState.rightDown = false;
+      }
       if (mouseState.dragging) {
-        setVirtual("ArrowDown", false);
+        if (mouseState.mode === "vertical") {
+          setVirtual("ArrowDown", false);
+        }
       } else if (mouseState.active) {
         if (mouseState.button === 0) {
-          pressVirtual("KeyX");
+          if (mouseScheme === "classic" || mouseScheme === "tetris") {
+            pressVirtual("KeyX");
+          }
         }
         if (mouseState.button === 2) {
           if (mouseScheme === "alternate") {
-            pressVirtual("ArrowUp");
-          } else {
+            setVirtual("ArrowDown", false);
+          } else if (mouseScheme === "classic" || mouseScheme === "tetris") {
             pressVirtual("KeyZ");
           }
         }
-        if (mouseState.button === 1) pressVirtual("Space");
+        if (mouseState.button === 1) {
+          if (mouseScheme === "tetris") {
+            pressVirtual("ArrowUp");
+          } else {
+            pressVirtual("Space");
+          }
+        }
       }
       mouseState.active = false;
       mouseState.dragging = false;
       mouseState.mode = null;
       mouseState.button = -1;
+  }
+
+  function onPointerUp(e) {
+    if (e.pointerType === "mouse") {
+      mouseState.lastPointerUpAt = Date.now();
+      handleMouseUp(e);
       return;
     }
     const state = pointerState.get(e.pointerId);
@@ -336,10 +413,37 @@ export function createInput(target = window, pointerTarget = window) {
       }
       return;
     }
+    if (mouseScheme === "tetris") {
+      const now = Date.now();
+      if (e.deltaY < 0) {
+        pressVirtual("KeyX");
+      } else if (e.deltaY > 0) {
+        if (mouseState.lastWheelDownAt &&
+            now - mouseState.lastWheelDownAt <= hardDropWindowMs) {
+          pressVirtual("ArrowUp");
+          mouseState.lastWheelDownAt = 0;
+        } else {
+          mouseState.lastWheelDownAt = now;
+          pressVirtual("KeyZ");
+        }
+      }
+      return;
+    }
     if (e.deltaY > 0) {
-      pressVirtual("ArrowDown");
+      if (mouseState.softDropWheelTimer) {
+        clearTimeout(mouseState.softDropWheelTimer);
+      }
+      setVirtual("ArrowDown", true);
+      mouseState.softDropWheelTimer = setTimeout(() => {
+        setVirtual("ArrowDown", false);
+        mouseState.softDropWheelTimer = null;
+      }, 80);
     } else if (e.deltaY < 0) {
-      pressVirtual("ArrowUp");
+      const now = Date.now();
+      if (now - mouseState.lastWheelUpAt > 220) {
+        pressVirtual("ArrowUp");
+        mouseState.lastWheelUpAt = now;
+      }
     }
   }
 
@@ -349,15 +453,29 @@ export function createInput(target = window, pointerTarget = window) {
   pointerTarget.addEventListener("pointermove", onPointerMove);
   pointerTarget.addEventListener("pointerup", onPointerUp);
   pointerTarget.addEventListener("pointercancel", onPointerCancel);
+  pointerTarget.addEventListener("mousedown", (e) => {
+    if (e.button !== 0 && e.button !== 2) return;
+    if (e.button === 2) e.preventDefault();
+    if (Date.now() - mouseState.lastPointerDownAt < 32) return;
+    handleMouseDown(e);
+  });
+  pointerTarget.addEventListener("mouseup", (e) => {
+    if (e.button !== 0 && e.button !== 2) return;
+    if (Date.now() - mouseState.lastPointerUpAt < 32) return;
+    handleMouseUp(e);
+  });
   pointerTarget.addEventListener("wheel", onWheel, { passive: true });
   pointerTarget.addEventListener("contextmenu", (e) => e.preventDefault());
 
   return {
     isDown(code) {
-      return keyboardDown.has(code) || virtualDown.has(code);
+      return keyboardDown.has(code) || virtualDown.has(code) || gamepadDown.has(code);
     },
     hasAnyActivity() {
-      return pressed.size > 0 || keyboardDown.size > 0 || virtualDown.size > 0;
+      return pressed.size > 0
+        || keyboardDown.size > 0
+        || virtualDown.size > 0
+        || gamepadDown.size > 0;
     },
     consumePress(code) {
       if (!pressed.has(code)) return false;
@@ -369,6 +487,9 @@ export function createInput(target = window, pointerTarget = window) {
     },
     update() {
       pollGamepad();
+      if (mouseScheme === "alternate" && mouseState.rightDown) {
+        setVirtual("ArrowDown", true);
+      }
     },
     pressVirtual,
     setMouseScheme(scheme) {

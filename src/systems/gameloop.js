@@ -70,6 +70,7 @@ export class GameLoop {
     this.pauseActionIndex = 0;
     this.pauseConfirmActive = false;
     this.pauseConfirmIndex = 0;
+    this.holdBoxRect = null;
     this.activePiece = this.spawnPiece();
   }
 
@@ -155,6 +156,14 @@ export class GameLoop {
         y >= back.y && y <= back.y + back.h) {
       this.pauseConfirmActive = true;
     }
+  }
+
+  handleHoldClick(x, y) {
+    if (!this.holdBoxRect) return false;
+    const { x: bx, y: by, w, h } = this.holdBoxRect;
+    if (x < bx || x > bx + w || y < by || y > by + h) return false;
+    this.handleHold();
+    return true;
   }
 
   isSpawnBlocked() {
@@ -1077,6 +1086,7 @@ export class GameLoop {
     ctx.fillText("HOLD", panelX, panelY);
     panelY += 18;
     const holdBox = { x: panelX, y: panelY, w: 96, h: 96 };
+    this.holdBoxRect = holdBox;
     ctx.save();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
     ctx.lineWidth = 2;

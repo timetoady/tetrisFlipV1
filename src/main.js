@@ -114,6 +114,7 @@ let mouseSchemeIndex = 0;
 let mouseSchemeId = MOUSE_SCHEMES[0].id;
 const MUSIC_TRACKS = [
   { id: "main", label: "Main", src: `${baseUrl}assets/Main.mp3` },
+  { id: "title", label: "Title", src: titleTrackSrc },
   { id: "alt1", label: "Alt 1", src: `${baseUrl}assets/Alt1.mp3` },
   { id: "korobeiniki", label: "Korobeiniki", src: `${baseUrl}assets/TetrisFlipKorobeiniki.mp3` },
   { id: "none", label: "None", src: "" }
@@ -154,6 +155,7 @@ gameMusic.preload = "auto";
 let musicMode = null;
 let musicPaused = false;
 let gameMusicEnabled = true;
+let musicPreviewActive = false;
 
 const SCORE_STORAGE_KEY = "tetrisflip:marathon:scores";
 gravityValue.textContent = String(startingGravity);
@@ -175,6 +177,7 @@ function showScreen(name) {
     optionsIndex = 0;
     updateOptionsSelection();
   }
+  musicPreviewActive = false;
 }
 
 function openMenu(name) {
@@ -385,10 +388,26 @@ function applyMusicTrack(index) {
     gameMusic.src = track.src;
     gameMusic.currentTime = 0;
     gameMusic.load();
-    if (musicMode === "game" && !musicPaused) {
-      stopAudio(gameMusic);
-      attemptPlay(gameMusic);
+  }
+  if (menuState === "options") {
+    musicPreviewActive = true;
+    if (musicMode === "preview") {
+      stopAudio(titleMusic);
+      if (gameMusicEnabled) {
+        stopAudio(gameMusic);
+        attemptPlay(gameMusic);
+      } else {
+        stopAudio(gameMusic);
+      }
+    } else {
+      setMusicMode("preview");
+      if (!gameMusicEnabled) {
+        stopAudio(gameMusic);
+      }
     }
+  } else if (musicMode === "game" && !musicPaused) {
+    stopAudio(gameMusic);
+    attemptPlay(gameMusic);
   }
   try {
     localStorage.setItem(MUSIC_TRACK_KEY, track.id);
@@ -458,10 +477,19 @@ function setMusicMode(mode) {
     if (gameMusicEnabled) {
       attemptPlay(gameMusic);
     }
+  } else if (mode === "preview") {
+    stopAudio(titleMusic);
+    if (gameMusicEnabled) {
+      attemptPlay(gameMusic);
+    }
   }
 }
 
 function updateMusicState() {
+  if (menuState === "options" && musicPreviewActive) {
+    setMusicMode("preview");
+    return;
+  }
   const useTitle = menuActive || gameOverActive || nameEntryActive;
   setMusicMode(useTitle ? "menu" : "game");
   if (!useTitle && game && game.paused) {

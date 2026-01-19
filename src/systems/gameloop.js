@@ -425,7 +425,7 @@ export class GameLoop {
     const gain = ctx.createGain();
     osc.type = "sawtooth";
     const now = ctx.currentTime;
-    gain.gain.value = this.getSfxGain(0.12);
+    gain.gain.value = this.getSfxGain(0.05);
     osc.connect(gain).connect(ctx.destination);
     osc.frequency.setValueAtTime(220, now);
     osc.frequency.setValueAtTime(330, now + 0.4);

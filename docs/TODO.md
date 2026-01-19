@@ -71,6 +71,12 @@
 
 ## Next Up
 
-- [ ] Controller compatibility
+- [x] Controller compatibility
+- [ ] Gameplay tweaks
+    Scoring perks for double, triple, and quadruple tetris in a row
+    Scoring for clearout 
+    Score for lines cause by flip jump
+    Up the gravity speed progression of levels more
+- [x] Music
 - [ ] Garbage clearing mode
 - [ ] 2 player mode

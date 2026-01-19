@@ -218,7 +218,9 @@ export function createInput(target = window, pointerTarget = window) {
       return;
     }
 
-    pointerTarget.setPointerCapture(e.pointerId);
+    if (pointerTarget instanceof Element && pointerTarget.setPointerCapture) {
+      pointerTarget.setPointerCapture(e.pointerId);
+    }
     const state = {
       id: e.pointerId,
       startX: e.clientX,

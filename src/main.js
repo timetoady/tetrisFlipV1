@@ -16,6 +16,8 @@ const menu = document.getElementById("menu");
 /** @type {HTMLImageElement} */
 const splashImage = document.getElementById("splash-image");
 /** @type {HTMLButtonElement} */
+const modeBack = document.getElementById("mode-back");
+/** @type {HTMLButtonElement} */
 const marathonStart = document.getElementById("marathon-start");
 /** @type {HTMLButtonElement} */
 const marathonBack = document.getElementById("marathon-back");
@@ -45,6 +47,10 @@ const nameSave = document.getElementById("name-save");
 const nameSkip = document.getElementById("name-skip");
 /** @type {HTMLButtonElement | null} */
 let touchFlip = document.getElementById("touch-flip");
+/** @type {HTMLButtonElement | null} */
+let touchPause = document.getElementById("touch-pause");
+/** @type {HTMLElement} */
+const wrap = document.querySelector(".wrap");
 
 const baseUrl = import.meta.env.BASE_URL || "/";
 const splashWideSrc = `${baseUrl}assets/tetrisflip1.png`;
@@ -58,6 +64,10 @@ nameModal.hidden = true;
 if (touchFlip) {
   touchFlip.remove();
   touchFlip = null;
+}
+if (touchPause) {
+  touchPause.remove();
+  touchPause = null;
 }
 
 const screens = document.querySelectorAll("[data-screen]");
@@ -120,7 +130,12 @@ function openMenu(name) {
     touchFlip.remove();
     touchFlip = null;
   }
+  if (touchPause) {
+    touchPause.remove();
+    touchPause = null;
+  }
   showScreen(name);
+  updateViewportScale();
 }
 
 function closeMenu() {
@@ -128,8 +143,9 @@ function closeMenu() {
   menu.hidden = true;
   canvas.style.visibility = "visible";
   canvas.style.pointerEvents = "auto";
-  ensureTouchFlip();
+  ensureTouchButtons();
   input.clearPressed();
+  updateViewportScale();
 }
 
 function updateGravity(delta) {
@@ -363,14 +379,56 @@ nameSkip.addEventListener("click", () => {
   closeNameEntry();
 });
 
-canvas.addEventListener("click", (event) => {
+function getCanvasPoint(event) {
   const rect = canvas.getBoundingClientRect();
-  const x = (event.clientX - rect.left) * (canvas.width / rect.width);
-  const y = (event.clientY - rect.top) * (canvas.height / rect.height);
-  if (!menuActive && !game.paused && mouseSchemeId === "tetris") {
+  const style = window.getComputedStyle(canvas);
+  const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+  const borderRight = parseFloat(style.borderRightWidth) || 0;
+  const borderTop = parseFloat(style.borderTopWidth) || 0;
+  const borderBottom = parseFloat(style.borderBottomWidth) || 0;
+  const innerWidth = Math.max(1, rect.width - borderLeft - borderRight);
+  const innerHeight = Math.max(1, rect.height - borderTop - borderBottom);
+  const pointerOffsetX = -25;
+  const x = (event.clientX - rect.left - borderLeft) * (canvas.width / innerWidth)
+    + pointerOffsetX;
+  const y = (event.clientY - rect.top - borderTop) * (canvas.height / innerHeight);
+  return { x, y };
+}
+
+canvas.addEventListener("click", (event) => {
+  const { x, y } = getCanvasPoint(event);
+  if (game.paused) {
+    game.handlePauseClick(x, y);
+    input.clearPressed();
+    return;
+  }
+  if (!menuActive && !game.paused) {
     if (game.handleHoldClick(x, y)) return;
   }
   game.handlePauseClick(x, y);
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (event.pointerType !== "mouse") return;
+  if (!game.paused) {
+    game.setPausePointer(null, null);
+    return;
+  }
+  const { x, y } = getCanvasPoint(event);
+  game.setPausePointer(x, y);
+});
+
+canvas.addEventListener("mousemove", (event) => {
+  if (!game.paused) {
+    game.setPausePointer(null, null);
+    return;
+  }
+  const { x, y } = getCanvasPoint(event);
+  game.setPausePointer(x, y);
+});
+
+canvas.addEventListener("pointerleave", () => {
+  game.setPausePointer(null, null);
 });
 
 
@@ -393,19 +451,34 @@ menu.addEventListener("click", (event) => {
   }
 });
 
-function ensureTouchFlip() {
-  if (touchFlip) return;
-  const button = document.createElement("button");
-  button.className = "touch-flip";
-  button.id = "touch-flip";
-  button.type = "button";
-  button.textContent = "FLIP!";
-  button.addEventListener("click", () => {
-    input.pressVirtual("Space");
-  });
-  document.body.appendChild(button);
-  touchFlip = button;
-  positionTouchFlip();
+function ensureTouchButtons() {
+  if (!touchFlip) {
+    const button = document.createElement("button");
+    button.className = "touch-flip";
+    button.id = "touch-flip";
+    button.type = "button";
+    button.textContent = "FLIP!";
+    button.addEventListener("click", () => {
+      input.pressVirtual("Space");
+    });
+    document.body.appendChild(button);
+    touchFlip = button;
+  }
+  if (!touchPause) {
+    const button = document.createElement("button");
+    button.className = "touch-pause";
+    button.id = "touch-pause";
+    button.type = "button";
+    button.textContent = "PAUSE";
+    button.addEventListener("click", () => {
+      if (!menuActive) {
+        input.pressVirtual("KeyP");
+      }
+    });
+    document.body.appendChild(button);
+    touchPause = button;
+  }
+  updateViewportScale();
 }
 
 modeOptions.forEach((option, index) => {
@@ -421,6 +494,12 @@ modeOptions.forEach((option, index) => {
     }
   });
 });
+
+if (modeBack) {
+  modeBack.addEventListener("click", () => {
+    backToSplash();
+  });
+}
 
 if (optionsBack) {
   optionsBack.addEventListener("click", () => {
@@ -451,27 +530,70 @@ function setSplashImage() {
   splashImage.src = wide ? splashWideSrc : splashTallSrc;
 }
 
-function positionTouchFlip() {
-  if (!touchFlip || touchFlip.hidden) return;
+let viewportScale = 1;
+
+function getTouchScale() {
+  const touch = window.matchMedia("(pointer: coarse)").matches
+    || navigator.maxTouchPoints > 0;
+  if (!touch) return 1;
+  const padding = 8;
+  const available = window.innerHeight - padding * 2;
+  if (available <= 0) return 1;
+  return Math.min(1, available / canvas.height);
+}
+
+function updateViewportScale() {
+  if (!wrap) return;
+  const menuVisible = menu && !menu.hidden;
+  viewportScale = menuVisible ? 1 : getTouchScale();
+  if (game && game.setViewportScale) {
+    game.setViewportScale(viewportScale);
+  }
+  if (viewportScale >= 1) {
+    wrap.style.transform = "";
+  } else {
+    const scaledHeight = canvas.height * viewportScale;
+    const offsetX = 24;
+    const offsetY = Math.max(0, (window.innerHeight - scaledHeight) / 2);
+    wrap.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
+    wrap.style.transformOrigin = "top left";
+  }
+  positionTouchButtons();
+}
+
+function positionTouchButtons() {
+  if (!touchFlip || !touchPause) return;
   const rect = canvas.getBoundingClientRect();
-  const hudLeft = rect.left
-    + GAME_CONFIG.GRID_MARGIN * 2
+  const rectScale = rect.width / canvas.width;
+  const holdBoxSize = 96 * rectScale;
+  const holdBoxX = GAME_CONFIG.GRID_MARGIN * 2
     + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
     + 12;
-  const hudRight = rect.right - 12;
-  const padding = 28;
-  const buttonWidth = touchFlip.offsetWidth || 110;
-  const buttonHeight = touchFlip.offsetHeight || 84;
-  const center = hudLeft + (hudRight - hudLeft) / 2;
-  const left = center - buttonWidth / 2;
-  const top = rect.bottom - buttonHeight - padding;
-  touchFlip.style.left = `${Math.max(rect.left + 8, left)}px`;
-  touchFlip.style.top = `${Math.max(rect.top + 8, top)}px`;
+  const holdBoxY = 190 + 18;
+  const gap = 18 * rectScale;
+  const flipWidth = holdBoxSize;
+  const flipHeight = holdBoxSize;
+  const pauseWidth = holdBoxSize;
+  const pauseHeight = holdBoxSize;
+  touchFlip.style.width = `${flipWidth}px`;
+  touchFlip.style.height = `${flipHeight}px`;
+  touchPause.style.width = `${pauseWidth}px`;
+  touchPause.style.height = `${pauseHeight}px`;
+  const left = rect.left + (holdBoxX + 12) * rectScale;
+  const nextStart = 190 + 18 + 96 + 116 + 18;
+  const nextEnd = nextStart + (3 * 88);
+  const pauseTop = rect.top + (nextEnd + 12) * rectScale;
+  const flipTop = pauseTop + pauseHeight + gap;
+  touchFlip.style.left = `${left}px`;
+  touchFlip.style.top = `${flipTop}px`;
+  touchPause.style.left = `${left}px`;
+  touchPause.style.top = `${pauseTop}px`;
 }
 
 setSplashImage();
+updateViewportScale();
 window.addEventListener("resize", setSplashImage);
-window.addEventListener("resize", positionTouchFlip);
+window.addEventListener("resize", updateViewportScale);
 canvas.style.visibility = "hidden";
 
 function handleMenuInput() {
@@ -628,17 +750,27 @@ function frame(now) {
     input.update(delta);
   }
   handleMenuInput();
-  if (touchFlip) {
-    const menuVisible = menu && !menu.hidden;
-    if (menuVisible || gameOverActive || nameEntryActive || game.paused) {
+  const menuVisible = menu && !menu.hidden;
+  if (menuVisible || gameOverActive || nameEntryActive || game.paused) {
+    if (touchFlip) {
       touchFlip.remove();
       touchFlip = null;
     }
+    if (touchPause) {
+      touchPause.remove();
+      touchPause = null;
+    }
+  } else {
+    ensureTouchButtons();
   }
   if (!menuActive) {
     game.update(delta);
   }
   game.draw();
+  if (game.getPauseCursor) {
+    canvas.style.cursor = game.getPauseCursor() || "";
+  }
+  positionTouchButtons();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

@@ -496,7 +496,8 @@ modeOptions.forEach((option, index) => {
 });
 
 if (modeBack) {
-  modeBack.addEventListener("click", () => {
+  modeBack.addEventListener("click", (event) => {
+    event.stopPropagation();
     backToSplash();
   });
 }

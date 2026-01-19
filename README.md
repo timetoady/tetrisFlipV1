@@ -65,16 +65,18 @@ npx serve -l 4173
 
 Then open `http://localhost:4173/`.
 
-## Controls (current + planned)
+## Controls
 
-- Left/Right: Arrow Left/Right
-- Soft Drop: Arrow Down
-- Hard Drop: Arrow Up
-- Rotate CW: X
-- Rotate CCW: Z
+Quick reference:
+- Move: Arrow Left/Right
+- Soft drop: Arrow Down
+- Hard drop: Arrow Up
+- Rotate CW/CCW: X / Z
+- Hold: C
 - Flip: Space / Shift
 - Pause: P / Esc
-- Hold: C
+
+Full breakdown (keyboard, gamepad, mouse, touch): `docs/controls.md`
 
 ## Notes
 

@@ -31,6 +31,18 @@ const optionsController = document.getElementById("options-controller");
 const optionsMouseRow = document.getElementById("options-mouse");
 /** @type {HTMLElement} */
 const optionsMouseValue = document.getElementById("options-mouse-value");
+/** @type {HTMLElement} */
+const optionsMusicRow = document.getElementById("options-music");
+/** @type {HTMLElement} */
+const optionsMusicValue = document.getElementById("options-music-value");
+/** @type {HTMLElement} */
+const optionsMusicVolumeRow = document.getElementById("options-music-volume");
+/** @type {HTMLElement} */
+const optionsMusicVolumeValue = document.getElementById("options-music-volume-value");
+/** @type {HTMLElement} */
+const optionsVfxVolumeRow = document.getElementById("options-vfx-volume");
+/** @type {HTMLElement} */
+const optionsVfxVolumeValue = document.getElementById("options-vfx-volume-value");
 /** @type {HTMLButtonElement} */
 const optionsBack = document.getElementById("options-back");
 /** @type {HTMLElement} */
@@ -57,6 +69,7 @@ const splashWideSrc = `${baseUrl}assets/tetrisflip1.png`;
 const splashTallSrc = `${baseUrl}assets/tetrisflip2.png`;
 const controllerStandardSrc = `${baseUrl}assets/standard%20controller.png`;
 const controllerAlternateSrc = `${baseUrl}assets/alternate%20controller.png`;
+const titleTrackSrc = `${baseUrl}assets/title.mp3`;
 
 overlay.hidden = true;
 menu.hidden = false;
@@ -83,6 +96,7 @@ let nameEntryActive = false;
 let pendingScore = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
+let game = null;
 
 const ROTATE_LAYOUTS = [
   { id: "southEast", label: "South / East (A/B)" },
@@ -98,6 +112,48 @@ const MOUSE_SCHEMES = [
 const MOUSE_SCHEME_KEY = "tetrisflip:input:mouseScheme";
 let mouseSchemeIndex = 0;
 let mouseSchemeId = MOUSE_SCHEMES[0].id;
+const MUSIC_TRACKS = [
+  { id: "main", label: "Main", src: `${baseUrl}assets/Main.mp3` },
+  { id: "alt1", label: "Alt 1", src: `${baseUrl}assets/Alt1.mp3` },
+  { id: "korobeiniki", label: "Korobeiniki", src: `${baseUrl}assets/TetrisFlipKorobeiniki.mp3` },
+  { id: "none", label: "None", src: "" }
+];
+const MUSIC_TRACK_KEY = "tetrisflip:audio:gameTrack";
+let musicTrackIndex = 0;
+const MUSIC_VOLUME_KEY = "tetrisflip:audio:musicVolume";
+const VFX_VOLUME_KEY = "tetrisflip:audio:vfxVolume";
+const MUSIC_VOLUME_MAX = 0.7;
+const VFX_VOLUME_MAX = 6.0;
+const VOLUME_STEPS = 10;
+const MUSIC_VOLUMES = Array.from({ length: VOLUME_STEPS + 1 }, (_, index) => {
+  const percent = index * 10;
+  const normalized = percent / 100;
+  return {
+    label: `${percent}%`,
+    value: Math.pow(normalized, 2) * MUSIC_VOLUME_MAX
+  };
+});
+const VFX_VOLUMES = Array.from({ length: VOLUME_STEPS + 1 }, (_, index) => {
+  const percent = index * 10;
+  const normalized = percent / 100;
+  return {
+    label: `${percent}%`,
+    value: normalized * VFX_VOLUME_MAX
+  };
+});
+let musicVolumeIndex = 4;
+let vfxVolumeIndex = 10;
+let vfxVolumeValue = VFX_VOLUMES[vfxVolumeIndex].value;
+
+const titleMusic = new Audio(titleTrackSrc);
+titleMusic.loop = true;
+titleMusic.preload = "auto";
+const gameMusic = new Audio(MUSIC_TRACKS[0].src);
+gameMusic.loop = true;
+gameMusic.preload = "auto";
+let musicMode = null;
+let musicPaused = false;
+let gameMusicEnabled = true;
 
 const SCORE_STORAGE_KEY = "tetrisflip:marathon:scores";
 gravityValue.textContent = String(startingGravity);
@@ -136,6 +192,7 @@ function openMenu(name) {
   }
   showScreen(name);
   updateViewportScale();
+  updateMusicState();
 }
 
 function closeMenu() {
@@ -146,6 +203,7 @@ function closeMenu() {
   ensureTouchButtons();
   input.clearPressed();
   updateViewportScale();
+  updateMusicState();
 }
 
 function updateGravity(delta) {
@@ -177,7 +235,16 @@ function updateOptionsSelection() {
   if (optionsMouseRow) {
     optionsMouseRow.classList.toggle("is-selected", optionsIndex === 1);
   }
-  optionsBack.classList.toggle("is-selected", optionsIndex === 2);
+  if (optionsMusicRow) {
+    optionsMusicRow.classList.toggle("is-selected", optionsIndex === 2);
+  }
+  if (optionsMusicVolumeRow) {
+    optionsMusicVolumeRow.classList.toggle("is-selected", optionsIndex === 3);
+  }
+  if (optionsVfxVolumeRow) {
+    optionsVfxVolumeRow.classList.toggle("is-selected", optionsIndex === 4);
+  }
+  optionsBack.classList.toggle("is-selected", optionsIndex === 5);
 }
 
 function updateGameOverSelection() {
@@ -252,12 +319,14 @@ function openNameEntry(score) {
   updateNameEntrySelection();
   nameInput.focus();
   nameInput.select();
+  updateMusicState();
 }
 
 function closeNameEntry() {
   nameEntryActive = false;
   pendingScore = null;
   nameModal.hidden = true;
+  updateMusicState();
 }
 
 function updateNameEntrySelection() {
@@ -301,6 +370,117 @@ function applyMouseScheme(index) {
   }
 }
 
+function applyMusicTrack(index) {
+  musicTrackIndex = (index + MUSIC_TRACKS.length) % MUSIC_TRACKS.length;
+  const track = MUSIC_TRACKS[musicTrackIndex];
+  if (optionsMusicValue) {
+    optionsMusicValue.textContent = track.label;
+  }
+  gameMusicEnabled = Boolean(track.src);
+  if (!gameMusicEnabled) {
+    stopAudio(gameMusic);
+    gameMusic.removeAttribute("src");
+    gameMusic.load();
+  } else {
+    gameMusic.src = track.src;
+    gameMusic.currentTime = 0;
+    gameMusic.load();
+    if (musicMode === "game" && !musicPaused) {
+      stopAudio(gameMusic);
+      attemptPlay(gameMusic);
+    }
+  }
+  try {
+    localStorage.setItem(MUSIC_TRACK_KEY, track.id);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function applyMusicVolume(index) {
+  musicVolumeIndex = (index + MUSIC_VOLUMES.length) % MUSIC_VOLUMES.length;
+  const volume = MUSIC_VOLUMES[musicVolumeIndex];
+  if (optionsMusicVolumeValue) {
+    optionsMusicVolumeValue.textContent = volume.label;
+  }
+  titleMusic.volume = volume.value;
+  gameMusic.volume = volume.value;
+  try {
+    localStorage.setItem(MUSIC_VOLUME_KEY, String(volume.value));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function applyVfxVolume(index, playSound = true) {
+  vfxVolumeIndex = (index + VFX_VOLUMES.length) % VFX_VOLUMES.length;
+  const volume = VFX_VOLUMES[vfxVolumeIndex];
+  vfxVolumeValue = volume.value;
+  if (optionsVfxVolumeValue) {
+    optionsVfxVolumeValue.textContent = volume.label;
+  }
+  if (game && game.setSfxVolume) {
+    game.setSfxVolume(volume.value);
+  }
+  if (playSound && game && game.playRotateSound) {
+    game.playRotateSound();
+  }
+  try {
+    localStorage.setItem(VFX_VOLUME_KEY, String(volume.value));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function attemptPlay(audio) {
+  if (!audio) return;
+  const playPromise = audio.play();
+  if (playPromise && typeof playPromise.catch === "function") {
+    playPromise.catch(() => {});
+  }
+}
+
+function stopAudio(audio) {
+  if (!audio) return;
+  audio.pause();
+  audio.currentTime = 0;
+}
+
+function setMusicMode(mode) {
+  if (musicMode === mode) return;
+  musicMode = mode;
+  musicPaused = false;
+  if (mode === "menu") {
+    stopAudio(gameMusic);
+    attemptPlay(titleMusic);
+  } else if (mode === "game") {
+    stopAudio(titleMusic);
+    if (gameMusicEnabled) {
+      attemptPlay(gameMusic);
+    }
+  }
+}
+
+function updateMusicState() {
+  const useTitle = menuActive || gameOverActive || nameEntryActive;
+  setMusicMode(useTitle ? "menu" : "game");
+  if (!useTitle && game && game.paused) {
+    if (!musicPaused) {
+      musicPaused = true;
+      if (gameMusicEnabled) {
+        gameMusic.pause();
+      }
+    }
+    return;
+  }
+  if (musicPaused) {
+    musicPaused = false;
+    if (gameMusicEnabled) {
+      attemptPlay(gameMusic);
+    }
+  }
+}
+
 function commitNameEntry() {
   if (pendingScore == null) return;
   const scores = loadScores();
@@ -333,7 +513,30 @@ try {
 } catch {
   applyMouseScheme(0);
 }
-const game = new GameLoop(ctx, input, {
+try {
+  const stored = localStorage.getItem(MUSIC_TRACK_KEY);
+  const storedIndex = MUSIC_TRACKS.findIndex((entry) => entry.id === stored);
+  applyMusicTrack(storedIndex >= 0 ? storedIndex : 0);
+} catch {
+  applyMusicTrack(0);
+}
+try {
+  const stored = localStorage.getItem(MUSIC_VOLUME_KEY);
+  const storedValue = Number(stored);
+  const storedIndex = MUSIC_VOLUMES.findIndex((entry) => entry.value === storedValue);
+  applyMusicVolume(storedIndex >= 0 ? storedIndex : musicVolumeIndex);
+} catch {
+  applyMusicVolume(musicVolumeIndex);
+}
+try {
+  const stored = localStorage.getItem(VFX_VOLUME_KEY);
+  const storedValue = Number(stored);
+  const storedIndex = VFX_VOLUMES.findIndex((entry) => entry.value === storedValue);
+  applyVfxVolume(storedIndex >= 0 ? storedIndex : vfxVolumeIndex, false);
+} catch {
+  applyVfxVolume(vfxVolumeIndex, false);
+}
+game = new GameLoop(ctx, input, {
   onGameOver() {
     overlay.hidden = false;
     gameOverActive = true;
@@ -344,12 +547,14 @@ const game = new GameLoop(ctx, input, {
     if (qualifiesForScores(score, scores)) {
       openNameEntry(score);
     }
+    updateMusicState();
   },
   onPauseBack() {
     game.paused = false;
     openMenu("marathon");
   }
 });
+game.setSfxVolume(vfxVolumeValue);
 
 retry.addEventListener("click", () => {
   if (nameEntryActive) {
@@ -358,6 +563,7 @@ retry.addEventListener("click", () => {
   overlay.hidden = true;
   gameOverActive = false;
   game.reset();
+  updateMusicState();
 });
 
 back.addEventListener("click", () => {
@@ -524,7 +730,40 @@ if (optionsMouseRow) {
   });
 }
 
+if (optionsMusicRow) {
+  optionsMusicRow.addEventListener("click", () => {
+    optionsIndex = 2;
+    updateOptionsSelection();
+    applyMusicTrack(musicTrackIndex + 1);
+  });
+}
+
+if (optionsMusicVolumeRow) {
+  optionsMusicVolumeRow.addEventListener("click", () => {
+    optionsIndex = 3;
+    updateOptionsSelection();
+    applyMusicVolume(musicVolumeIndex + 1);
+  });
+}
+
+if (optionsVfxVolumeRow) {
+  optionsVfxVolumeRow.addEventListener("click", () => {
+    optionsIndex = 4;
+    updateOptionsSelection();
+    applyVfxVolume(vfxVolumeIndex + 1);
+  });
+}
+
 renderScores(loadScores());
+
+function unlockMusic() {
+  musicMode = null;
+  musicPaused = false;
+  updateMusicState();
+}
+
+document.addEventListener("pointerdown", unlockMusic, { once: true });
+document.addEventListener("keydown", unlockMusic, { once: true });
 
 function setSplashImage() {
   const wide = window.innerWidth > window.innerHeight;
@@ -629,6 +868,7 @@ function handleMenuInput() {
         overlay.hidden = true;
         gameOverActive = false;
         game.reset();
+        updateMusicState();
       } else {
         overlay.hidden = true;
         gameOverActive = false;
@@ -685,10 +925,10 @@ function handleMenuInput() {
       input.consumePress("Enter") ||
       input.consumePress("KeyP");
     if (input.consumePress("ArrowUp")) {
-      optionsIndex = (optionsIndex + 2) % 3;
+      optionsIndex = (optionsIndex + 5) % 6;
       updateOptionsSelection();
     } else if (input.consumePress("ArrowDown")) {
-      optionsIndex = (optionsIndex + 1) % 3;
+      optionsIndex = (optionsIndex + 1) % 6;
       updateOptionsSelection();
     }
     const left = input.consumePress("ArrowLeft");
@@ -707,7 +947,28 @@ function handleMenuInput() {
       } else if (confirm) {
         applyMouseScheme(mouseSchemeIndex + 1);
       }
-    } else if (optionsIndex === 2 && confirm) {
+    } else if (optionsIndex === 2) {
+      if (left || right) {
+        const delta = right ? 1 : -1;
+        applyMusicTrack(musicTrackIndex + delta);
+      } else if (confirm) {
+        applyMusicTrack(musicTrackIndex + 1);
+      }
+    } else if (optionsIndex === 3) {
+      if (left || right) {
+        const delta = right ? 1 : -1;
+        applyMusicVolume(musicVolumeIndex + delta);
+      } else if (confirm) {
+        applyMusicVolume(musicVolumeIndex + 1);
+      }
+    } else if (optionsIndex === 4) {
+      if (left || right) {
+        const delta = right ? 1 : -1;
+        applyVfxVolume(vfxVolumeIndex + delta);
+      } else if (confirm) {
+        applyVfxVolume(vfxVolumeIndex + 1);
+      }
+    } else if (optionsIndex === 5 && confirm) {
       showScreen("mode");
     }
     if (input.consumePress("KeyZ") ||
@@ -768,6 +1029,7 @@ function frame(now) {
     game.update(delta);
   }
   game.draw();
+  updateMusicState();
   if (game.getPauseCursor) {
     canvas.style.cursor = game.getPauseCursor() || "";
   }

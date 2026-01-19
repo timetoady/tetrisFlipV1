@@ -25,6 +25,7 @@ export class GameLoop {
     this.dropTimer = 0;
     this.paused = false;
     this.audioCtx = null;
+    this.sfxVolume = 9.0;
     this.jamFlashTimer = 0;
     this.jamFlashDuration = 140;
     this.jamFlashCells = [];
@@ -264,6 +265,15 @@ export class GameLoop {
     return this.audioCtx;
   }
 
+  setSfxVolume(volume) {
+    if (!Number.isFinite(volume)) return;
+    this.sfxVolume = Math.max(0, Math.min(9.5, volume));
+  }
+
+  getSfxGain(value) {
+    return value * this.sfxVolume;
+  }
+
   spawnPiece() {
     const type = this.takeNextType();
     const x = Math.floor(GAME_CONFIG.COLS / 2);
@@ -284,7 +294,7 @@ export class GameLoop {
     const gain = ctx.createGain();
     osc.type = "square";
     osc.frequency.value = 520;
-    gain.gain.value = 0.12;
+    gain.gain.value = this.getSfxGain(0.22);
     osc.connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
     osc.start(now);
@@ -299,7 +309,7 @@ export class GameLoop {
     const gain = ctx.createGain();
     osc.type = "sine";
     osc.frequency.value = 260;
-    gain.gain.value = 0.06;
+    gain.gain.value = this.getSfxGain(0.06);
     osc.connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
     osc.start(now);
@@ -314,7 +324,7 @@ export class GameLoop {
     const gain = ctx.createGain();
     osc.type = "sine";
     const now = ctx.currentTime;
-    gain.gain.value = 0.06;
+    gain.gain.value = this.getSfxGain(0.06);
     osc.connect(gain).connect(ctx.destination);
     osc.frequency.setValueAtTime(520, now);
     osc.frequency.setValueAtTime(320, now + 0.32);
@@ -337,7 +347,7 @@ export class GameLoop {
     osc.frequency.setValueAtTime(620, now);
     osc.frequency.exponentialRampToValueAtTime(360, now + 0.08);
 
-    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.setValueAtTime(this.getSfxGain(0.08), now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
     delay.delayTime.value = 0.08;
@@ -361,7 +371,7 @@ export class GameLoop {
     const gain = ctx.createGain();
     osc.type = "triangle";
     osc.frequency.value = 140;
-    gain.gain.value = 0.08;
+    gain.gain.value = this.getSfxGain(0.08);
     osc.connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
@@ -380,7 +390,7 @@ export class GameLoop {
     filter.type = "lowpass";
     filter.frequency.value = 300;
     filter.Q.value = 1.4;
-    gain.gain.value = 0.045;
+    gain.gain.value = this.getSfxGain(0.045);
     osc.connect(filter).connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
@@ -398,7 +408,7 @@ export class GameLoop {
     const step = 70;
     const freq = base + (lines - 1) * step;
     osc.frequency.value = freq;
-    gain.gain.value = 0.09;
+    gain.gain.value = this.getSfxGain(0.09);
     osc.connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
     osc.frequency.setValueAtTime(freq, now);
@@ -415,7 +425,7 @@ export class GameLoop {
     const gain = ctx.createGain();
     osc.type = "sawtooth";
     const now = ctx.currentTime;
-    gain.gain.value = 0.12;
+    gain.gain.value = this.getSfxGain(0.12);
     osc.connect(gain).connect(ctx.destination);
     osc.frequency.setValueAtTime(220, now);
     osc.frequency.setValueAtTime(330, now + 0.4);
@@ -436,7 +446,7 @@ export class GameLoop {
     const gain = ctx.createGain();
     osc.type = "triangle";
     const now = ctx.currentTime + delaySeconds;
-    gain.gain.value = 0.12;
+    gain.gain.value = this.getSfxGain(4.0);
     osc.connect(gain).connect(ctx.destination);
     osc.frequency.setValueAtTime(330, now);
     osc.frequency.setValueAtTime(415, now + 0.35);

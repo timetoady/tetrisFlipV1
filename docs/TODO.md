@@ -82,4 +82,5 @@
 - [x] 2 player mode
 - [x] Lives mode/Redemption (where you have 3 lives, if you get to top you lose a life, and then the bottom 6 rows get removed, moving the rest down and you can continue until you run out of lives)
 - [x] No gravity increase Marathon mode (Chillax Mode)
-- [ ] Make broswer hostable version
+- [ ] Make broswer hostable version, put in S3, use game.adamandreason.com subdomain.
+- [ ] Bugfix: slightly taller default Window on app version

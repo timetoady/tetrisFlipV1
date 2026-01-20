@@ -317,3 +317,71 @@ canvas {
   border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
 }
+
+.menu-help {
+  max-height: 82vh;
+  overflow-y: auto;
+}
+
+.menu-help-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  text-align: left;
+}
+
+.menu-help-title {
+  font-size: 15px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.menu-help-block {
+  margin-bottom: 16px;
+}
+
+.menu-help-subtitle {
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin: 10px 0 6px;
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+
+.menu-help-text {
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 6px 0 10px;
+  opacity: 0.85;
+}
+
+.menu-help-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+.menu-help-list li {
+  margin: 4px 0;
+  line-height: 1.35;
+}
+
+.menu-help-label {
+  display: inline-block;
+  min-width: 112px;
+  opacity: 0.7;
+}
+
+.menu-help-note {
+  font-size: 12px;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+  .menu-help-grid {
+    grid-template-columns: 1fr;
+  }
+}

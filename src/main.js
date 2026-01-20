@@ -79,8 +79,12 @@ const optionsMusicVolumeValue = document.getElementById("options-music-volume-va
 const optionsVfxVolumeRow = document.getElementById("options-vfx-volume");
 /** @type {HTMLElement} */
 const optionsVfxVolumeValue = document.getElementById("options-vfx-volume-value");
+/** @type {HTMLElement} */
+const optionsHelpRow = document.getElementById("options-help");
 /** @type {HTMLButtonElement} */
 const optionsBack = document.getElementById("options-back");
+/** @type {HTMLButtonElement} */
+const helpBack = document.getElementById("help-back");
 /** @type {HTMLElement} */
 const gravityValue = document.getElementById("gravity-value");
 /** @type {HTMLElement} */
@@ -165,6 +169,7 @@ let nameEntryActive = false;
 let pendingEntry = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
+const OPTIONS_ITEM_COUNT = 7;
 let game = null;
 let activeMode = "marathon";
 let pendingScoreMode = "marathon";
@@ -339,6 +344,12 @@ function closeMenu() {
   input.clearPressed();
   updateViewportScale();
   updateMusicState();
+}
+
+if (window.tetrisFlip && typeof window.tetrisFlip.onOpenHelp === "function") {
+  window.tetrisFlip.onOpenHelp(() => {
+    openMenu("help");
+  });
 }
 
 function getScoreStorageKey(mode) {
@@ -553,7 +564,10 @@ function updateOptionsSelection() {
   if (optionsVfxVolumeRow) {
     optionsVfxVolumeRow.classList.toggle("is-selected", optionsIndex === 4);
   }
-  optionsBack.classList.toggle("is-selected", optionsIndex === 5);
+  if (optionsHelpRow) {
+    optionsHelpRow.classList.toggle("is-selected", optionsIndex === 5);
+  }
+  optionsBack.classList.toggle("is-selected", optionsIndex === 6);
 }
 
 function updateGameOverSelection() {
@@ -1421,6 +1435,20 @@ if (optionsVfxVolumeRow) {
   });
 }
 
+if (optionsHelpRow) {
+  optionsHelpRow.addEventListener("click", () => {
+    optionsIndex = 5;
+    updateOptionsSelection();
+    showScreen("help");
+  });
+}
+
+if (helpBack) {
+  helpBack.addEventListener("click", () => {
+    showScreen("options");
+  });
+}
+
 renderScores(loadScores(getScoreStorageKey("marathon")), marathonScores, "marathon");
 renderScores(loadScores(getScoreStorageKey("chillax")), chillaxScores, "chillax");
 renderGarbageScores();
@@ -1629,10 +1657,10 @@ function handleMenuInput() {
   if (menuState === "options") {
     const confirm = consumeMenuConfirm();
     if (consumeMenuUp()) {
-      optionsIndex = (optionsIndex + 5) % 6;
+      optionsIndex = (optionsIndex + OPTIONS_ITEM_COUNT - 1) % OPTIONS_ITEM_COUNT;
       updateOptionsSelection();
     } else if (consumeMenuDown()) {
-      optionsIndex = (optionsIndex + 1) % 6;
+      optionsIndex = (optionsIndex + 1) % OPTIONS_ITEM_COUNT;
       updateOptionsSelection();
     }
     const left = consumeMenuLeft();
@@ -1673,10 +1701,19 @@ function handleMenuInput() {
         applyVfxVolume(vfxVolumeIndex + 1);
       }
     } else if (optionsIndex === 5 && confirm) {
+      showScreen("help");
+    } else if (optionsIndex === 6 && confirm) {
       showScreen("mode");
     }
     if (consumeMenuBack()) {
       showScreen("mode");
+    }
+    return;
+  }
+
+  if (menuState === "help") {
+    if (consumeMenuConfirm() || consumeMenuBack()) {
+      showScreen("options");
     }
     return;
   }

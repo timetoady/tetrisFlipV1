@@ -30,6 +30,7 @@
   "build": {
     "appId": "com.timetoady.tetrisflip",
     "productName": "Tetris Flip",
+    "icon": "public/assets/icon.png",
     "directories": {
       "output": "release",
       "buildResources": "assets"

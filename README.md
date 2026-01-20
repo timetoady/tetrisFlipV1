@@ -1,15 +1,15 @@
-# Tetris Flip (v1.0.0)
+# Tetris Flip (v2.0.0)
 
-Tetris Flip is a single-player, browser-based puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into top/bottom fields, and you can flip which field is active so pieces fall into the current bottom. Marathon and Chillax modes include scoring/levels, hold/next, HUD, game over handling, and a local top-10 leaderboard, while Garbage and Redemption add timed and lives-based challenges.
+Tetris Flip is a puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into top/bottom fields, and you can flip which field is active so pieces fall into the current bottom. Marathon and Chillax modes include scoring/levels, hold/next, HUD, game over handling, and a local top-10 leaderboard, while Garbage, Redemption, Co-op, and Sirtet expand the challenges.
 
 ## Modes
 
-- Marathon: classic scoring and level progression.
-- Chillax: fixed speed (no level increase), relaxed play.
-- Garbage: choose speed (0-35) and height (1-9), clear randomized garbage on both fields; the round ends when all garbage is gone. Leaderboards are tracked per speed/height and ranked by fastest clear time.
-- Redemption: pick starting gravity and 1-3 lives; topping out costs a life, clears the bottom six rows of the active field, and play continues until you run out.
-- Co-op Therapy: two players share the board; P1 plays downward while P2 plays upward with a per-piece placement timer and combined scoring.
-- Sirtet: upside-down Marathon where pieces move upward; soft drop is Up and hard drop is Down.
+- Marathon: classic scoring with level progression and rising speed.
+- Chillax: fixed speed (no level increase), relaxed practice runs.
+- Garbage: timed clear challenge. Choose speed (0-35) and height (1-9), clear garbage on both fields, and finish fast. Leaderboards are tracked per speed/height by fastest time.
+- Redemption: limited lives mode. If a piece cannot spawn, you can spend a life to clear the bottom rows and keep going; the run ends when lives are gone.
+- Co-op Therapy: two players share the board; Player 1 plays downward, Player 2 plays upward with a per-piece placement timer and combined scoring. Flips are shared.
+- Sirtet: reverse gravity mode. Pieces rise instead of fall; soft drop is Up and hard drop is Down.
 
 ## Requirements
 
@@ -54,7 +54,7 @@ Package the desktop app (builds the renderer first):
 npm run dist
 ```
 
-Artifacts are created in `dist/` by electron-builder. Auto-updates are configured to use GitHub Releases.
+Artifacts are created in `release/` by electron-builder. Auto-updates are configured to use GitHub Releases.
 
 On Windows, packaging requires Developer Mode (or running the terminal as Administrator) so the build tools can create symbolic links.
 
@@ -76,16 +76,35 @@ Then open `http://localhost:4173/`.
 
 ## Controls
 
-Quick reference:
+Quick reference (Player 1):
 - Move: Arrow Left/Right
-- Soft drop: Arrow Down
-- Hard drop: Arrow Up
+- Soft drop: Arrow Down (Arrow Up in Sirtet)
+- Hard drop: Arrow Up (Arrow Down in Sirtet)
 - Rotate CW/CCW: X / Z
 - Hold: C
 - Flip: Space / Shift
 - Pause: P / Esc
 
-Full breakdown (keyboard, gamepad, mouse, touch): `docs/controls.md`
+Keyboard (Player 2, Co-op):
+- Move: A/D/W/S
+- Rotate CCW/CW: J / K
+- Hold: L
+- Flip: Space (shared)
+
+Gamepad:
+- D-pad moves, Start pauses, Back returns.
+- Rotate layout is configurable in Options (South/East or South/West).
+
+Mouse:
+- Choose a mouse scheme in Options (Alternate, Classic, Tetris.com).
+- Dragging left/right moves the piece.
+
+Touch:
+- Slide to move, swipe down to soft drop, swipe up to hard drop.
+- Tap to rotate CW, two-finger tap to rotate CCW.
+- Two-finger swipe flips; long press holds.
+
+Full breakdown: in-app Help (Options -> Help or app menu Help -> Manual), plus `docs/controls.md`.
 
 ## Bonus System
 

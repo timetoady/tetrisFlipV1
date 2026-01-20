@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tetris Flip</title>
+    <link rel="icon" href="/assets/icon.png" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -90,10 +91,185 @@
               <span>VFX Volume</span>
               <span id="options-vfx-volume-value">100%</span>
             </div>
+            <div class="menu-option" data-option="help" id="options-help">
+              <span>Help</span>
+              <span>Manual</span>
+            </div>
             <div class="menu-actions">
               <button id="options-back">Back</button>
             </div>
             <div class="menu-sub">Left/Right to change. X confirm, Z back</div>
+          </div>
+        </div>
+        <div class="menu-screen" data-screen="help">
+          <div class="menu-panel menu-wide menu-help">
+            <div class="menu-title">HELP</div>
+            <div class="menu-help-grid">
+              <div class="menu-help-section">
+                <div class="menu-help-block">
+                  <div class="menu-help-title">Overview</div>
+                  <div class="menu-help-text">
+                    Tetris Flip blends classic line clearing with a two-field board. Pieces
+                    always fall into the active field (bottom by default). Flip swaps the
+                    active field and lets you rescue stacks, chain clears, and build momentum.
+                  </div>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-title">Controls: Keyboard (Player 1)</div>
+                  <ul class="menu-help-list">
+                    <li><span class="menu-help-label">Move</span> Left/Right arrows</li>
+                    <li><span class="menu-help-label">Soft drop</span> Down arrow</li>
+                    <li><span class="menu-help-label">Hard drop</span> Up arrow</li>
+                    <li><span class="menu-help-label">Rotate CW</span> X</li>
+                    <li><span class="menu-help-label">Rotate CCW</span> Z</li>
+                    <li><span class="menu-help-label">Hold</span> C (once per piece)</li>
+                    <li><span class="menu-help-label">Flip</span> Space or Shift</li>
+                    <li><span class="menu-help-label">Pause</span> P or Esc</li>
+                  </ul>
+                  <div class="menu-help-text">
+                    Menus: arrows move, X/Enter confirm, Z/Backspace back.
+                  </div>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-title">Controls: Keyboard (Player 2)</div>
+                  <div class="menu-help-text">
+                    Co-op uses a second control set.
+                  </div>
+                  <ul class="menu-help-list">
+                    <li><span class="menu-help-label">Move</span> A/D/W/S</li>
+                    <li><span class="menu-help-label">Rotate CCW</span> J</li>
+                    <li><span class="menu-help-label">Rotate CW</span> K</li>
+                    <li><span class="menu-help-label">Hold</span> L</li>
+                    <li><span class="menu-help-label">Flip</span> Space (shared)</li>
+                  </ul>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-title">Controls: Gamepad</div>
+                  <div class="menu-help-text">
+                    D-pad moves, Start pauses, Back returns. Choose the rotate layout in
+                    Options (South/East or South/West). A second controller maps to
+                    Player 2 in Co-op.
+                  </div>
+                  <ul class="menu-help-list">
+                    <li><span class="menu-help-label">Rotate CW</span> A (South)</li>
+                    <li><span class="menu-help-label">Rotate CCW</span> B (East) or X (West)</li>
+                    <li><span class="menu-help-label">Hold</span> the other face button</li>
+                    <li><span class="menu-help-label">Flip</span> Y/Triangle or RB</li>
+                    <li><span class="menu-help-label">Hard drop</span> D-pad Up</li>
+                    <li><span class="menu-help-label">Soft drop</span> D-pad Down</li>
+                  </ul>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-title">Controls: Mouse</div>
+                  <div class="menu-help-text">
+                    Pick a mouse scheme in Options. Dragging left/right always moves the
+                    piece horizontally.
+                  </div>
+                  <div class="menu-help-subtitle">Alternate (Wheel Rotate)</div>
+                  <ul class="menu-help-list">
+                    <li><span class="menu-help-label">Rotate</span> wheel up = CW, down = CCW</li>
+                    <li><span class="menu-help-label">Soft drop</span> hold right click</li>
+                    <li><span class="menu-help-label">Hard drop</span> double right click</li>
+                    <li><span class="menu-help-label">Hold</span> left + right click</li>
+                    <li><span class="menu-help-label">Flip</span> middle click</li>
+                  </ul>
+                  <div class="menu-help-subtitle">Classic (Wheel Drop)</div>
+                  <ul class="menu-help-list">
+                    <li><span class="menu-help-label">Rotate CW</span> left click</li>
+                    <li><span class="menu-help-label">Rotate CCW</span> right click</li>
+                    <li><span class="menu-help-label">Soft drop</span> wheel down (brief)</li>
+                    <li><span class="menu-help-label">Hard drop</span> wheel up</li>
+                    <li><span class="menu-help-label">Flip</span> middle click</li>
+                  </ul>
+                  <div class="menu-help-subtitle">Tetris.com</div>
+                  <ul class="menu-help-list">
+                    <li><span class="menu-help-label">Rotate CW</span> left click or wheel up</li>
+                    <li><span class="menu-help-label">Rotate CCW</span> right click or wheel down</li>
+                    <li><span class="menu-help-label">Soft drop</span> drag downward</li>
+                    <li><span class="menu-help-label">Hard drop</span> middle click or double wheel down</li>
+                  </ul>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-title">Controls: Touch</div>
+                  <div class="menu-help-text">
+                    Touch buttons appear only during gameplay.
+                  </div>
+                  <ul class="menu-help-list">
+                    <li><span class="menu-help-label">Move</span> slide left/right</li>
+                    <li><span class="menu-help-label">Soft drop</span> swipe down (hold)</li>
+                    <li><span class="menu-help-label">Hard drop</span> swipe up</li>
+                    <li><span class="menu-help-label">Rotate CW</span> tap</li>
+                    <li><span class="menu-help-label">Rotate CCW</span> two-finger tap</li>
+                    <li><span class="menu-help-label">Flip</span> two-finger swipe up/down</li>
+                    <li><span class="menu-help-label">Hold</span> long press (about 0.4s) or tap HOLD</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="menu-help-section">
+                <div class="menu-help-title">Modes</div>
+                <div class="menu-help-block">
+                  <div class="menu-help-subtitle">Marathon</div>
+                  <div class="menu-help-text">
+                    The classic climb. Choose a starting gravity, then clear lines to raise
+                    your level and increase speed. Score grows with clean clears, flips,
+                    and momentum bursts.
+                  </div>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-subtitle">Chillax</div>
+                  <div class="menu-help-text">
+                    A relaxed marathon with a locked speed. Your starting gravity stays
+                    fixed for the whole run so you can practice at a steady pace. Score
+                    still counts, but the level does not climb.
+                  </div>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-subtitle">Garbage</div>
+                  <div class="menu-help-text">
+                    A timed clear challenge. Pick speed (0-35) and garbage height (1-9).
+                    Both fields spawn with garbage; clear it all to win. The speed stays
+                    fixed and the leaderboard tracks fastest time per setting.
+                  </div>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-subtitle">Redemption</div>
+                  <div class="menu-help-text">
+                    Survive with limited lives. When a piece cannot spawn, you can spend
+                    a life to clear part of the stack and keep playing. The run ends when
+                    you are out of lives (or if you choose to stop).
+                  </div>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-subtitle">Co-op Therapy</div>
+                  <div class="menu-help-text">
+                    Two players control simultaneous pieces on opposite fields. One field
+                    falls while the other rises. Flips are shared, so communicate and
+                    time swaps to save each other. Player 2 can use WASD/JKL or a second
+                    gamepad.
+                  </div>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-subtitle">Sirtet</div>
+                  <div class="menu-help-text">
+                    Reverse gravity mode. Pieces rise instead of fall and the active
+                    field is inverted, turning familiar setups into new puzzles. Flips
+                    still swap the active field, but the gravity stays reversed.
+                  </div>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-title">Score Notes</div>
+                  <div class="menu-help-text">
+                    Most modes track score and levels. Tetrises, flip chains, and risky
+                    clears build momentum. When the meter fills, Burst boosts score for a
+                    short window, followed by a brief recovery. Garbage focuses on clear time.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="menu-actions">
+              <button id="help-back" class="is-selected">Back</button>
+            </div>
+            <div class="menu-sub">X confirm, Z back</div>
           </div>
         </div>
         <div class="menu-screen" data-screen="marathon">

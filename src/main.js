@@ -1156,6 +1156,17 @@ nameSkip.addEventListener("click", () => {
   closeNameEntry();
 });
 
+nameInput.addEventListener("keydown", (event) => {
+  if (!nameEntryActive) return;
+  if (event.code === "Enter") {
+    event.preventDefault();
+    commitNameEntry();
+  } else if (event.code === "Escape") {
+    event.preventDefault();
+    closeNameEntry();
+  }
+});
+
 function getCanvasPoint(event) {
   const rect = canvas.getBoundingClientRect();
   const style = window.getComputedStyle(canvas);

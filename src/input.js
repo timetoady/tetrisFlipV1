@@ -65,7 +65,7 @@ export function createInput(target = window, pointerTarget = window) {
 
   function onKeyDown(e) {
     if (!DEFAULT_KEYS.has(e.code)) return;
-    if (e.code === "Backspace" && isEditableTarget(e.target)) return;
+    if (isEditableTarget(e.target)) return;
     e.preventDefault();
     if (!keyboardDown.has(e.code)) pressed.add(e.code);
     keyboardDown.add(e.code);
@@ -73,7 +73,7 @@ export function createInput(target = window, pointerTarget = window) {
 
   function onKeyUp(e) {
     if (!DEFAULT_KEYS.has(e.code)) return;
-    if (e.code === "Backspace" && isEditableTarget(e.target)) return;
+    if (isEditableTarget(e.target)) return;
     e.preventDefault();
     keyboardDown.delete(e.code);
     pressed.delete(e.code);

@@ -128,4 +128,25 @@ export class Board {
     }
     return sorted.length;
   }
+
+  removeBottomRowsForOwner(owner, count) {
+    const halfRows = this.getHalfRows();
+    const removeCount = Math.max(0, Math.min(count, halfRows));
+    if (removeCount === 0) return;
+    const emptyRow = Array.from({ length: GAME_CONFIG.COLS }, () => ({
+      value: 0,
+      owner: OWNERS.NONE,
+      locked: false
+    }));
+    const newRows = Array.from({ length: halfRows }, () => emptyRow.map((cell) => ({ ...cell })));
+    for (let localRow = 0; localRow < halfRows - removeCount; localRow += 1) {
+      const sourceIndex = this.mapLocalToRow(owner, localRow);
+      const targetLocal = localRow + removeCount;
+      newRows[targetLocal] = this.grid[sourceIndex].map((cell) => ({ ...cell }));
+    }
+    for (let localRow = 0; localRow < halfRows; localRow += 1) {
+      const rowIndex = this.mapLocalToRow(owner, localRow);
+      this.grid[rowIndex] = newRows[localRow];
+    }
+  }
 }

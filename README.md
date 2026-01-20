@@ -1,12 +1,13 @@
 # Tetris Flip (v1.0.0)
 
-Tetris Flip is a single-player, browser-based puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into top/bottom fields, and you can flip which field is active so pieces fall into the current bottom. Marathon and Chillax modes include scoring/levels, hold/next, HUD, game over handling, and a local top-10 leaderboard, while Garbage Mode adds a timed clear challenge.
+Tetris Flip is a single-player, browser-based puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into top/bottom fields, and you can flip which field is active so pieces fall into the current bottom. Marathon and Chillax modes include scoring/levels, hold/next, HUD, game over handling, and a local top-10 leaderboard, while Garbage and Redemption add timed and lives-based challenges.
 
 ## Modes
 
 - Marathon: classic scoring and level progression.
 - Chillax: fixed speed (no level increase), relaxed play.
 - Garbage: choose speed (0-35) and height (1-9), clear randomized garbage on both fields; the round ends when all garbage is gone. Leaderboards are tracked per speed/height and ranked by fastest clear time.
+- Redemption: pick starting gravity and 1-3 lives; topping out costs a life, clears the bottom six rows of the active field, and play continues until you run out.
 
 ## Requirements
 

@@ -26,6 +26,18 @@ const chillaxStart = document.getElementById("chillax-start");
 /** @type {HTMLButtonElement} */
 const chillaxBack = document.getElementById("chillax-back");
 /** @type {HTMLElement} */
+const redemptionGravityRow = document.getElementById("redemption-gravity-row");
+/** @type {HTMLElement} */
+const redemptionLivesRow = document.getElementById("redemption-lives-row");
+/** @type {HTMLElement} */
+const redemptionGravityValue = document.getElementById("redemption-gravity-value");
+/** @type {HTMLElement} */
+const redemptionLivesValue = document.getElementById("redemption-lives-value");
+/** @type {HTMLButtonElement} */
+const redemptionStart = document.getElementById("redemption-start");
+/** @type {HTMLButtonElement} */
+const redemptionBack = document.getElementById("redemption-back");
+/** @type {HTMLElement} */
 const garbageSpeedRow = document.getElementById("garbage-speed-row");
 /** @type {HTMLElement} */
 const garbageHeightRow = document.getElementById("garbage-height-row");
@@ -71,6 +83,8 @@ const marathonScores = document.getElementById("marathon-scores");
 const chillaxScores = document.getElementById("chillax-scores");
 /** @type {HTMLElement} */
 const garbageScores = document.getElementById("garbage-scores");
+/** @type {HTMLElement} */
+const redemptionScores = document.getElementById("redemption-scores");
 /** @type {HTMLElement} */
 const garbageScoreLabel = document.getElementById("garbage-score-label");
 /** @type {HTMLElement} */
@@ -120,10 +134,13 @@ let menuActive = true;
 let startingGravity = 0;
 let garbageSpeed = 0;
 let garbageHeight = 1;
+let redemptionGravity = 0;
+let redemptionLives = 3;
 let modeIndex = 0;
 let marathonActionIndex = 0;
 let chillaxActionIndex = 0;
 let garbageActionIndex = 0;
+let redemptionActionIndex = 0;
 let gameOverActive = false;
 let gameOverIndex = 0;
 let nameEntryActive = false;
@@ -215,10 +232,12 @@ let musicPreviewActive = false;
 const SCORE_STORAGE_KEYS = {
   marathon: "tetrisflip:marathon:scores",
   chillax: "tetrisflip:chillax:scores",
-  garbage: "tetrisflip:garbage:scores"
+  garbage: "tetrisflip:garbage:scores",
+  redemption: "tetrisflip:redemption:scores"
 };
 updateGravityLabels();
 updateGarbageLabels();
+updateRedemptionLabels();
 if (overlayImage) {
   overlayImage.addEventListener("error", () => {
     overlayImageIndex += 1;
@@ -246,6 +265,10 @@ function showScreen(name) {
   if (menuState === "chillax") {
     chillaxActionIndex = 0;
     updateChillaxSelection();
+  }
+  if (menuState === "redemption") {
+    redemptionActionIndex = 0;
+    updateRedemptionSelection();
   }
   if (menuState === "garbage") {
     garbageActionIndex = 0;
@@ -294,6 +317,7 @@ function getScoreStorageKey(mode) {
 function getScoreListElement(mode) {
   if (mode === "chillax") return chillaxScores;
   if (mode === "garbage") return garbageScores;
+  if (mode === "redemption") return redemptionScores;
   return marathonScores;
 }
 
@@ -337,9 +361,30 @@ function updateGarbageHeight(delta) {
   updateGarbageLabels();
 }
 
+function updateRedemptionLabels() {
+  if (redemptionGravityValue) {
+    redemptionGravityValue.textContent = String(redemptionGravity);
+  }
+  if (redemptionLivesValue) {
+    redemptionLivesValue.textContent = String(redemptionLives);
+  }
+}
+
+function updateRedemptionGravity(delta) {
+  redemptionGravity = Math.min(35, Math.max(0, redemptionGravity + delta));
+  updateRedemptionLabels();
+}
+
+function updateRedemptionLives(delta) {
+  redemptionLives = Math.min(3, Math.max(1, redemptionLives + delta));
+  updateRedemptionLabels();
+}
+
 function startGame() {
   const mode = menuState === "chillax"
     ? "chillax"
+    : menuState === "redemption"
+      ? "redemption"
     : menuState === "garbage"
       ? "garbage"
       : "marathon";
@@ -358,6 +403,20 @@ function startGame() {
     if (game.setGarbageHeight) {
       game.setGarbageHeight(garbageHeight);
     }
+    if (game.setRedemptionLives) {
+      game.setRedemptionLives(0);
+    }
+  } else if (mode === "redemption") {
+    game.setStartingLevel(redemptionGravity);
+    if (game.setFreezeLevel) {
+      game.setFreezeLevel(false);
+    }
+    if (game.setGarbageHeight) {
+      game.setGarbageHeight(0);
+    }
+    if (game.setRedemptionLives) {
+      game.setRedemptionLives(redemptionLives);
+    }
   } else {
     game.setStartingLevel(startingGravity);
     if (game.setFreezeLevel) {
@@ -365,6 +424,9 @@ function startGame() {
     }
     if (game.setGarbageHeight) {
       game.setGarbageHeight(0);
+    }
+    if (game.setRedemptionLives) {
+      game.setRedemptionLives(0);
     }
   }
   game.paused = false;
@@ -387,6 +449,21 @@ function updateChillaxSelection() {
   if (!chillaxStart || !chillaxBack) return;
   chillaxStart.classList.toggle("is-selected", chillaxActionIndex === 0);
   chillaxBack.classList.toggle("is-selected", chillaxActionIndex === 1);
+}
+
+function updateRedemptionSelection() {
+  if (redemptionGravityRow) {
+    redemptionGravityRow.classList.toggle("is-selected", redemptionActionIndex === 0);
+  }
+  if (redemptionLivesRow) {
+    redemptionLivesRow.classList.toggle("is-selected", redemptionActionIndex === 1);
+  }
+  if (redemptionStart) {
+    redemptionStart.classList.toggle("is-selected", redemptionActionIndex === 2);
+  }
+  if (redemptionBack) {
+    redemptionBack.classList.toggle("is-selected", redemptionActionIndex === 3);
+  }
 }
 
 function updateGarbageSelection() {
@@ -1002,6 +1079,10 @@ function getCanvasPoint(event) {
 
 canvas.addEventListener("click", (event) => {
   const { x, y } = getCanvasPoint(event);
+  if (game.handleLifeLossClick && game.handleLifeLossClick(x, y)) {
+    input.clearPressed();
+    return;
+  }
   if (game.paused) {
     game.handlePauseClick(x, y);
     input.clearPressed();
@@ -1060,6 +1141,35 @@ if (chillaxBack) {
     chillaxActionIndex = 1;
     updateChillaxSelection();
     showScreen("mode");
+  });
+}
+
+if (redemptionStart) {
+  redemptionStart.addEventListener("click", () => {
+    redemptionActionIndex = 2;
+    updateRedemptionSelection();
+    startGame();
+  });
+}
+if (redemptionBack) {
+  redemptionBack.addEventListener("click", () => {
+    redemptionActionIndex = 3;
+    updateRedemptionSelection();
+    showScreen("mode");
+  });
+}
+if (redemptionGravityRow) {
+  redemptionGravityRow.addEventListener("click", () => {
+    redemptionActionIndex = 0;
+    updateRedemptionSelection();
+    updateRedemptionGravity(1);
+  });
+}
+if (redemptionLivesRow) {
+  redemptionLivesRow.addEventListener("click", () => {
+    redemptionActionIndex = 1;
+    updateRedemptionSelection();
+    updateRedemptionLives(1);
   });
 }
 
@@ -1138,7 +1248,8 @@ modeOptions.forEach((option, index) => {
     const selected = option.dataset.mode;
     if (selected === "options") {
       showScreen("options");
-    } else if (selected === "marathon" || selected === "chillax" || selected === "garbage") {
+    } else if (selected === "marathon" || selected === "chillax"
+      || selected === "garbage" || selected === "redemption") {
       showScreen(selected);
     }
   });
@@ -1200,6 +1311,7 @@ if (optionsVfxVolumeRow) {
 renderScores(loadScores(getScoreStorageKey("marathon")), marathonScores, "marathon");
 renderScores(loadScores(getScoreStorageKey("chillax")), chillaxScores, "chillax");
 renderGarbageScores();
+renderScores(loadScores(getScoreStorageKey("redemption")), redemptionScores, "redemption");
 
 function unlockMusic() {
   musicMode = null;
@@ -1357,7 +1469,8 @@ function handleMenuInput() {
       const selected = modeOptions[modeIndex].dataset.mode;
       if (selected === "options") {
         showScreen("options");
-      } else if (selected === "marathon" || selected === "chillax" || selected === "garbage") {
+      } else if (selected === "marathon" || selected === "chillax"
+        || selected === "garbage" || selected === "redemption") {
         showScreen(selected);
       }
     } else if (input.consumePress("KeyZ") ||
@@ -1466,6 +1579,39 @@ function handleMenuInput() {
       if (chillaxActionIndex === 0) {
         startGame();
       } else {
+        showScreen("mode");
+      }
+    } else if (input.consumePress("KeyZ") ||
+               input.consumePress("Escape") ||
+               input.consumePress("Backspace")) {
+      showScreen("mode");
+    }
+  }
+
+  if (menuState === "redemption") {
+    const confirm = input.consumePress("KeyX") ||
+      input.consumePress("Enter") ||
+      input.consumePress("KeyP");
+    if (input.consumePress("ArrowUp")) {
+      redemptionActionIndex = (redemptionActionIndex + 3) % 4;
+      updateRedemptionSelection();
+    } else if (input.consumePress("ArrowDown")) {
+      redemptionActionIndex = (redemptionActionIndex + 1) % 4;
+      updateRedemptionSelection();
+    }
+    const left = input.consumePress("ArrowLeft");
+    const right = input.consumePress("ArrowRight");
+    if (redemptionActionIndex === 0 && (left || right)) {
+      updateRedemptionGravity(right ? 1 : -1);
+    } else if (redemptionActionIndex === 1 && (left || right)) {
+      updateRedemptionLives(right ? 1 : -1);
+    } else if (redemptionActionIndex >= 2 && (left || right)) {
+      redemptionActionIndex = redemptionActionIndex === 2 ? 3 : 2;
+      updateRedemptionSelection();
+    } else if (confirm) {
+      if (redemptionActionIndex === 2) {
+        startGame();
+      } else if (redemptionActionIndex === 3) {
         showScreen("mode");
       }
     } else if (input.consumePress("KeyZ") ||

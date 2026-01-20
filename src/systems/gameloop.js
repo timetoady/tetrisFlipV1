@@ -28,6 +28,21 @@ export class GameLoop {
     this.freezeLevel = false;
     this.mode = "marathon";
     this.garbageHeight = 0;
+    this.lives = 0;
+    this.maxLives = 0;
+    this.lifeLossPending = false;
+    this.lifeLossOwner = null;
+    this.lifeLossChoiceIndex = 0;
+    this.lifeLossButtons = null;
+    this.lifeLossHover = null;
+    this.lifeLossAnimating = false;
+    this.lifeLossHeartTimer = 0;
+    this.lifeLossHeartDuration = 600;
+    this.lifeLossAnimTimer = 0;
+    this.lifeLossAnimDuration = 2000;
+    this.lifeLossFlashTimer = 0;
+    this.lifeLossFlashDuration = 600;
+    this.lifeLossHeartIndex = null;
     this.paused = false;
     this.audioCtx = null;
     this.sfxVolume = 9.0;
@@ -145,6 +160,12 @@ export class GameLoop {
     this.garbageHeight = clamped;
   }
 
+  setRedemptionLives(lives) {
+    const clamped = Math.max(0, Math.min(3, Math.floor(lives)));
+    this.maxLives = clamped;
+    this.lives = clamped;
+  }
+
   getGarbageRowCount() {
     if (this.garbageHeight <= 0) return 0;
     const halfRows = GAME_CONFIG.ROWS / 2;
@@ -188,6 +209,41 @@ export class GameLoop {
       }
     }
     return false;
+  }
+
+  queueLifeLoss(owner) {
+    this.lifeLossPending = true;
+    this.lifeLossOwner = owner;
+    this.lifeLossChoiceIndex = 0;
+    this.lifeLossButtons = null;
+    this.lifeLossHover = null;
+  }
+
+  triggerLifeLoss() {
+    this.lifeLossPending = false;
+    this.lifeLossAnimating = true;
+    this.lifeLossHeartTimer = this.lifeLossHeartDuration;
+    this.lifeLossAnimTimer = 0;
+    this.lifeLossFlashTimer = 0;
+    this.lifeLossHeartIndex = Math.max(0, this.lives - 1);
+    this.lives = Math.max(0, this.lives - 1);
+    this.activePiece = null;
+    this.resetLockState();
+    this.playHeartBreakSound();
+  }
+
+  finalizeLifeLoss() {
+    if (this.lifeLossOwner) {
+      this.board.removeBottomRowsForOwner(this.lifeLossOwner, 6);
+    }
+    this.lifeLossAnimating = false;
+    this.lifeLossHeartTimer = 0;
+    this.lifeLossAnimTimer = 0;
+    this.lifeLossFlashTimer = 0;
+    this.lifeLossHeartIndex = null;
+    this.lifeLossOwner = null;
+    this.activePiece = this.spawnPiece();
+    this.holdUsed = false;
   }
 
   getLevelForLines(lines) {
@@ -243,6 +299,21 @@ export class GameLoop {
     this.refillQueue();
     this.resetLockState();
     this.seedGarbage();
+    if (this.mode === "redemption") {
+      this.lives = this.maxLives;
+    } else {
+      this.lives = 0;
+    }
+    this.lifeLossPending = false;
+    this.lifeLossOwner = null;
+    this.lifeLossChoiceIndex = 0;
+    this.lifeLossButtons = null;
+    this.lifeLossHover = null;
+    this.lifeLossAnimating = false;
+    this.lifeLossHeartTimer = 0;
+    this.lifeLossAnimTimer = 0;
+    this.lifeLossFlashTimer = 0;
+    this.lifeLossHeartIndex = null;
     this.gameOver = false;
     this.isClearing = false;
     this.clearTimer = 0;
@@ -335,6 +406,7 @@ export class GameLoop {
   }
 
   handleHoldClick(x, y) {
+    if (this.lifeLossPending || this.lifeLossAnimating) return false;
     if (!this.holdBoxRect) return false;
     const { x: bx, y: by, w, h } = this.holdBoxRect;
     if (x < bx || x > bx + w || y < by || y > by + h) return false;
@@ -403,8 +475,13 @@ export class GameLoop {
     const y = 18;
     let piece = createPiece(type, x, y);
     if (this.isSpawnBlocked()) {
-      this.gameOver = true;
-      this.onGameOver();
+      if (this.mode === "redemption" && this.lives > 0
+          && !this.lifeLossPending && !this.lifeLossAnimating) {
+        this.queueLifeLoss(this.board.getActiveOwner());
+      } else {
+        this.gameOver = true;
+        this.onGameOver();
+      }
       return piece;
     }
     return piece;
@@ -519,6 +596,96 @@ export class GameLoop {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
     osc.start(now);
     osc.stop(now + 0.44);
+  }
+
+  playHeartBreakSound() {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc2.type = "sawtooth";
+    const now = ctx.currentTime;
+    gain.gain.value = this.getSfxGain(0.1);
+    osc.detune.value = -15;
+    osc2.detune.value = 12;
+    osc.connect(gain).connect(ctx.destination);
+    osc2.connect(gain);
+    osc.frequency.setValueAtTime(520, now);
+    osc2.frequency.setValueAtTime(520, now);
+    osc.frequency.exponentialRampToValueAtTime(140, now + 0.18);
+    osc2.frequency.exponentialRampToValueAtTime(170, now + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+    osc.start(now);
+    osc2.start(now);
+    osc.stop(now + 0.32);
+    osc2.stop(now + 0.34);
+  }
+  
+  playLifeShiftSound(durationSeconds = 0.6) {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const duration = Math.max(3.0, durationSeconds);
+    const length = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i += 1) {
+      const decay = Math.pow(1 - i / length, 0.6);
+      data[i] = (Math.random() * 2 - 1) * decay;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const lowpass = ctx.createBiquadFilter();
+    const shaper = ctx.createWaveShaper();
+    const gain = ctx.createGain();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    const delay = ctx.createDelay();
+    const feedback = ctx.createGain();
+    const feedbackFilter = ctx.createBiquadFilter();
+    const mix = ctx.createGain();
+    lowpass.type = "lowpass";
+    lowpass.Q.value = 0.9;
+    delay.delayTime.value = 0.5;
+    feedbackFilter.type = "lowpass";
+    feedbackFilter.frequency.value = 600;
+    feedbackFilter.Q.value = 0.7;
+    feedback.gain.value = 0.6;
+    mix.gain.value = 0.7;
+    gain.gain.value = this.getSfxGain(0.26);
+    const curve = new Float32Array(256);
+    for (let i = 0; i < curve.length; i += 1) {
+      const x = (i / (curve.length - 1)) * 2 - 1;
+      curve[i] = Math.sign(x) * Math.pow(Math.abs(x), 0.65);
+    }
+    shaper.curve = curve;
+    shaper.oversample = "4x";
+    noise.connect(lowpass);
+    lowpass.connect(shaper);
+    shaper.connect(gain);
+    gain.connect(mix);
+    mix.connect(ctx.destination);
+    mix.connect(delay);
+    delay.connect(feedbackFilter);
+    feedbackFilter.connect(feedback);
+    feedback.connect(delay);
+    delay.connect(ctx.destination);
+    const now = ctx.currentTime;
+    const baseGain = this.getSfxGain(0.22);
+    gain.gain.setValueAtTime(baseGain, now);
+    lfo.type = "sine";
+    lfo.frequency.value = 1.6;
+    lfoGain.gain.value = this.getSfxGain(0.1);
+    lfo.connect(lfoGain);
+    lfoGain.connect(gain.gain);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    lowpass.frequency.setValueAtTime(1000, now);
+    lowpass.frequency.exponentialRampToValueAtTime(40, now + duration);
+    noise.start(now);
+    noise.stop(now + duration);
+    lfo.start(now);
+    lfo.stop(now + duration);
   }
 
   playLineClearSound(lines) {
@@ -1000,6 +1167,48 @@ export class GameLoop {
       this.ensureAudioContext();
     }
 
+    if (this.lifeLossPending) {
+      const left = this.input.consumePress("ArrowLeft");
+      const right = this.input.consumePress("ArrowRight");
+      const up = this.input.consumePress("ArrowUp");
+      const down = this.input.consumePress("ArrowDown");
+      if (left || right || up || down) {
+        this.lifeLossChoiceIndex = this.lifeLossChoiceIndex === 0 ? 1 : 0;
+      }
+      if (this.input.consumePress("KeyZ") || this.input.consumePress("Escape")) {
+        this.lifeLossChoiceIndex = 1;
+      }
+      if (this.input.consumePress("KeyX") || this.input.consumePress("Enter")) {
+        if (this.lifeLossChoiceIndex === 0) {
+          this.triggerLifeLoss();
+        } else {
+          this.gameOver = true;
+          this.onGameOver();
+        }
+      }
+      return;
+    }
+
+    if (this.lifeLossAnimating) {
+      if (this.lifeLossHeartTimer > 0) {
+        this.lifeLossHeartTimer = Math.max(0, this.lifeLossHeartTimer - delta);
+        if (this.lifeLossHeartTimer === 0) {
+          this.lifeLossAnimTimer = this.lifeLossAnimDuration;
+          this.lifeLossFlashTimer = this.lifeLossFlashDuration;
+          this.playLifeShiftSound(this.lifeLossAnimDuration / 1000);
+        }
+      } else if (this.lifeLossAnimTimer > 0) {
+        this.lifeLossAnimTimer = Math.max(0, this.lifeLossAnimTimer - delta);
+        if (this.lifeLossFlashTimer > 0) {
+          this.lifeLossFlashTimer = Math.max(0, this.lifeLossFlashTimer - delta);
+        }
+        if (this.lifeLossAnimTimer === 0) {
+          this.finalizeLifeLoss();
+        }
+      }
+      return;
+    }
+
     if (this.input.consumePress("KeyP") || this.input.consumePress("Escape")) {
       this.paused = !this.paused;
       if (this.paused) {
@@ -1340,7 +1549,7 @@ export class GameLoop {
       }
     }
 
-    if (!this.isClearing) {
+    if (!this.isClearing && this.activePiece && !this.lifeLossPending && !this.lifeLossAnimating) {
       const blocks = getBlocks(this.activePiece);
       for (const block of blocks) {
         const x = this.activePiece.x + block.x;
@@ -1414,6 +1623,48 @@ export class GameLoop {
         ctx.strokeRect(px + 1.5, py + 1.5, size - 3, size - 3);
       }
       ctx.restore();
+    }
+
+    if ((this.lifeLossAnimTimer > 0 || this.lifeLossFlashTimer > 0) && this.lifeLossOwner) {
+      const flashAlpha = this.lifeLossFlashDuration > 0
+        ? this.lifeLossFlashTimer / this.lifeLossFlashDuration
+        : 0;
+      const t = this.lifeLossAnimDuration > 0
+        ? 1 - this.lifeLossAnimTimer / this.lifeLossAnimDuration
+        : 1;
+      const halfRows = GAME_CONFIG.ROWS / 2;
+      const maxIndex = halfRows - 1;
+      const baseY = this.lifeLossOwner === activeOwner ? halfRows : 0;
+      const removeCount = Math.min(6, halfRows);
+      for (let localRow = halfRows - 1; localRow >= halfRows - removeCount; localRow -= 1) {
+        for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
+          const cell = this.board.getCellForOwner(this.lifeLossOwner, localRow, x);
+          if (!cell || cell.value === 0) continue;
+          const renderY = this.lifeLossOwner === activeOwner
+            ? baseY + localRow
+            : maxIndex - localRow;
+          const size = GAME_CONFIG.BLOCK_SIZE;
+          const columnDelay = (x / Math.max(1, GAME_CONFIG.COLS - 1)) * 0.35;
+          const progress = Math.min(1, Math.max(0, (t - columnDelay) / 0.65));
+          if (progress <= 0) continue;
+          const radius = size * (0.35 + 0.95 * progress);
+          const alpha = (1 - progress) * (0.8 + 0.4 * flashAlpha);
+          const centerX = x * size + size / 2;
+          const centerY = renderY * size + size / 2;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = "rgba(255, 110, 50, 0.95)";
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = alpha * 0.9;
+          ctx.fillStyle = "rgba(255, 245, 220, 0.9)";
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
     }
 
     if (this.tetrisFlashTimer > 0) {
@@ -1495,6 +1746,13 @@ export class GameLoop {
     hudY += 20;
     ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
     ctx.fillText(String(this.lines), hudX, hudY);
+    if (this.mode === "redemption" && this.maxLives > 0) {
+      const heartSize = 24;
+      const heartGap = 8;
+      const heartsX = hudX + GAME_CONFIG.HUD_WIDTH - heartSize - 24;
+      const heartsY = 12;
+      this.drawLives(ctx, heartsX, heartsY, heartSize, heartGap);
+    }
     ctx.restore();
 
     ctx.save();
@@ -1683,6 +1941,84 @@ export class GameLoop {
         ctx.restore();
       }
     }
+
+    if (this.lifeLossPending) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      const panelW = 360;
+      const panelH = 180;
+      const panelX = (ctx.canvas.width - panelW) / 2;
+      const panelY = (ctx.canvas.height - panelH) / 2;
+      ctx.fillStyle = "rgba(12, 12, 12, 0.95)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.lineWidth = 2;
+      ctx.fillRect(panelX, panelY, panelW, panelH);
+      ctx.strokeRect(panelX, panelY, panelW, panelH);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("USE A LIFE?", panelX + panelW / 2, panelY + 36);
+      ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText(
+        `Lives remaining: ${this.lives}`,
+        panelX + panelW / 2,
+        panelY + 62
+      );
+      const btnW = 120;
+      const btnH = 36;
+      const gap = 18;
+      const totalW = btnW * 2 + gap;
+      const startX = panelX + (panelW - totalW) / 2;
+      const useX = startX;
+      const quitX = startX + btnW + gap;
+      const btnY = panelY + panelH - 60;
+      ctx.fillStyle = "#1f1f1f";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(useX, btnY, btnW, btnH);
+      ctx.strokeRect(useX, btnY, btnW, btnH);
+      ctx.fillRect(quitX, btnY, btnW, btnH);
+      ctx.strokeRect(quitX, btnY, btnW, btnH);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.lineWidth = 2;
+      if (this.lifeLossChoiceIndex === 0) {
+        ctx.strokeRect(useX - 2, btnY - 2, btnW + 4, btnH + 4);
+      } else {
+        ctx.strokeRect(quitX - 2, btnY - 2, btnW + 4, btnH + 4);
+      }
+      ctx.fillStyle = "#e6e6e6";
+      ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText("USE LIFE", useX + btnW / 2, btnY + btnH / 2);
+      ctx.fillText("QUIT", quitX + btnW / 2, btnY + btnH / 2);
+      this.lifeLossButtons = {
+        use: { x: useX, y: btnY, w: btnW, h: btnH },
+        quit: { x: quitX, y: btnY, w: btnW, h: btnH }
+      };
+      ctx.restore();
+    }
+  }
+
+  handleLifeLossClick(x, y) {
+    if (!this.lifeLossPending || !this.lifeLossButtons) return false;
+    const { use, quit } = this.lifeLossButtons;
+    const padding = 10;
+    if (x >= use.x - padding && x <= use.x + use.w + padding &&
+        y >= use.y - padding && y <= use.y + use.h + padding) {
+      this.lifeLossChoiceIndex = 0;
+      this.triggerLifeLoss();
+      return true;
+    }
+    if (x >= quit.x - padding && x <= quit.x + quit.w + padding &&
+        y >= quit.y - padding && y <= quit.y + quit.h + padding) {
+      this.lifeLossChoiceIndex = 1;
+      this.gameOver = true;
+      this.onGameOver();
+      return true;
+    }
+    return false;
   }
 
   drawMomentumMeter(ctx, x, y, w, h) {
@@ -1729,6 +2065,55 @@ export class GameLoop {
     ctx.textAlign = "left";
     ctx.textBaseline = "bottom";
     ctx.fillText("MOMENTUM", x, y - 8);
+    ctx.restore();
+  }
+
+  drawLives(ctx, x, y, size, gap) {
+    const lives = Math.max(0, Math.min(this.lives, this.maxLives));
+    for (let i = 0; i < this.maxLives; i += 1) {
+      let px = x;
+      let py = y + i * (size + gap);
+      const isBreaking = this.lifeLossAnimating && this.lifeLossHeartIndex === i;
+      const t = this.lifeLossHeartDuration > 0
+        ? 1 - this.lifeLossHeartTimer / this.lifeLossHeartDuration
+        : 1;
+      const breakPhase = isBreaking ? Math.min(1, t) : 0;
+      if (isBreaking && breakPhase < 1) {
+        const wobble = Math.sin(breakPhase * Math.PI * 6) * 2;
+        const lift = -2 * breakPhase;
+        px += wobble;
+        py += lift;
+      }
+      const filled = i < lives || (isBreaking && breakPhase < 1);
+      this.drawHeart(ctx, px, py, size, filled);
+    }
+  }
+
+  drawHeart(ctx, x, y, size, filled) {
+    const unit = Math.max(2, Math.floor(size / 7));
+    const color = filled ? "#ff0000" : "rgba(255, 255, 255, 0.22)";
+    const stroke = filled ? "rgba(255, 255, 255, 0.65)" : "rgba(255, 255, 255, 0.25)";
+    const pattern = [
+      [0, 1, 1, 0, 1, 1, 0],
+      [1, 1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1, 1],
+      [0, 1, 1, 1, 1, 1, 0],
+      [0, 0, 1, 1, 1, 0, 0],
+      [0, 0, 0, 1, 0, 0, 0]
+    ];
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1.5;
+    for (let row = 0; row < pattern.length; row += 1) {
+      for (let col = 0; col < pattern[row].length; col += 1) {
+        if (!pattern[row][col]) continue;
+        const px = x + col * unit;
+        const py = y + row * unit;
+        ctx.fillRect(px, py, unit, unit);
+        ctx.strokeRect(px + 0.5, py + 0.5, unit - 1, unit - 1);
+      }
+    }
     ctx.restore();
   }
 

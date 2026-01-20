@@ -32,21 +32,25 @@
               <span>Marathon</span>
               <span>Ready</span>
             </div>
-            <div class="menu-option" data-mode="chillax">
-              <span>Chillax</span>
-              <span>Coast</span>
-            </div>
-            <div class="menu-option" data-mode="options">
-              <span>Options</span>
-              <span>Config</span>
-            </div>
             <div class="menu-option" data-mode="garbage">
               <span>Garbage</span>
               <span>Clear</span>
             </div>
+            <div class="menu-option" data-mode="chillax">
+              <span>Chillax</span>
+              <span>Coast</span>
+            </div>
+            <div class="menu-option" data-mode="redemption">
+              <span>Redemption</span>
+              <span>Lives</span>
+            </div>
             <div class="menu-option is-disabled" data-mode="two-player">
               <span>2 Player</span>
               <span>Soon</span>
+            </div>
+            <div class="menu-option" data-mode="options">
+              <span>Options</span>
+              <span>Config</span>
             </div>
             <div class="menu-actions">
               <button id="mode-back">RETURN TO TITLE</button>
@@ -126,6 +130,33 @@
               <div>
                 <div class="menu-sub">Top 10</div>
                 <ol class="score-list" id="chillax-scores"></ol>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="menu-screen" data-screen="redemption">
+          <div class="menu-panel">
+            <div class="menu-title">REDEMPTION</div>
+            <div class="menu-grid">
+              <div>
+                <div class="menu-option is-selected" id="redemption-gravity-row">
+                  <span>Starting Gravity</span>
+                  <span id="redemption-gravity-value">0</span>
+                </div>
+                <div class="menu-option" id="redemption-lives-row">
+                  <span>Lives</span>
+                  <span id="redemption-lives-value">3</span>
+                </div>
+                <div class="menu-sub">Left/Right to change</div>
+                <div class="menu-actions">
+                  <button id="redemption-start" class="is-selected">Start</button>
+                  <button id="redemption-back">Back</button>
+                </div>
+                <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
+              </div>
+              <div>
+                <div class="menu-sub">Top 10</div>
+                <ol class="score-list" id="redemption-scores"></ol>
               </div>
             </div>
           </div>

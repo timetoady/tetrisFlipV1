@@ -78,7 +78,8 @@
     Score for lines cause by flip jump
     Up the gravity speed progression of levels more
 - [x] Music
-- [ ] Garbage clearing mode
-- [ ] 2 player mode
-- [ ] Lives mode/Redemption (where you have 3 lives, if you get to top you lose a life, and then the bottom 6 rows get removed, moving the rest down and you can continue until you run out of lives)
+- [x] Garbage clearing mode
+- [x] 2 player mode
+- [x] Lives mode/Redemption (where you have 3 lives, if you get to top you lose a life, and then the bottom 6 rows get removed, moving the rest down and you can continue until you run out of lives)
 - [x] No gravity increase Marathon mode (Chillax Mode)
+- [ ] Make broswer hostable version

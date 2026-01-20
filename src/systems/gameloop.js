@@ -10,6 +10,7 @@ export class GameLoop {
     this.ctx = ctx;
     this.input = input;
     this.onGameOver = callbacks.onGameOver || (() => {});
+    this.onGarbageCleared = callbacks.onGarbageCleared || (() => {});
     this.onPauseBack = callbacks.onPauseBack || (() => {});
     this.board = new Board();
     this.randomizer = new Randomizer();
@@ -23,7 +24,10 @@ export class GameLoop {
     this.level = 1;
     this.dropInterval = this.getDropInterval(this.level);
     this.dropTimer = 0;
+    this.elapsedTimeMs = 0;
     this.freezeLevel = false;
+    this.mode = "marathon";
+    this.garbageHeight = 0;
     this.paused = false;
     this.audioCtx = null;
     this.sfxVolume = 9.0;
@@ -121,6 +125,7 @@ export class GameLoop {
     this.lines = 0;
     this.dropInterval = this.getDropInterval(this.level);
     this.dropTimer = 0;
+    this.elapsedTimeMs = 0;
   }
 
   setStartingLevel(level) {
@@ -129,6 +134,60 @@ export class GameLoop {
 
   setFreezeLevel(freeze) {
     this.freezeLevel = Boolean(freeze);
+  }
+
+  setMode(mode) {
+    this.mode = mode || "marathon";
+  }
+
+  setGarbageHeight(height) {
+    const clamped = Math.max(0, Math.min(9, Math.floor(height)));
+    this.garbageHeight = clamped;
+  }
+
+  getGarbageRowCount() {
+    if (this.garbageHeight <= 0) return 0;
+    const halfRows = GAME_CONFIG.ROWS / 2;
+    const minRows = 2;
+    const maxRows = Math.max(minRows, halfRows - GAME_CONFIG.SPAWN_BUFFER);
+    const clamped = Math.min(9, Math.max(1, this.garbageHeight));
+    const t = (clamped - 1) / 8;
+    return Math.floor(minRows + t * (maxRows - minRows));
+  }
+
+  seedGarbage() {
+    if (this.mode !== "garbage" || this.garbageHeight <= 0) return;
+    const halfRows = GAME_CONFIG.ROWS / 2;
+    const height = Math.min(this.getGarbageRowCount(), halfRows);
+    const owners = [OWNERS.FIELD_A, OWNERS.FIELD_B];
+    owners.forEach((owner) => {
+      for (let i = 0; i < height; i += 1) {
+        const localRow = halfRows - 1 - i;
+        const minBlocks = Math.max(2, Math.floor(GAME_CONFIG.COLS * 0.3));
+        const maxBlocks = Math.max(minBlocks, GAME_CONFIG.COLS - 1);
+        const fillCount = minBlocks
+          + Math.floor(Math.random() * (maxBlocks - minBlocks + 1));
+        const filled = new Set();
+        while (filled.size < fillCount) {
+          filled.add(Math.floor(Math.random() * GAME_CONFIG.COLS));
+        }
+        for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
+          const value = filled.has(x) ? 8 : 0;
+          this.board.setCellForOwner(owner, localRow, x, value);
+        }
+      }
+    });
+  }
+
+  hasRemainingGarbage() {
+    for (let y = 0; y < GAME_CONFIG.ROWS; y += 1) {
+      for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
+        if (this.board.grid[y][x].value === 8) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   getLevelForLines(lines) {
@@ -183,6 +242,7 @@ export class GameLoop {
     this.nextQueue = [];
     this.refillQueue();
     this.resetLockState();
+    this.seedGarbage();
     this.gameOver = false;
     this.isClearing = false;
     this.clearTimer = 0;
@@ -204,7 +264,8 @@ export class GameLoop {
     return {
       score: this.score,
       lines: this.lines,
-      level: this.level
+      level: this.level,
+      timeMs: this.elapsedTimeMs
     };
   }
 
@@ -1000,6 +1061,10 @@ export class GameLoop {
       return;
     }
 
+    if (this.mode === "garbage") {
+      this.elapsedTimeMs += delta;
+    }
+
     if (this.tetrisFlashTimer > 0) {
       this.tetrisFlashTimer = Math.max(0, this.tetrisFlashTimer - delta);
     }
@@ -1042,6 +1107,11 @@ export class GameLoop {
         this.clearDuration = 0;
         this.clearRows = [];
         this.clearOwner = null;
+        if (this.mode === "garbage" && !this.hasRemainingGarbage()) {
+          this.gameOver = true;
+          this.onGarbageCleared();
+          return;
+        }
         this.activePiece = this.spawnPiece();
         this.resetLockState();
         this.holdUsed = false;

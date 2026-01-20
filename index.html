@@ -40,9 +40,9 @@
               <span>Options</span>
               <span>Config</span>
             </div>
-            <div class="menu-option is-disabled" data-mode="garbage">
+            <div class="menu-option" data-mode="garbage">
               <span>Garbage</span>
-              <span>Soon</span>
+              <span>Clear</span>
             </div>
             <div class="menu-option is-disabled" data-mode="two-player">
               <span>2 Player</span>
@@ -130,10 +130,38 @@
             </div>
           </div>
         </div>
+        <div class="menu-screen" data-screen="garbage">
+          <div class="menu-panel">
+            <div class="menu-title">GARBAGE</div>
+            <div class="menu-grid">
+              <div>
+                <div class="menu-option is-selected" id="garbage-speed-row">
+                  <span>Speed</span>
+                  <span id="garbage-speed-value">0</span>
+                </div>
+                <div class="menu-option" id="garbage-height-row">
+                  <span>Height</span>
+                  <span id="garbage-height-value">1</span>
+                </div>
+                <div class="menu-sub">Left/Right to change</div>
+                <div class="menu-actions">
+                  <button id="garbage-start" class="is-selected">Start</button>
+                  <button id="garbage-back">Back</button>
+                </div>
+                <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
+              </div>
+              <div>
+                <div class="menu-sub" id="garbage-score-label">Top 10</div>
+                <ol class="score-list" id="garbage-scores"></ol>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="overlay" id="overlay" hidden>
         <div class="panel">
-          <div class="title">GAME OVER</div>
+          <img class="overlay-image" id="overlay-image" alt="" hidden />
+          <div class="title" id="overlay-title">GAME OVER</div>
           <div class="actions">
             <button id="retry">Retry</button>
             <button id="back">Back</button>

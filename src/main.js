@@ -26,6 +26,18 @@ const chillaxStart = document.getElementById("chillax-start");
 /** @type {HTMLButtonElement} */
 const chillaxBack = document.getElementById("chillax-back");
 /** @type {HTMLElement} */
+const garbageSpeedRow = document.getElementById("garbage-speed-row");
+/** @type {HTMLElement} */
+const garbageHeightRow = document.getElementById("garbage-height-row");
+/** @type {HTMLElement} */
+const garbageSpeedValue = document.getElementById("garbage-speed-value");
+/** @type {HTMLElement} */
+const garbageHeightValue = document.getElementById("garbage-height-value");
+/** @type {HTMLButtonElement} */
+const garbageStart = document.getElementById("garbage-start");
+/** @type {HTMLButtonElement} */
+const garbageBack = document.getElementById("garbage-back");
+/** @type {HTMLElement} */
 const optionsRotateRow = document.getElementById("options-rotate");
 /** @type {HTMLElement} */
 const optionsRotateValue = document.getElementById("options-rotate-value");
@@ -58,6 +70,10 @@ const marathonScores = document.getElementById("marathon-scores");
 /** @type {HTMLElement} */
 const chillaxScores = document.getElementById("chillax-scores");
 /** @type {HTMLElement} */
+const garbageScores = document.getElementById("garbage-scores");
+/** @type {HTMLElement} */
+const garbageScoreLabel = document.getElementById("garbage-score-label");
+/** @type {HTMLElement} */
 const nameModal = document.getElementById("name-modal");
 /** @type {HTMLInputElement} */
 const nameInput = document.getElementById("name-input");
@@ -65,6 +81,10 @@ const nameInput = document.getElementById("name-input");
 const nameSave = document.getElementById("name-save");
 /** @type {HTMLButtonElement} */
 const nameSkip = document.getElementById("name-skip");
+/** @type {HTMLElement} */
+const overlayTitle = document.getElementById("overlay-title");
+/** @type {HTMLImageElement} */
+const overlayImage = document.getElementById("overlay-image");
 /** @type {HTMLButtonElement | null} */
 let touchFlip = document.getElementById("touch-flip");
 /** @type {HTMLButtonElement | null} */
@@ -78,6 +98,8 @@ const splashTallSrc = `${baseUrl}assets/tetrisflip2.png`;
 const controllerStandardSrc = `${baseUrl}assets/standard%20controller.png`;
 const controllerAlternateSrc = `${baseUrl}assets/alternate%20controller.png`;
 const titleTrackSrc = `${baseUrl}assets/title.mp3`;
+const garbageSuccessBase = `${baseUrl}assets/garbage-success`;
+const garbageSuccessDefaultSrc = `${baseUrl}assets/garbage-success-default.png`;
 
 overlay.hidden = true;
 menu.hidden = false;
@@ -96,18 +118,26 @@ const modeOptions = Array.from(document.querySelectorAll("[data-mode]"));
 let menuState = "splash";
 let menuActive = true;
 let startingGravity = 0;
+let garbageSpeed = 0;
+let garbageHeight = 1;
 let modeIndex = 0;
 let marathonActionIndex = 0;
 let chillaxActionIndex = 0;
+let garbageActionIndex = 0;
 let gameOverActive = false;
 let gameOverIndex = 0;
 let nameEntryActive = false;
-let pendingScore = null;
+let pendingEntry = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
 let game = null;
 let activeMode = "marathon";
 let pendingScoreMode = "marathon";
+let activeGarbageSpeed = garbageSpeed;
+let activeGarbageHeight = garbageHeight;
+let overlayMode = "gameover";
+let overlayImageQueue = [];
+let overlayImageIndex = 0;
 
 const ROTATE_LAYOUTS = [
   { id: "southEast", label: "South / East (A/B)" },
@@ -153,6 +183,20 @@ const VFX_VOLUMES = Array.from({ length: VOLUME_STEPS + 1 }, (_, index) => {
     value: normalized * VFX_VOLUME_MAX
   };
 });
+const GARBAGE_SPEED_MAX = 35;
+const GARBAGE_HEIGHT_MIN = 1;
+const GARBAGE_HEIGHT_MAX = 9;
+const GARBAGE_SPEED_TIERS = [
+  { id: "slow", min: 0, max: 5, label: "Slow" },
+  { id: "steady", min: 6, max: 15, label: "Steady" },
+  { id: "fast", min: 16, max: 25, label: "Fast" },
+  { id: "blazing", min: 26, max: 35, label: "Blazing" }
+];
+const GARBAGE_HEIGHT_TIERS = [
+  { id: "low", min: 1, max: 3, label: "Low" },
+  { id: "mid", min: 4, max: 6, label: "Mid" },
+  { id: "high", min: 7, max: 9, label: "High" }
+];
 let musicVolumeIndex = 4;
 let vfxVolumeIndex = 10;
 let vfxVolumeValue = VFX_VOLUMES[vfxVolumeIndex].value;
@@ -170,9 +214,21 @@ let musicPreviewActive = false;
 
 const SCORE_STORAGE_KEYS = {
   marathon: "tetrisflip:marathon:scores",
-  chillax: "tetrisflip:chillax:scores"
+  chillax: "tetrisflip:chillax:scores",
+  garbage: "tetrisflip:garbage:scores"
 };
 updateGravityLabels();
+updateGarbageLabels();
+if (overlayImage) {
+  overlayImage.addEventListener("error", () => {
+    overlayImageIndex += 1;
+    if (overlayImageIndex < overlayImageQueue.length) {
+      overlayImage.src = overlayImageQueue[overlayImageIndex];
+    } else {
+      overlayImage.hidden = true;
+    }
+  });
+}
 
 function showScreen(name) {
   screens.forEach((screen) => {
@@ -190,6 +246,10 @@ function showScreen(name) {
   if (menuState === "chillax") {
     chillaxActionIndex = 0;
     updateChillaxSelection();
+  }
+  if (menuState === "garbage") {
+    garbageActionIndex = 0;
+    updateGarbageSelection();
   }
   if (menuState === "options") {
     optionsIndex = 0;
@@ -232,7 +292,9 @@ function getScoreStorageKey(mode) {
 }
 
 function getScoreListElement(mode) {
-  return mode === "chillax" ? chillaxScores : marathonScores;
+  if (mode === "chillax") return chillaxScores;
+  if (mode === "garbage") return garbageScores;
+  return marathonScores;
 }
 
 function updateGravityLabels() {
@@ -249,16 +311,65 @@ function updateGravity(delta) {
   updateGravityLabels();
 }
 
+function updateGarbageLabels() {
+  if (garbageSpeedValue) {
+    garbageSpeedValue.textContent = String(garbageSpeed);
+  }
+  if (garbageHeightValue) {
+    garbageHeightValue.textContent = String(garbageHeight);
+  }
+  if (garbageScoreLabel) {
+    garbageScoreLabel.textContent = `Top 10 (Speed ${garbageSpeed} / Height ${garbageHeight})`;
+  }
+  renderGarbageScores();
+}
+
+function updateGarbageSpeed(delta) {
+  garbageSpeed = Math.min(GARBAGE_SPEED_MAX, Math.max(0, garbageSpeed + delta));
+  updateGarbageLabels();
+}
+
+function updateGarbageHeight(delta) {
+  garbageHeight = Math.min(
+    GARBAGE_HEIGHT_MAX,
+    Math.max(GARBAGE_HEIGHT_MIN, garbageHeight + delta)
+  );
+  updateGarbageLabels();
+}
+
 function startGame() {
-  const mode = menuState === "chillax" ? "chillax" : "marathon";
+  const mode = menuState === "chillax"
+    ? "chillax"
+    : menuState === "garbage"
+      ? "garbage"
+      : "marathon";
   activeMode = mode;
   closeMenu();
-  game.setStartingLevel(startingGravity);
-  if (game.setFreezeLevel) {
-    game.setFreezeLevel(mode === "chillax");
+  if (game.setMode) {
+    game.setMode(mode);
+  }
+  if (mode === "garbage") {
+    activeGarbageSpeed = garbageSpeed;
+    activeGarbageHeight = garbageHeight;
+    game.setStartingLevel(garbageSpeed);
+    if (game.setFreezeLevel) {
+      game.setFreezeLevel(true);
+    }
+    if (game.setGarbageHeight) {
+      game.setGarbageHeight(garbageHeight);
+    }
+  } else {
+    game.setStartingLevel(startingGravity);
+    if (game.setFreezeLevel) {
+      game.setFreezeLevel(mode === "chillax");
+    }
+    if (game.setGarbageHeight) {
+      game.setGarbageHeight(0);
+    }
   }
   game.paused = false;
   game.reset();
+  updateMusicState();
 }
 
 function updateModeSelection() {
@@ -276,6 +387,21 @@ function updateChillaxSelection() {
   if (!chillaxStart || !chillaxBack) return;
   chillaxStart.classList.toggle("is-selected", chillaxActionIndex === 0);
   chillaxBack.classList.toggle("is-selected", chillaxActionIndex === 1);
+}
+
+function updateGarbageSelection() {
+  if (garbageSpeedRow) {
+    garbageSpeedRow.classList.toggle("is-selected", garbageActionIndex === 0);
+  }
+  if (garbageHeightRow) {
+    garbageHeightRow.classList.toggle("is-selected", garbageActionIndex === 1);
+  }
+  if (garbageStart) {
+    garbageStart.classList.toggle("is-selected", garbageActionIndex === 2);
+  }
+  if (garbageBack) {
+    garbageBack.classList.toggle("is-selected", garbageActionIndex === 3);
+  }
 }
 
 function updateOptionsSelection() {
@@ -299,6 +425,76 @@ function updateOptionsSelection() {
 function updateGameOverSelection() {
   retry.classList.toggle("is-selected", gameOverIndex === 0);
   back.classList.toggle("is-selected", gameOverIndex === 1);
+}
+
+function getClosestTierIndices(targetIndex, length) {
+  const order = [];
+  for (let offset = 1; offset < length; offset += 1) {
+    const lower = targetIndex - offset;
+    const upper = targetIndex + offset;
+    if (lower >= 0) order.push(lower);
+    if (upper < length) order.push(upper);
+  }
+  return order;
+}
+
+function getTierIndex(value, tiers) {
+  const index = tiers.findIndex((tier) => value >= tier.min && value <= tier.max);
+  return index >= 0 ? index : 0;
+}
+
+function buildGarbageSuccessCandidates(speed, height) {
+  const speedIndex = getTierIndex(speed, GARBAGE_SPEED_TIERS);
+  const heightIndex = getTierIndex(height, GARBAGE_HEIGHT_TIERS);
+  const candidates = [];
+  const pushCandidate = (speedIdx, heightIdx) => {
+    const speedTier = GARBAGE_SPEED_TIERS[speedIdx];
+    const heightTier = GARBAGE_HEIGHT_TIERS[heightIdx];
+    if (!speedTier || !heightTier) return;
+    const src = `${garbageSuccessBase}-${speedTier.id}-${heightTier.id}.png`;
+    if (!candidates.includes(src)) {
+      candidates.push(src);
+    }
+  };
+  pushCandidate(speedIndex, heightIndex);
+  const speedFallbacks = getClosestTierIndices(speedIndex, GARBAGE_SPEED_TIERS.length);
+  speedFallbacks.forEach((idx) => pushCandidate(idx, heightIndex));
+  const heightFallbacks = getClosestTierIndices(heightIndex, GARBAGE_HEIGHT_TIERS.length);
+  heightFallbacks.forEach((idx) => pushCandidate(speedIndex, idx));
+  if (!candidates.includes(garbageSuccessDefaultSrc)) {
+    candidates.push(garbageSuccessDefaultSrc);
+  }
+  return candidates;
+}
+
+function setOverlayImageCandidates(candidates, altText) {
+  if (!overlayImage) return;
+  overlayImageQueue = Array.isArray(candidates) ? candidates : [];
+  overlayImageIndex = 0;
+  overlayImage.alt = altText || "";
+  if (!overlayImageQueue.length) {
+    overlayImage.hidden = true;
+    overlayImage.removeAttribute("src");
+    return;
+  }
+  overlayImage.hidden = false;
+  overlayImage.src = overlayImageQueue[0];
+}
+
+function setOverlayMode(mode, options = {}) {
+  overlayMode = mode;
+  if (overlayTitle) {
+    overlayTitle.textContent = mode === "success" ? "GARBAGE CLEARED" : "GAME OVER";
+  }
+  if (overlay) {
+    overlay.classList.toggle("is-success", mode === "success");
+  }
+  if (mode === "success") {
+    const candidates = buildGarbageSuccessCandidates(options.speed, options.height);
+    setOverlayImageCandidates(candidates, "Garbage cleared");
+  } else {
+    setOverlayImageCandidates([], "");
+  }
 }
 
 function backToSplash() {
@@ -328,7 +524,7 @@ function saveScores(scores, storageKey) {
   }
 }
 
-function renderScores(scores, listEl) {
+function renderScores(scores, listEl, mode) {
   if (!listEl) return;
   listEl.innerHTML = "";
   if (!scores.length) {
@@ -349,19 +545,83 @@ function renderScores(scores, listEl) {
     name.textContent = entry.name;
     const value = document.createElement("span");
     value.className = "score-value";
-    value.textContent = String(entry.score);
+    if (mode === "garbage") {
+      value.textContent = formatTimeMs(entry.timeMs);
+    } else {
+      value.textContent = String(entry.score);
+    }
     item.append(rank, name, value);
     listEl.appendChild(item);
   });
 }
 
-function qualifiesForScores(score, scores) {
-  if (scores.length < 10) return true;
-  return score > scores[scores.length - 1].score;
+function normalizeEntry(entry) {
+  if (entry && typeof entry === "object") {
+    return {
+      score: Number.isFinite(entry.score) ? entry.score : 0,
+      timeMs: Number.isFinite(entry.timeMs) ? entry.timeMs : null
+    };
+  }
+  if (Number.isFinite(entry)) {
+    return { score: entry, timeMs: null };
+  }
+  return { score: 0, timeMs: null };
 }
 
-function openNameEntry(score, mode) {
-  pendingScore = score;
+function formatTimeMs(ms) {
+  if (!Number.isFinite(ms)) return "--:--.--";
+  const totalCentis = Math.max(0, Math.floor(ms / 10));
+  const minutes = Math.floor(totalCentis / 6000);
+  const seconds = Math.floor((totalCentis % 6000) / 100);
+  const centis = totalCentis % 100;
+  return `${minutes}:${String(seconds).padStart(2, "0")}.${String(centis).padStart(2, "0")}`;
+}
+
+function qualifyByTime(entry, scores) {
+  if (!Number.isFinite(entry.timeMs)) return false;
+  const times = scores
+    .map((score) => score.timeMs)
+    .filter((value) => Number.isFinite(value));
+  if (times.length < 10) return true;
+  const worst = Math.max(...times);
+  return entry.timeMs < worst;
+}
+
+function matchesGarbageSetting(entry, speed, height) {
+  return Number.isFinite(entry.speed)
+    && Number.isFinite(entry.height)
+    && entry.speed === speed
+    && entry.height === height;
+}
+
+function getGarbageSettingScores(scores, speed, height) {
+  return scores
+    .filter((entry) => matchesGarbageSetting(entry, speed, height))
+    .sort((a, b) => {
+      const aTime = Number.isFinite(a.timeMs) ? a.timeMs : Infinity;
+      const bTime = Number.isFinite(b.timeMs) ? b.timeMs : Infinity;
+      return aTime - bTime;
+    });
+}
+
+function qualifiesForScores(entry, scores, mode) {
+  if (mode === "garbage") {
+    return qualifyByTime(entry, scores);
+  }
+  if (scores.length < 10) return true;
+  return entry.score > scores[scores.length - 1].score;
+}
+
+function renderGarbageScores() {
+  const storageKey = getScoreStorageKey("garbage");
+  const allScores = loadScores(storageKey);
+  const filtered = getGarbageSettingScores(allScores, garbageSpeed, garbageHeight)
+    .slice(0, 10);
+  renderScores(filtered, garbageScores, "garbage");
+}
+
+function openNameEntry(entry, mode) {
+  pendingEntry = normalizeEntry(entry);
   pendingScoreMode = mode;
   nameInput.value = "Player 1";
   nameModal.hidden = false;
@@ -375,7 +635,7 @@ function openNameEntry(score, mode) {
 
 function closeNameEntry() {
   nameEntryActive = false;
-  pendingScore = null;
+  pendingEntry = null;
   nameModal.hidden = true;
   updateMusicState();
 }
@@ -558,15 +818,44 @@ function updateMusicState() {
 }
 
 function commitNameEntry() {
-  if (pendingScore == null) return;
+  if (!pendingEntry) return;
   const storageKey = getScoreStorageKey(pendingScoreMode);
   const scores = loadScores(storageKey);
   const trimmedName = nameInput.value.trim() || "Player 1";
-  scores.push({ name: trimmedName, score: pendingScore });
-  scores.sort((a, b) => b.score - a.score);
-  const updated = scores.slice(0, 10);
+  const entry = {
+    name: trimmedName,
+    score: pendingEntry.score
+  };
+  if (pendingScoreMode === "garbage") {
+    entry.timeMs = pendingEntry.timeMs;
+    entry.speed = activeGarbageSpeed;
+    entry.height = activeGarbageHeight;
+  }
+  scores.push(entry);
+  if (pendingScoreMode === "garbage") {
+    const matching = getGarbageSettingScores(
+      scores,
+      activeGarbageSpeed,
+      activeGarbageHeight
+    );
+    const trimmed = matching.slice(0, 10);
+    const others = scores.filter(
+      (scoreEntry) => !matchesGarbageSetting(scoreEntry, activeGarbageSpeed, activeGarbageHeight)
+    );
+    scores.length = 0;
+    scores.push(...others, ...trimmed);
+  } else {
+    scores.sort((a, b) => b.score - a.score);
+  }
+  const updated = pendingScoreMode === "garbage"
+    ? scores
+    : scores.slice(0, 10);
   saveScores(updated, storageKey);
-  renderScores(updated, getScoreListElement(pendingScoreMode));
+  if (pendingScoreMode === "garbage") {
+    renderGarbageScores();
+  } else {
+    renderScores(updated, getScoreListElement(pendingScoreMode), pendingScoreMode);
+  }
   closeNameEntry();
 }
 
@@ -615,15 +904,44 @@ try {
 }
 game = new GameLoop(ctx, input, {
   onGameOver() {
+    setOverlayMode("gameover");
     overlay.hidden = false;
     gameOverActive = true;
     gameOverIndex = 0;
     updateGameOverSelection();
     const storageKey = getScoreStorageKey(activeMode);
     const scores = loadScores(storageKey);
+    if (activeMode === "garbage") {
+      updateMusicState();
+      return;
+    }
     const { score } = game.getScoreState();
-    if (qualifiesForScores(score, scores)) {
-      openNameEntry(score, activeMode);
+    const entry = { score };
+    if (qualifiesForScores(entry, scores, activeMode)) {
+      openNameEntry(entry, activeMode);
+    }
+    updateMusicState();
+  },
+  onGarbageCleared() {
+    setOverlayMode("success", {
+      speed: activeGarbageSpeed,
+      height: activeGarbageHeight
+    });
+    overlay.hidden = false;
+    gameOverActive = true;
+    gameOverIndex = 0;
+    updateGameOverSelection();
+    const storageKey = getScoreStorageKey(activeMode);
+    const scores = loadScores(storageKey);
+    const { score, timeMs } = game.getScoreState();
+    const entry = { score, timeMs };
+    const settingScores = getGarbageSettingScores(
+      scores,
+      activeGarbageSpeed,
+      activeGarbageHeight
+    );
+    if (qualifiesForScores(entry, settingScores, activeMode)) {
+      openNameEntry(entry, activeMode);
     }
     updateMusicState();
   },
@@ -639,6 +957,7 @@ retry.addEventListener("click", () => {
     closeNameEntry();
   }
   overlay.hidden = true;
+  setOverlayMode("gameover");
   gameOverActive = false;
   game.reset();
   updateMusicState();
@@ -648,9 +967,11 @@ back.addEventListener("click", () => {
   if (nameEntryActive) {
     closeNameEntry();
   }
+  const wasSuccess = overlayMode === "success";
   overlay.hidden = true;
+  setOverlayMode("gameover");
   gameOverActive = false;
-  openMenu("mode");
+  openMenu(wasSuccess ? "garbage" : "mode");
 });
 
 nameSave.addEventListener("click", () => {
@@ -742,6 +1063,35 @@ if (chillaxBack) {
   });
 }
 
+if (garbageStart) {
+  garbageStart.addEventListener("click", () => {
+    garbageActionIndex = 2;
+    updateGarbageSelection();
+    startGame();
+  });
+}
+if (garbageBack) {
+  garbageBack.addEventListener("click", () => {
+    garbageActionIndex = 3;
+    updateGarbageSelection();
+    showScreen("mode");
+  });
+}
+if (garbageSpeedRow) {
+  garbageSpeedRow.addEventListener("click", () => {
+    garbageActionIndex = 0;
+    updateGarbageSelection();
+    updateGarbageSpeed(1);
+  });
+}
+if (garbageHeightRow) {
+  garbageHeightRow.addEventListener("click", () => {
+    garbageActionIndex = 1;
+    updateGarbageSelection();
+    updateGarbageHeight(1);
+  });
+}
+
 menu.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -788,7 +1138,7 @@ modeOptions.forEach((option, index) => {
     const selected = option.dataset.mode;
     if (selected === "options") {
       showScreen("options");
-    } else if (selected === "marathon" || selected === "chillax") {
+    } else if (selected === "marathon" || selected === "chillax" || selected === "garbage") {
       showScreen(selected);
     }
   });
@@ -847,8 +1197,9 @@ if (optionsVfxVolumeRow) {
   });
 }
 
-renderScores(loadScores(getScoreStorageKey("marathon")), marathonScores);
-renderScores(loadScores(getScoreStorageKey("chillax")), chillaxScores);
+renderScores(loadScores(getScoreStorageKey("marathon")), marathonScores, "marathon");
+renderScores(loadScores(getScoreStorageKey("chillax")), chillaxScores, "chillax");
+renderGarbageScores();
 
 function unlockMusic() {
   musicMode = null;
@@ -960,13 +1311,16 @@ function handleMenuInput() {
     } else if (input.consumePress("KeyX") || input.consumePress("Enter")) {
       if (gameOverIndex === 0) {
         overlay.hidden = true;
+        setOverlayMode("gameover");
         gameOverActive = false;
         game.reset();
         updateMusicState();
       } else {
+        const wasSuccess = overlayMode === "success";
         overlay.hidden = true;
+        setOverlayMode("gameover");
         gameOverActive = false;
-        openMenu("mode");
+        openMenu(wasSuccess ? "garbage" : "mode");
       }
     }
     return;
@@ -1003,7 +1357,7 @@ function handleMenuInput() {
       const selected = modeOptions[modeIndex].dataset.mode;
       if (selected === "options") {
         showScreen("options");
-      } else if (selected === "marathon" || selected === "chillax") {
+      } else if (selected === "marathon" || selected === "chillax" || selected === "garbage") {
         showScreen(selected);
       }
     } else if (input.consumePress("KeyZ") ||
@@ -1112,6 +1466,39 @@ function handleMenuInput() {
       if (chillaxActionIndex === 0) {
         startGame();
       } else {
+        showScreen("mode");
+      }
+    } else if (input.consumePress("KeyZ") ||
+               input.consumePress("Escape") ||
+               input.consumePress("Backspace")) {
+      showScreen("mode");
+    }
+  }
+
+  if (menuState === "garbage") {
+    const confirm = input.consumePress("KeyX") ||
+      input.consumePress("Enter") ||
+      input.consumePress("KeyP");
+    if (input.consumePress("ArrowUp")) {
+      garbageActionIndex = (garbageActionIndex + 3) % 4;
+      updateGarbageSelection();
+    } else if (input.consumePress("ArrowDown")) {
+      garbageActionIndex = (garbageActionIndex + 1) % 4;
+      updateGarbageSelection();
+    }
+    const left = input.consumePress("ArrowLeft");
+    const right = input.consumePress("ArrowRight");
+    if (garbageActionIndex === 0 && (left || right)) {
+      updateGarbageSpeed(right ? 1 : -1);
+    } else if (garbageActionIndex === 1 && (left || right)) {
+      updateGarbageHeight(right ? 1 : -1);
+    } else if (garbageActionIndex >= 2 && (left || right)) {
+      garbageActionIndex = garbageActionIndex === 2 ? 3 : 2;
+      updateGarbageSelection();
+    } else if (confirm) {
+      if (garbageActionIndex === 2) {
+        startGame();
+      } else if (garbageActionIndex === 3) {
         showScreen("mode");
       }
     } else if (input.consumePress("KeyZ") ||

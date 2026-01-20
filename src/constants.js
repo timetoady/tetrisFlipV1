@@ -17,7 +17,8 @@ export const GAME_CONFIG = {
     "#f0f000", // O
     "#00f000", // S
     "#a000f0", // T
-    "#f00000"  // Z
+    "#f00000", // Z
+    "#7a7a7a"  // Garbage
   ]
 };
 

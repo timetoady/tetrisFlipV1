@@ -200,6 +200,20 @@ canvas {
   text-align: center;
   min-width: 200px;
 }
+.overlay.is-success .panel {
+  border-color: rgba(190, 240, 190, 0.7);
+}
+.overlay.is-success .title {
+  color: #d7ffd7;
+}
+.overlay-image {
+  display: block;
+  width: min(260px, 70vw);
+  height: auto;
+  margin: 0 auto 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
 .actions {
   display: flex;
   gap: 12px;

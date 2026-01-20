@@ -72,7 +72,7 @@
 ## Next Up
 
 - [x] Controller compatibility
-- [ ] Gameplay tweaks
+- [x] Gameplay tweaks
     Scoring perks for double, triple, and quadruple tetris in a row
     Scoring for clearout 
     Score for lines cause by flip jump
@@ -80,3 +80,5 @@
 - [x] Music
 - [ ] Garbage clearing mode
 - [ ] 2 player mode
+- [ ] Lives mode/Redemption (where you have 3 lives, if you get to top you lose a life, and then the bottom 6 rows get removed, moving the rest down and you can continue until you run out of lives)
+- [x] No gravity increase Marathon mode (Chillax Mode)

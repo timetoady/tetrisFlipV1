@@ -23,6 +23,7 @@ export class GameLoop {
     this.level = 1;
     this.dropInterval = this.getDropInterval(this.level);
     this.dropTimer = 0;
+    this.freezeLevel = false;
     this.paused = false;
     this.audioCtx = null;
     this.sfxVolume = 9.0;
@@ -65,6 +66,29 @@ export class GameLoop {
     this.tetrisFlashDuration = 0;
     this.tetrisTextTimer = 0;
     this.tetrisTextDuration = 0;
+    this.callouts = [];
+    this.calloutMax = 4;
+    this.calloutBaseDuration = 1400;
+    this.tetrisStreak = 0;
+    this.tetrisStreakMax = 4;
+    this.flipChain = 0;
+    this.flipChainMax = 4;
+    this.flipSinceClear = false;
+    this.lastLockWasFlipJam = false;
+    this.lastClearWasFlipJam = false;
+    this.lastClearWasRisk = false;
+    this.lastClearWasClearout = false;
+    this.momentumValue = 0;
+    this.momentumMax = 100;
+    this.momentumBurstTimer = 0;
+    this.momentumBurstDuration = 7000;
+    this.momentumDecayPerMs = 0.004;
+    this.momentumGainTable = [0, 18, 30, 42, 56];
+    this.momentumHardDropGain = 4;
+    this.momentumRecoveryTimer = 0;
+    this.momentumRecoveryDuration = 5000;
+    this.momentumRecoveryMultiplier = 0.7;
+    this.riskHeightThreshold = 14;
     this.refillQueue();
     this.gameOver = false;
     this.pauseButtons = null;
@@ -80,14 +104,15 @@ export class GameLoop {
   }
 
   getDropInterval(level) {
-    // Tuning hook: adjust base slope and milestone bumps after playtesting.
-    const baseFrames = Math.max(1, 48 - (level - 1) * 2);
-    let frames = baseFrames;
-    if (level >= 5) frames -= 2;
-    if (level >= 10) frames -= 2;
-    if (level >= 15) frames -= 2;
-    if (level >= 20) frames = 1;
-    return Math.max(1, frames) * (1000 / 60);
+    // Tuning hook: faster overall progression while keeping level 1 readable.
+    const frameTable = [
+      50, 48, 44, 41, 38, 35, 32, 29, 26, 24, 22,
+      20, 18, 16, 14, 12, 10, 8, 6, 4, 2
+    ];
+    const safeLevel = Math.max(0, level);
+    if (safeLevel >= 21) return 1 * (1000 / 60);
+    const frames = frameTable[Math.min(safeLevel, frameTable.length - 1)];
+    return frames * (1000 / 60);
   }
 
   resetProgress() {
@@ -102,6 +127,10 @@ export class GameLoop {
     this.startingLevel = Math.min(35, Math.max(0, level));
   }
 
+  setFreezeLevel(freeze) {
+    this.freezeLevel = Boolean(freeze);
+  }
+
   getLevelForLines(lines) {
     const start = this.startingLevel;
     const threshold = start <= 1 ? 10 : (start + 1) * 10;
@@ -114,10 +143,43 @@ export class GameLoop {
     this.holdUsed = false;
   }
 
+  resetRewardState() {
+    this.tetrisStreak = 0;
+    this.flipChain = 0;
+    this.flipSinceClear = false;
+    this.lastLockWasFlipJam = false;
+    this.lastClearWasFlipJam = false;
+    this.lastClearWasRisk = false;
+    this.lastClearWasClearout = false;
+    this.callouts = [];
+    this.momentumValue = 0;
+    this.momentumBurstTimer = 0;
+    this.momentumRecoveryTimer = 0;
+  }
+
+  addCallout(text, options = {}) {
+    const duration = Number.isFinite(options.duration)
+      ? options.duration
+      : this.calloutBaseDuration;
+    const size = Number.isFinite(options.size) ? options.size : 26;
+    const color = options.color || "#ffffff";
+    this.callouts.push({
+      text,
+      duration,
+      timer: duration,
+      size,
+      color
+    });
+    if (this.callouts.length > this.calloutMax) {
+      this.callouts.shift();
+    }
+  }
+
   resetGameState() {
     this.board.reset();
     this.resetProgress();
     this.resetHold();
+    this.resetRewardState();
     this.nextQueue = [];
     this.refillQueue();
     this.resetLockState();
@@ -439,6 +501,48 @@ export class GameLoop {
     osc.stop(now + 2.45);
   }
 
+  playRewardTone(startFreq, endFreq, duration, gainValue = 0.07, type = "triangle") {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(startFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+    gain.gain.value = this.getSfxGain(gainValue);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration + 0.06);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.08);
+  }
+
+  playFlipJumpRewardSound() {
+    this.playRewardTone(520, 760, 0.12, 0.07, "square");
+  }
+
+  playFlipChainRewardSound(chain) {
+    const base = 360 + chain * 40;
+    this.playRewardTone(base, base * 1.25, 0.1, 0.06, "triangle");
+  }
+
+  playTetrisStreakRewardSound(streak) {
+    const base = 420 + streak * 60;
+    this.playRewardTone(base, base * 1.4, 0.16, 0.06, "sawtooth");
+  }
+
+  playClearoutRewardSound() {
+    this.playRewardTone(260, 520, 0.2, 0.08, "triangle");
+  }
+
+  playRiskRewardSound() {
+    this.playRewardTone(220, 330, 0.18, 0.07, "triangle");
+  }
+
+  playMomentumBurstSound() {
+    this.playRewardTone(330, 660, 0.24, 0.07, "sawtooth");
+  }
+
   playLevelUpSound(delaySeconds = 0) {
     const ctx = this.ensureAudioContext();
     if (!ctx) return;
@@ -500,6 +604,39 @@ export class GameLoop {
     return false;
   }
 
+  isClearoutForOwner(owner, localRows) {
+    if (!localRows || localRows.length === 0) return false;
+    const halfRows = GAME_CONFIG.ROWS / 2;
+    const cleared = new Set(localRows);
+    for (let localRow = 0; localRow < halfRows; localRow += 1) {
+      if (cleared.has(localRow)) continue;
+      for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
+        const cell = this.board.getCellForOwner(owner, localRow, x);
+        if (cell && cell.value !== 0) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  getOwnerStackHeight(owner) {
+    const halfRows = GAME_CONFIG.ROWS / 2;
+    let topFilled = null;
+    for (let localRow = 0; localRow < halfRows; localRow += 1) {
+      for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
+        const cell = this.board.getCellForOwner(owner, localRow, x);
+        if (cell && cell.value !== 0) {
+          topFilled = localRow;
+          break;
+        }
+      }
+      if (topFilled !== null) break;
+    }
+    if (topFilled === null) return 0;
+    return halfRows - topFilled;
+  }
+
   handleFlipJam() {
     if (!this.overlapsActiveOwnerAtY(this.activePiece, this.activePiece.y)) {
       return false;
@@ -537,6 +674,7 @@ export class GameLoop {
     this.jamAnimPiece = { ...this.activePiece };
     this.playSnapSound();
 
+    this.lastLockWasFlipJam = true;
     this.lockPiece();
     return true;
   }
@@ -568,6 +706,8 @@ export class GameLoop {
 
   lockPiece() {
     const activeOwner = this.board.getActiveOwner();
+    const wasFlipJam = this.lastLockWasFlipJam;
+    const preClearHeight = this.getOwnerStackHeight(activeOwner);
     const blocks = getBlocks(this.activePiece);
     const halfRows = GAME_CONFIG.ROWS / 2;
     for (const block of blocks) {
@@ -582,6 +722,33 @@ export class GameLoop {
     const linesToClear = this.board.findClearLinesForOwner(activeOwner);
     const cleared = linesToClear.length;
     if (cleared > 0) {
+      let momentumBurstTriggered = false;
+      const willClearout = this.isClearoutForOwner(activeOwner, linesToClear);
+      this.tetrisStreak = cleared === 4
+        ? Math.min(this.tetrisStreak + 1, this.tetrisStreakMax)
+        : 0;
+      if (this.flipSinceClear) {
+        this.flipChain = Math.min(this.flipChain + 1, this.flipChainMax);
+      } else {
+        this.flipChain = 0;
+      }
+      this.flipSinceClear = false;
+      this.lastClearWasFlipJam = wasFlipJam;
+      this.lastClearWasRisk = preClearHeight >= this.riskHeightThreshold;
+      this.lastClearWasClearout = willClearout;
+      const momentumGain = this.momentumGainTable[cleared] || 0;
+      if (momentumGain > 0) {
+        const gainScale = this.momentumRecoveryTimer > 0
+          ? this.momentumRecoveryMultiplier
+          : 1;
+        const scaledGain = Math.max(1, Math.floor(momentumGain * gainScale));
+        this.momentumValue = Math.min(this.momentumMax, this.momentumValue + scaledGain);
+        if (this.momentumValue >= this.momentumMax && this.momentumBurstTimer <= 0) {
+          this.momentumBurstTimer = this.momentumBurstDuration;
+          this.momentumRecoveryTimer = 0;
+          momentumBurstTriggered = true;
+        }
+      }
       this.isClearing = true;
       this.clearTimer = 0;
       this.clearDuration = cleared === 4 ? 900 : 420;
@@ -589,7 +756,52 @@ export class GameLoop {
       this.clearOwner = activeOwner;
       // Tuning hook: scoring table and multipliers for playtesting.
       const lineScores = [0, 100, 300, 500, 800];
-      this.score += lineScores[cleared] * this.level;
+      const flipJumpMultiplier = 1.25;
+      const riskMultiplier = 1.2;
+      const momentumBurstMultiplier = 1.75;
+      const flipChainMultipliers = [1, 1.1, 1.2, 1.35, 1.5];
+      const tetrisStreakMultipliers = [1, 1, 1.25, 1.5, 1.75];
+      const clearoutBonusBase = 1500;
+      let scoreMultiplier = 1;
+      if (wasFlipJam) scoreMultiplier *= flipJumpMultiplier;
+      if (this.flipChain > 0) {
+        scoreMultiplier *= (flipChainMultipliers[this.flipChain] || 1);
+      }
+      if (this.lastClearWasRisk) scoreMultiplier *= riskMultiplier;
+      if (this.momentumBurstTimer > 0) scoreMultiplier *= momentumBurstMultiplier;
+      if (cleared === 4 && this.tetrisStreak >= 2) {
+        scoreMultiplier *= (tetrisStreakMultipliers[this.tetrisStreak] || 1);
+      }
+      const baseScore = lineScores[cleared] * this.level;
+      const lineScore = Math.round(baseScore * scoreMultiplier);
+      this.score += lineScore;
+      if (willClearout) {
+        this.score += clearoutBonusBase * this.level;
+      }
+      if (wasFlipJam) {
+        this.addCallout("FLIP POP", { color: "#b9ffd1" });
+        this.playFlipJumpRewardSound();
+      }
+      if (this.flipChain > 0) {
+        this.addCallout(`FLIP CHAIN x${this.flipChain}`, { color: "#9ad7ff" });
+        this.playFlipChainRewardSound(this.flipChain);
+      }
+      if (this.lastClearWasRisk) {
+        this.addCallout("HIGH WIRE", { color: "#ffb27a" });
+        this.playRiskRewardSound();
+      }
+      if (cleared === 4 && this.tetrisStreak >= 2) {
+        this.addCallout(`TETRIS STREAK x${this.tetrisStreak}`, { color: "#ffd1f0" });
+        this.playTetrisStreakRewardSound(this.tetrisStreak);
+      }
+      if (momentumBurstTriggered) {
+        this.addCallout("BURST", { color: "#fff07a", size: 30 });
+        this.playMomentumBurstSound();
+      }
+      if (willClearout) {
+        this.addCallout("CLEAROUT", { color: "#ffe08a", size: 30 });
+        this.playClearoutRewardSound();
+      }
       this.lines += cleared;
       if (cleared === 4) {
         this.playTetrisSound();
@@ -600,13 +812,23 @@ export class GameLoop {
       } else {
         this.playLineClearSound(cleared);
       }
-      const nextLevel = this.getLevelForLines(this.lines);
-      if (nextLevel !== this.level) {
+      const nextLevel = this.freezeLevel
+        ? this.startingLevel
+        : this.getLevelForLines(this.lines);
+      if (!this.freezeLevel && nextLevel !== this.level) {
         this.playLevelUpSound(0.85);
       }
       this.level = nextLevel;
       this.dropInterval = this.getDropInterval(this.level);
+    } else {
+      this.tetrisStreak = 0;
+      this.flipChain = 0;
+      this.flipSinceClear = false;
+      this.lastClearWasFlipJam = false;
+      this.lastClearWasRisk = false;
+      this.lastClearWasClearout = false;
     }
+    this.lastLockWasFlipJam = false;
     if (!this.isClearing) {
       this.activePiece = this.spawnPiece();
       this.resetLockState();
@@ -624,6 +846,14 @@ export class GameLoop {
     if (dropped > 0) {
       // Tuning hook: hard drop bonus.
       this.score += dropped * 2;
+      const gain = this.momentumHardDropGain || 0;
+      if (gain > 0 && this.momentumBurstTimer <= 0) {
+        const gainScale = this.momentumRecoveryTimer > 0
+          ? this.momentumRecoveryMultiplier
+          : 1;
+        const scaledGain = Math.max(1, Math.floor(gain * gainScale));
+        this.momentumValue = Math.min(this.momentumMax, this.momentumValue + scaledGain);
+      }
     }
     this.playHardDropSound();
     this.lockPiece();
@@ -776,6 +1006,32 @@ export class GameLoop {
     if (this.tetrisTextTimer > 0) {
       this.tetrisTextTimer = Math.max(0, this.tetrisTextTimer - delta);
     }
+    if (this.callouts.length > 0) {
+      for (let i = this.callouts.length - 1; i >= 0; i -= 1) {
+        const callout = this.callouts[i];
+        callout.timer = Math.max(0, callout.timer - delta);
+        if (callout.timer === 0) {
+          this.callouts.splice(i, 1);
+        }
+      }
+    }
+    if (this.momentumBurstTimer > 0) {
+      const wasBursting = this.momentumBurstTimer > 0;
+      this.momentumBurstTimer = Math.max(0, this.momentumBurstTimer - delta);
+      if (wasBursting && this.momentumBurstTimer === 0) {
+        this.momentumRecoveryTimer = this.momentumRecoveryDuration;
+      }
+    }
+    if (this.momentumRecoveryTimer > 0) {
+      this.momentumRecoveryTimer = Math.max(0, this.momentumRecoveryTimer - delta);
+    } else if (this.momentumValue > 0) {
+      const pct = this.momentumMax > 0 ? this.momentumValue / this.momentumMax : 0;
+      const decayBoost = pct > 0.8 ? 2 : 1;
+      this.momentumValue = Math.max(
+        0,
+        this.momentumValue - delta * this.momentumDecayPerMs * decayBoost
+      );
+    }
 
     if (this.isClearing) {
       this.clearTimer += delta;
@@ -800,6 +1056,7 @@ export class GameLoop {
       this.board.flip();
       this.updateGridOffsets();
       this.playFlipSound();
+      this.flipSinceClear = true;
       if (this.handleFlipJam()) return;
     }
 
@@ -1116,6 +1373,32 @@ export class GameLoop {
       ctx.restore();
     }
 
+    if (this.callouts.length > 0) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const baseX = ctx.canvas.width / 2;
+      const baseY = ctx.canvas.height / 2 + 30;
+      for (let i = 0; i < this.callouts.length; i += 1) {
+        const callout = this.callouts[i];
+        const t = 1 - callout.timer / callout.duration;
+        const fade = Math.max(0, 1 - t);
+        const driftY = 16 * t;
+        ctx.globalAlpha = 0.9 * fade;
+        ctx.fillStyle = callout.color;
+        ctx.font = `${callout.size}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+        ctx.shadowBlur = 6;
+        ctx.fillText(
+          callout.text,
+          baseX,
+          baseY + i * (callout.size + 8) + driftY
+        );
+      }
+      ctx.restore();
+    }
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#e6e6e6";
@@ -1171,6 +1454,16 @@ export class GameLoop {
       this.drawMiniPiece(ctx, this.nextQueue[i], panelX, panelY, 80, 80);
       panelY += 88;
     }
+    const holdBoxSize = 96;
+    const nextStart = 190 + 18 + 96 + 116 + 18;
+    const nextEnd = nextStart + (3 * 88);
+    const pauseTop = nextEnd + 12;
+    const buttonGap = 18;
+    const flipTop = pauseTop + holdBoxSize + buttonGap;
+    const meterOffsetX = 12;
+    const meterOffsetY = 48;
+    const meterTop = flipTop + holdBoxSize + 18 + meterOffsetY;
+    this.drawMomentumMeter(ctx, panelX + meterOffsetX, meterTop, holdBoxSize, 140);
     ctx.restore();
 
     if (this.paused) {
@@ -1320,6 +1613,53 @@ export class GameLoop {
         ctx.restore();
       }
     }
+  }
+
+  drawMomentumMeter(ctx, x, y, w, h) {
+    const pct = this.momentumMax > 0 ? this.momentumValue / this.momentumMax : 0;
+    const clamped = Math.max(0, Math.min(1, pct));
+    let fillColor = "#4cc3ff";
+    if (clamped >= 0.75) {
+      fillColor = "#ff6b5a";
+    } else if (clamped >= 0.5) {
+      fillColor = "#ffd34c";
+    } else if (clamped >= 0.25) {
+      fillColor = "#4cff9a";
+    }
+    let outline = "rgba(255, 255, 255, 0.45)";
+    if (this.momentumBurstTimer > 0) {
+      const pulse = 0.5 + 0.5 * Math.sin((this.momentumBurstTimer / 120) * Math.PI * 2);
+      const alpha = 0.65 + 0.35 * pulse;
+      fillColor = `rgba(255, 90, 90, ${alpha})`;
+      outline = `rgba(255, 255, 255, ${0.6 + 0.4 * pulse})`;
+    }
+    const innerPad = 2;
+    const innerHeight = h - innerPad * 2;
+    const fillHeight = Math.max(0, Math.floor(innerHeight * clamped));
+    const fillY = y + h - innerPad - fillHeight;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(12, 12, 12, 0.6)";
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = 2;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
+    if (fillHeight > 0) {
+      ctx.fillStyle = fillColor;
+      ctx.fillRect(x + innerPad, fillY, w - innerPad * 2, fillHeight);
+      if (this.momentumBurstTimer > 0) {
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+        ctx.fillRect(x + innerPad, fillY, w - innerPad * 2, Math.min(10, fillHeight));
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.fillStyle = "#e6e6e6";
+    ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("MOMENTUM", x, y - 8);
+    ctx.restore();
   }
 
   drawMiniPiece(ctx, type, x, y, boxW = 60, boxH = 60) {

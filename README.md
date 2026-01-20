@@ -78,6 +78,15 @@ Quick reference:
 
 Full breakdown (keyboard, gamepad, mouse, touch): `docs/controls.md`
 
+## Bonus System
+
+- Flip Pop: flip-jam line clears earn a score multiplier and callout.
+- Flip Chain: clears after flips build a chain up to 4 for extra multiplier.
+- Tetris Streak: consecutive tetrises grant escalating streak multipliers.
+- Clearout: emptying the active field after a clear grants a bonus.
+- High Wire: clears at dangerous stack height earn a multiplier.
+- Momentum: clears (and a small hard-drop bonus) fill the meter; Burst at full meter grants a multiplier for a short window, followed by a brief recovery period with reduced gain.
+
 ## Notes
 
 - Rendering uses a 2D canvas with a 10x40 logical grid.

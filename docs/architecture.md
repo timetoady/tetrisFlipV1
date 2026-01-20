@@ -9,9 +9,11 @@
 ## Core Modules
 
 - `src/main.js` Bootstraps canvas, creates the game, starts the loop.
+- `src/main.js` handles mode selection (Marathon/Chillax) and per-mode score storage.
 - `src/constants.js` Global constants and configuration.
 - `src/input.js` Keyboard state and edge-triggered actions.
 - `src/systems/gameloop.js` Update/draw coordinator.
+- `src/systems/gameloop.js` tracks reward state (streaks, flip chains, momentum/burst).
 - `src/entities/board.js` Grid data, collision checks, line clears, flip state.
 - `src/entities/piece.js` Piece shapes, rotations, movement helpers.
 - `src/utils/randomizer.js` 7-bag generator.
@@ -41,7 +43,8 @@
    - When locked, write blocks with the active owner.
    - If the active field blocks the spawn zone, trigger game over.
    - Clear full lines that belong entirely to the active owner.
-   - Update score, lines, and level based on clears and drops.
+   - Update score, lines, and level based on clears/drops and reward multipliers.
+   - In Chillax mode, level stays fixed at the starting gravity.
 3. Render phase
    - Clear canvas.
    - Draw field tints (top/bottom) and spawn zone gap.
@@ -51,6 +54,7 @@
    - Draw active piece and ghost piece.
    - Draw Tetris celebration overlay (flash + text).
    - Draw flip jam flash/outline animation (if triggered).
+   - Draw reward callouts and the momentum meter.
    - Draw HUD (score/level/lines).
    - Draw hold and next queue panels.
    - Render menu overlays (splash/mode/marathon) when active.
@@ -61,6 +65,12 @@
 - Collision checks only consider blocks owned by the active (bottom) field.
 - Inactive field blocks are drawn with reduced opacity to allow planning.
 - Grid background parallax offsets briefly on flip to indicate state change.
+
+## Reward System (Gameplay Loop)
+
+- Tetris streaks, flip chains, flip-jam clears, clearouts, and risk clears apply scoring bonuses.
+- Momentum fills on line clears (and small hard-drop gain), triggers Burst for a timed multiplier, and then enters a short recovery window with reduced gain.
+- Callouts and SFX are triggered for each bonus event.
 
 ## Build and Distribution
 

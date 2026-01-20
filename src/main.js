@@ -21,6 +21,10 @@ const modeBack = document.getElementById("mode-back");
 const marathonStart = document.getElementById("marathon-start");
 /** @type {HTMLButtonElement} */
 const marathonBack = document.getElementById("marathon-back");
+/** @type {HTMLButtonElement} */
+const chillaxStart = document.getElementById("chillax-start");
+/** @type {HTMLButtonElement} */
+const chillaxBack = document.getElementById("chillax-back");
 /** @type {HTMLElement} */
 const optionsRotateRow = document.getElementById("options-rotate");
 /** @type {HTMLElement} */
@@ -48,7 +52,11 @@ const optionsBack = document.getElementById("options-back");
 /** @type {HTMLElement} */
 const gravityValue = document.getElementById("gravity-value");
 /** @type {HTMLElement} */
+const chillaxGravityValue = document.getElementById("chillax-gravity-value");
+/** @type {HTMLElement} */
 const marathonScores = document.getElementById("marathon-scores");
+/** @type {HTMLElement} */
+const chillaxScores = document.getElementById("chillax-scores");
 /** @type {HTMLElement} */
 const nameModal = document.getElementById("name-modal");
 /** @type {HTMLInputElement} */
@@ -90,6 +98,7 @@ let menuActive = true;
 let startingGravity = 0;
 let modeIndex = 0;
 let marathonActionIndex = 0;
+let chillaxActionIndex = 0;
 let gameOverActive = false;
 let gameOverIndex = 0;
 let nameEntryActive = false;
@@ -97,6 +106,8 @@ let pendingScore = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
 let game = null;
+let activeMode = "marathon";
+let pendingScoreMode = "marathon";
 
 const ROTATE_LAYOUTS = [
   { id: "southEast", label: "South / East (A/B)" },
@@ -157,8 +168,11 @@ let musicPaused = false;
 let gameMusicEnabled = true;
 let musicPreviewActive = false;
 
-const SCORE_STORAGE_KEY = "tetrisflip:marathon:scores";
-gravityValue.textContent = String(startingGravity);
+const SCORE_STORAGE_KEYS = {
+  marathon: "tetrisflip:marathon:scores",
+  chillax: "tetrisflip:chillax:scores"
+};
+updateGravityLabels();
 
 function showScreen(name) {
   screens.forEach((screen) => {
@@ -172,6 +186,10 @@ function showScreen(name) {
   if (menuState === "marathon") {
     marathonActionIndex = 0;
     updateMarathonSelection();
+  }
+  if (menuState === "chillax") {
+    chillaxActionIndex = 0;
+    updateChillaxSelection();
   }
   if (menuState === "options") {
     optionsIndex = 0;
@@ -209,14 +227,36 @@ function closeMenu() {
   updateMusicState();
 }
 
+function getScoreStorageKey(mode) {
+  return SCORE_STORAGE_KEYS[mode] || SCORE_STORAGE_KEYS.marathon;
+}
+
+function getScoreListElement(mode) {
+  return mode === "chillax" ? chillaxScores : marathonScores;
+}
+
+function updateGravityLabels() {
+  if (gravityValue) {
+    gravityValue.textContent = String(startingGravity);
+  }
+  if (chillaxGravityValue) {
+    chillaxGravityValue.textContent = String(startingGravity);
+  }
+}
+
 function updateGravity(delta) {
   startingGravity = Math.min(35, Math.max(0, startingGravity + delta));
-  gravityValue.textContent = String(startingGravity);
+  updateGravityLabels();
 }
 
 function startGame() {
+  const mode = menuState === "chillax" ? "chillax" : "marathon";
+  activeMode = mode;
   closeMenu();
   game.setStartingLevel(startingGravity);
+  if (game.setFreezeLevel) {
+    game.setFreezeLevel(mode === "chillax");
+  }
   game.paused = false;
   game.reset();
 }
@@ -230,6 +270,12 @@ function updateModeSelection() {
 function updateMarathonSelection() {
   marathonStart.classList.toggle("is-selected", marathonActionIndex === 0);
   marathonBack.classList.toggle("is-selected", marathonActionIndex === 1);
+}
+
+function updateChillaxSelection() {
+  if (!chillaxStart || !chillaxBack) return;
+  chillaxStart.classList.toggle("is-selected", chillaxActionIndex === 0);
+  chillaxBack.classList.toggle("is-selected", chillaxActionIndex === 1);
 }
 
 function updateOptionsSelection() {
@@ -259,9 +305,9 @@ function backToSplash() {
   showScreen("splash");
 }
 
-function loadScores() {
+function loadScores(storageKey) {
   try {
-    const raw = localStorage.getItem(SCORE_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -274,22 +320,23 @@ function loadScores() {
   }
 }
 
-function saveScores(scores) {
+function saveScores(scores, storageKey) {
   try {
-    localStorage.setItem(SCORE_STORAGE_KEY, JSON.stringify(scores));
+    localStorage.setItem(storageKey, JSON.stringify(scores));
   } catch {
     // Ignore storage failures.
   }
 }
 
-function renderScores(scores) {
-  marathonScores.innerHTML = "";
+function renderScores(scores, listEl) {
+  if (!listEl) return;
+  listEl.innerHTML = "";
   if (!scores.length) {
     const empty = document.createElement("li");
     empty.innerHTML = "<span class=\"score-rank\">-</span>"
       + "<span class=\"score-name\">No scores yet</span>"
       + "<span class=\"score-value\"></span>";
-    marathonScores.appendChild(empty);
+    listEl.appendChild(empty);
     return;
   }
   scores.forEach((entry, index) => {
@@ -304,7 +351,7 @@ function renderScores(scores) {
     value.className = "score-value";
     value.textContent = String(entry.score);
     item.append(rank, name, value);
-    marathonScores.appendChild(item);
+    listEl.appendChild(item);
   });
 }
 
@@ -313,8 +360,9 @@ function qualifiesForScores(score, scores) {
   return score > scores[scores.length - 1].score;
 }
 
-function openNameEntry(score) {
+function openNameEntry(score, mode) {
   pendingScore = score;
+  pendingScoreMode = mode;
   nameInput.value = "Player 1";
   nameModal.hidden = false;
   nameEntryActive = true;
@@ -511,13 +559,14 @@ function updateMusicState() {
 
 function commitNameEntry() {
   if (pendingScore == null) return;
-  const scores = loadScores();
+  const storageKey = getScoreStorageKey(pendingScoreMode);
+  const scores = loadScores(storageKey);
   const trimmedName = nameInput.value.trim() || "Player 1";
   scores.push({ name: trimmedName, score: pendingScore });
   scores.sort((a, b) => b.score - a.score);
   const updated = scores.slice(0, 10);
-  saveScores(updated);
-  renderScores(updated);
+  saveScores(updated, storageKey);
+  renderScores(updated, getScoreListElement(pendingScoreMode));
   closeNameEntry();
 }
 
@@ -570,16 +619,17 @@ game = new GameLoop(ctx, input, {
     gameOverActive = true;
     gameOverIndex = 0;
     updateGameOverSelection();
-    const scores = loadScores();
+    const storageKey = getScoreStorageKey(activeMode);
+    const scores = loadScores(storageKey);
     const { score } = game.getScoreState();
     if (qualifiesForScores(score, scores)) {
-      openNameEntry(score);
+      openNameEntry(score, activeMode);
     }
     updateMusicState();
   },
   onPauseBack() {
     game.paused = false;
-    openMenu("marathon");
+    openMenu(activeMode);
   }
 });
 game.setSfxVolume(vfxVolumeValue);
@@ -677,6 +727,21 @@ marathonBack.addEventListener("click", () => {
   showScreen("mode");
 });
 
+if (chillaxStart) {
+  chillaxStart.addEventListener("click", () => {
+    chillaxActionIndex = 0;
+    updateChillaxSelection();
+    startGame();
+  });
+}
+if (chillaxBack) {
+  chillaxBack.addEventListener("click", () => {
+    chillaxActionIndex = 1;
+    updateChillaxSelection();
+    showScreen("mode");
+  });
+}
+
 menu.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -723,8 +788,8 @@ modeOptions.forEach((option, index) => {
     const selected = option.dataset.mode;
     if (selected === "options") {
       showScreen("options");
-    } else if (selected === "marathon") {
-      showScreen("marathon");
+    } else if (selected === "marathon" || selected === "chillax") {
+      showScreen(selected);
     }
   });
 });
@@ -782,7 +847,8 @@ if (optionsVfxVolumeRow) {
   });
 }
 
-renderScores(loadScores());
+renderScores(loadScores(getScoreStorageKey("marathon")), marathonScores);
+renderScores(loadScores(getScoreStorageKey("chillax")), chillaxScores);
 
 function unlockMusic() {
   musicMode = null;
@@ -937,8 +1003,8 @@ function handleMenuInput() {
       const selected = modeOptions[modeIndex].dataset.mode;
       if (selected === "options") {
         showScreen("options");
-      } else {
-        showScreen("marathon");
+      } else if (selected === "marathon" || selected === "chillax") {
+        showScreen(selected);
       }
     } else if (input.consumePress("KeyZ") ||
                input.consumePress("Escape") ||
@@ -1020,6 +1086,30 @@ function handleMenuInput() {
       updateMarathonSelection();
     } else if (confirm) {
       if (marathonActionIndex === 0) {
+        startGame();
+      } else {
+        showScreen("mode");
+      }
+    } else if (input.consumePress("KeyZ") ||
+               input.consumePress("Escape") ||
+               input.consumePress("Backspace")) {
+      showScreen("mode");
+    }
+  }
+
+  if (menuState === "chillax") {
+    const confirm = input.consumePress("KeyX") ||
+      input.consumePress("Enter") ||
+      input.consumePress("KeyP");
+    if (input.consumePress("ArrowUp")) {
+      updateGravity(1);
+    } else if (input.consumePress("ArrowDown")) {
+      updateGravity(-1);
+    } else if (input.consumePress("ArrowLeft") || input.consumePress("ArrowRight")) {
+      chillaxActionIndex = chillaxActionIndex === 0 ? 1 : 0;
+      updateChillaxSelection();
+    } else if (confirm) {
+      if (chillaxActionIndex === 0) {
         startGame();
       } else {
         showScreen("mode");

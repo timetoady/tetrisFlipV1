@@ -49,6 +49,14 @@ const garbageHeightValue = document.getElementById("garbage-height-value");
 const garbageStart = document.getElementById("garbage-start");
 /** @type {HTMLButtonElement} */
 const garbageBack = document.getElementById("garbage-back");
+/** @type {HTMLButtonElement} */
+const coopStart = document.getElementById("coop-start");
+/** @type {HTMLButtonElement} */
+const coopBack = document.getElementById("coop-back");
+/** @type {HTMLButtonElement} */
+const sirtetStart = document.getElementById("sirtet-start");
+/** @type {HTMLButtonElement} */
+const sirtetBack = document.getElementById("sirtet-back");
 /** @type {HTMLElement} */
 const optionsRotateRow = document.getElementById("options-rotate");
 /** @type {HTMLElement} */
@@ -78,6 +86,10 @@ const gravityValue = document.getElementById("gravity-value");
 /** @type {HTMLElement} */
 const chillaxGravityValue = document.getElementById("chillax-gravity-value");
 /** @type {HTMLElement} */
+const coopGravityValue = document.getElementById("coop-gravity-value");
+/** @type {HTMLElement} */
+const sirtetGravityValue = document.getElementById("sirtet-gravity-value");
+/** @type {HTMLElement} */
 const marathonScores = document.getElementById("marathon-scores");
 /** @type {HTMLElement} */
 const chillaxScores = document.getElementById("chillax-scores");
@@ -85,6 +97,10 @@ const chillaxScores = document.getElementById("chillax-scores");
 const garbageScores = document.getElementById("garbage-scores");
 /** @type {HTMLElement} */
 const redemptionScores = document.getElementById("redemption-scores");
+/** @type {HTMLElement} */
+const coopScores = document.getElementById("coop-scores");
+/** @type {HTMLElement} */
+const sirtetScores = document.getElementById("sirtet-scores");
 /** @type {HTMLElement} */
 const garbageScoreLabel = document.getElementById("garbage-score-label");
 /** @type {HTMLElement} */
@@ -141,6 +157,8 @@ let marathonActionIndex = 0;
 let chillaxActionIndex = 0;
 let garbageActionIndex = 0;
 let redemptionActionIndex = 0;
+let coopActionIndex = 0;
+let sirtetActionIndex = 0;
 let gameOverActive = false;
 let gameOverIndex = 0;
 let nameEntryActive = false;
@@ -155,6 +173,7 @@ let activeGarbageHeight = garbageHeight;
 let overlayMode = "gameover";
 let overlayImageQueue = [];
 let overlayImageIndex = 0;
+let touchEnabled = true;
 
 const ROTATE_LAYOUTS = [
   { id: "southEast", label: "South / East (A/B)" },
@@ -233,7 +252,9 @@ const SCORE_STORAGE_KEYS = {
   marathon: "tetrisflip:marathon:scores",
   chillax: "tetrisflip:chillax:scores",
   garbage: "tetrisflip:garbage:scores",
-  redemption: "tetrisflip:redemption:scores"
+  redemption: "tetrisflip:redemption:scores",
+  coop: "tetrisflip:coop:scores",
+  sirtet: "tetrisflip:sirtet:scores"
 };
 updateGravityLabels();
 updateGarbageLabels();
@@ -274,6 +295,14 @@ function showScreen(name) {
     garbageActionIndex = 0;
     updateGarbageSelection();
   }
+  if (menuState === "coop") {
+    coopActionIndex = 0;
+    updateCoopSelection();
+  }
+  if (menuState === "sirtet") {
+    sirtetActionIndex = 0;
+    updateSirtetSelection();
+  }
   if (menuState === "options") {
     optionsIndex = 0;
     updateOptionsSelection();
@@ -304,7 +333,9 @@ function closeMenu() {
   menu.hidden = true;
   canvas.style.visibility = "visible";
   canvas.style.pointerEvents = "auto";
-  ensureTouchButtons();
+  if (touchEnabled) {
+    ensureTouchButtons();
+  }
   input.clearPressed();
   updateViewportScale();
   updateMusicState();
@@ -318,6 +349,8 @@ function getScoreListElement(mode) {
   if (mode === "chillax") return chillaxScores;
   if (mode === "garbage") return garbageScores;
   if (mode === "redemption") return redemptionScores;
+  if (mode === "coop") return coopScores;
+  if (mode === "sirtet") return sirtetScores;
   return marathonScores;
 }
 
@@ -327,6 +360,12 @@ function updateGravityLabels() {
   }
   if (chillaxGravityValue) {
     chillaxGravityValue.textContent = String(startingGravity);
+  }
+  if (coopGravityValue) {
+    coopGravityValue.textContent = String(startingGravity);
+  }
+  if (sirtetGravityValue) {
+    sirtetGravityValue.textContent = String(startingGravity);
   }
 }
 
@@ -387,8 +426,14 @@ function startGame() {
       ? "redemption"
     : menuState === "garbage"
       ? "garbage"
+    : menuState === "coop"
+      ? "coop"
+    : menuState === "sirtet"
+      ? "sirtet"
       : "marathon";
   activeMode = mode;
+  setTouchEnabled(mode !== "coop");
+  setCanvasSize(mode);
   closeMenu();
   if (game.setMode) {
     game.setMode(mode);
@@ -479,6 +524,18 @@ function updateGarbageSelection() {
   if (garbageBack) {
     garbageBack.classList.toggle("is-selected", garbageActionIndex === 3);
   }
+}
+
+function updateCoopSelection() {
+  if (!coopStart || !coopBack) return;
+  coopStart.classList.toggle("is-selected", coopActionIndex === 0);
+  coopBack.classList.toggle("is-selected", coopActionIndex === 1);
+}
+
+function updateSirtetSelection() {
+  if (!sirtetStart || !sirtetBack) return;
+  sirtetStart.classList.toggle("is-selected", sirtetActionIndex === 0);
+  sirtetBack.classList.toggle("is-selected", sirtetActionIndex === 1);
 }
 
 function updateOptionsSelection() {
@@ -936,10 +993,34 @@ function commitNameEntry() {
   closeNameEntry();
 }
 
-canvas.width = GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
-  + GAME_CONFIG.GRID_MARGIN * 2
-  + GAME_CONFIG.HUD_WIDTH;
-canvas.height = GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE;
+function getCanvasWidthForMode(mode) {
+  const leftHud = mode === "coop" ? GAME_CONFIG.HUD_WIDTH : 0;
+  return GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
+    + GAME_CONFIG.GRID_MARGIN * 2
+    + GAME_CONFIG.HUD_WIDTH
+    + leftHud;
+}
+
+function setCanvasSize(mode) {
+  canvas.width = getCanvasWidthForMode(mode);
+  canvas.height = GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE;
+}
+
+function setTouchEnabled(enabled) {
+  touchEnabled = enabled;
+  if (!touchEnabled) {
+    if (touchFlip) {
+      touchFlip.remove();
+      touchFlip = null;
+    }
+    if (touchPause) {
+      touchPause.remove();
+      touchPause = null;
+    }
+  }
+}
+
+setCanvasSize(activeMode);
 
 const input = createInput(window, canvas);
 try {
@@ -992,8 +1073,8 @@ game = new GameLoop(ctx, input, {
       updateMusicState();
       return;
     }
-    const { score } = game.getScoreState();
-    const entry = { score };
+    const { score, combinedScore } = game.getScoreState();
+    const entry = { score: activeMode === "coop" ? combinedScore : score };
     if (qualifiesForScores(entry, scores, activeMode)) {
       openNameEntry(entry, activeMode);
     }
@@ -1202,6 +1283,37 @@ if (garbageHeightRow) {
   });
 }
 
+if (coopStart) {
+  coopStart.addEventListener("click", () => {
+    coopActionIndex = 0;
+    updateCoopSelection();
+    startGame();
+  });
+}
+if (coopBack) {
+  coopBack.addEventListener("click", () => {
+    coopActionIndex = 1;
+    updateCoopSelection();
+    showScreen("mode");
+  });
+}
+
+if (sirtetStart) {
+  sirtetStart.addEventListener("click", () => {
+    sirtetActionIndex = 0;
+    updateSirtetSelection();
+    startGame();
+  });
+}
+
+if (sirtetBack) {
+  sirtetBack.addEventListener("click", () => {
+    sirtetActionIndex = 1;
+    updateSirtetSelection();
+    showScreen("mode");
+  });
+}
+
 menu.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
@@ -1248,10 +1360,11 @@ modeOptions.forEach((option, index) => {
     const selected = option.dataset.mode;
     if (selected === "options") {
       showScreen("options");
-    } else if (selected === "marathon" || selected === "chillax"
-      || selected === "garbage" || selected === "redemption") {
-      showScreen(selected);
-    }
+      } else if (selected === "marathon" || selected === "chillax"
+        || selected === "garbage" || selected === "redemption"
+        || selected === "coop" || selected === "sirtet") {
+        showScreen(selected);
+      }
   });
 });
 
@@ -1312,6 +1425,8 @@ renderScores(loadScores(getScoreStorageKey("marathon")), marathonScores, "marath
 renderScores(loadScores(getScoreStorageKey("chillax")), chillaxScores, "chillax");
 renderGarbageScores();
 renderScores(loadScores(getScoreStorageKey("redemption")), redemptionScores, "redemption");
+renderScores(loadScores(getScoreStorageKey("coop")), coopScores, "coop");
+renderScores(loadScores(getScoreStorageKey("sirtet")), sirtetScores, "sirtet");
 
 function unlockMusic() {
   musicMode = null;
@@ -1393,34 +1508,69 @@ window.addEventListener("resize", setSplashImage);
 window.addEventListener("resize", updateViewportScale);
 canvas.style.visibility = "hidden";
 
+function consumeMenuUp() {
+  return input.consumePress("ArrowUp") || input.consumePress("KeyW");
+}
+
+function consumeMenuDown() {
+  return input.consumePress("ArrowDown") || input.consumePress("KeyS");
+}
+
+function consumeMenuLeft() {
+  return input.consumePress("ArrowLeft") || input.consumePress("KeyA");
+}
+
+function consumeMenuRight() {
+  return input.consumePress("ArrowRight") || input.consumePress("KeyD");
+}
+
+function consumeMenuConfirm() {
+  return input.consumePress("KeyX")
+    || input.consumePress("Enter")
+    || input.consumePress("KeyP")
+    || input.consumePress("KeyJ")
+    || input.consumePress("KeyK");
+}
+
+function consumeMenuBack() {
+  return input.consumePress("KeyZ")
+    || input.consumePress("Escape")
+    || input.consumePress("Backspace")
+    || input.consumePress("KeyL");
+}
+
 function handleMenuInput() {
   if (nameEntryActive) {
-    if (input.consumePress("ArrowLeft") || input.consumePress("ArrowRight")) {
+    const left = consumeMenuLeft();
+    const right = consumeMenuRight();
+    const up = consumeMenuUp();
+    const down = consumeMenuDown();
+    if (left || right) {
       nameEntryIndex = nameEntryIndex === 0 ? 1 : 0;
       updateNameEntrySelection();
-    } else if (input.consumePress("ArrowUp")) {
+    } else if (up) {
       nameEntryIndex = 0;
       updateNameEntrySelection();
-    } else if (input.consumePress("ArrowDown")) {
+    } else if (down) {
       nameEntryIndex = 1;
       updateNameEntrySelection();
-    } else if (input.consumePress("KeyX") || input.consumePress("Enter")) {
+    } else if (consumeMenuConfirm()) {
       if (nameEntryIndex === 0) {
         commitNameEntry();
       } else {
         closeNameEntry();
       }
-    } else if (input.consumePress("Escape")) {
+    } else if (consumeMenuBack()) {
       closeNameEntry();
     }
     return;
   }
 
   if (gameOverActive) {
-    if (input.consumePress("ArrowLeft") || input.consumePress("ArrowRight")) {
+    if (consumeMenuLeft() || consumeMenuRight()) {
       gameOverIndex = gameOverIndex === 0 ? 1 : 0;
       updateGameOverSelection();
-    } else if (input.consumePress("KeyX") || input.consumePress("Enter")) {
+    } else if (consumeMenuConfirm()) {
       if (gameOverIndex === 0) {
         overlay.hidden = true;
         setOverlayMode("gameover");
@@ -1441,27 +1591,23 @@ function handleMenuInput() {
   if (!menuActive) return;
 
   if (menuState === "splash") {
-    if (input.consumePress("KeyX") ||
-        input.consumePress("Enter") ||
-        input.consumePress("KeyP") ||
+    if (consumeMenuConfirm() ||
         input.consumePress("Space") ||
-        input.consumePress("ArrowUp") ||
-        input.consumePress("ArrowDown") ||
-        input.consumePress("ArrowLeft") ||
-        input.consumePress("ArrowRight")) {
+        consumeMenuUp() ||
+        consumeMenuDown() ||
+        consumeMenuLeft() ||
+        consumeMenuRight()) {
       showScreen("mode");
     }
     return;
   }
 
   if (menuState === "mode") {
-    const confirm = input.consumePress("KeyX") ||
-      input.consumePress("Enter") ||
-      input.consumePress("KeyP");
-    if (input.consumePress("ArrowUp")) {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
       modeIndex = Math.max(0, modeIndex - 1);
       updateModeSelection();
-    } else if (input.consumePress("ArrowDown")) {
+    } else if (consumeMenuDown()) {
       modeIndex = Math.min(modeOptions.length - 1, modeIndex + 1);
       updateModeSelection();
     } else if (confirm) {
@@ -1470,30 +1616,27 @@ function handleMenuInput() {
       if (selected === "options") {
         showScreen("options");
       } else if (selected === "marathon" || selected === "chillax"
-        || selected === "garbage" || selected === "redemption") {
+        || selected === "garbage" || selected === "redemption"
+        || selected === "coop" || selected === "sirtet") {
         showScreen(selected);
       }
-    } else if (input.consumePress("KeyZ") ||
-               input.consumePress("Escape") ||
-               input.consumePress("Backspace")) {
+    } else if (consumeMenuBack()) {
       backToSplash();
     }
     return;
   }
 
   if (menuState === "options") {
-    const confirm = input.consumePress("KeyX") ||
-      input.consumePress("Enter") ||
-      input.consumePress("KeyP");
-    if (input.consumePress("ArrowUp")) {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
       optionsIndex = (optionsIndex + 5) % 6;
       updateOptionsSelection();
-    } else if (input.consumePress("ArrowDown")) {
+    } else if (consumeMenuDown()) {
       optionsIndex = (optionsIndex + 1) % 6;
       updateOptionsSelection();
     }
-    const left = input.consumePress("ArrowLeft");
-    const right = input.consumePress("ArrowRight");
+    const left = consumeMenuLeft();
+    const right = consumeMenuRight();
     if (optionsIndex === 0) {
       if (left || right) {
         const delta = right ? 1 : -1;
@@ -1532,23 +1675,19 @@ function handleMenuInput() {
     } else if (optionsIndex === 5 && confirm) {
       showScreen("mode");
     }
-    if (input.consumePress("KeyZ") ||
-        input.consumePress("Escape") ||
-        input.consumePress("Backspace")) {
+    if (consumeMenuBack()) {
       showScreen("mode");
     }
     return;
   }
 
   if (menuState === "marathon") {
-    const confirm = input.consumePress("KeyX") ||
-      input.consumePress("Enter") ||
-      input.consumePress("KeyP");
-    if (input.consumePress("ArrowUp")) {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
       updateGravity(1);
-    } else if (input.consumePress("ArrowDown")) {
+    } else if (consumeMenuDown()) {
       updateGravity(-1);
-    } else if (input.consumePress("ArrowLeft") || input.consumePress("ArrowRight")) {
+    } else if (consumeMenuLeft() || consumeMenuRight()) {
       marathonActionIndex = marathonActionIndex === 0 ? 1 : 0;
       updateMarathonSelection();
     } else if (confirm) {
@@ -1557,22 +1696,18 @@ function handleMenuInput() {
       } else {
         showScreen("mode");
       }
-    } else if (input.consumePress("KeyZ") ||
-               input.consumePress("Escape") ||
-               input.consumePress("Backspace")) {
+    } else if (consumeMenuBack()) {
       showScreen("mode");
     }
   }
 
   if (menuState === "chillax") {
-    const confirm = input.consumePress("KeyX") ||
-      input.consumePress("Enter") ||
-      input.consumePress("KeyP");
-    if (input.consumePress("ArrowUp")) {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
       updateGravity(1);
-    } else if (input.consumePress("ArrowDown")) {
+    } else if (consumeMenuDown()) {
       updateGravity(-1);
-    } else if (input.consumePress("ArrowLeft") || input.consumePress("ArrowRight")) {
+    } else if (consumeMenuLeft() || consumeMenuRight()) {
       chillaxActionIndex = chillaxActionIndex === 0 ? 1 : 0;
       updateChillaxSelection();
     } else if (confirm) {
@@ -1581,26 +1716,22 @@ function handleMenuInput() {
       } else {
         showScreen("mode");
       }
-    } else if (input.consumePress("KeyZ") ||
-               input.consumePress("Escape") ||
-               input.consumePress("Backspace")) {
+    } else if (consumeMenuBack()) {
       showScreen("mode");
     }
   }
 
   if (menuState === "redemption") {
-    const confirm = input.consumePress("KeyX") ||
-      input.consumePress("Enter") ||
-      input.consumePress("KeyP");
-    if (input.consumePress("ArrowUp")) {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
       redemptionActionIndex = (redemptionActionIndex + 3) % 4;
       updateRedemptionSelection();
-    } else if (input.consumePress("ArrowDown")) {
+    } else if (consumeMenuDown()) {
       redemptionActionIndex = (redemptionActionIndex + 1) % 4;
       updateRedemptionSelection();
     }
-    const left = input.consumePress("ArrowLeft");
-    const right = input.consumePress("ArrowRight");
+    const left = consumeMenuLeft();
+    const right = consumeMenuRight();
     if (redemptionActionIndex === 0 && (left || right)) {
       updateRedemptionGravity(right ? 1 : -1);
     } else if (redemptionActionIndex === 1 && (left || right)) {
@@ -1614,26 +1745,22 @@ function handleMenuInput() {
       } else if (redemptionActionIndex === 3) {
         showScreen("mode");
       }
-    } else if (input.consumePress("KeyZ") ||
-               input.consumePress("Escape") ||
-               input.consumePress("Backspace")) {
+    } else if (consumeMenuBack()) {
       showScreen("mode");
     }
   }
 
   if (menuState === "garbage") {
-    const confirm = input.consumePress("KeyX") ||
-      input.consumePress("Enter") ||
-      input.consumePress("KeyP");
-    if (input.consumePress("ArrowUp")) {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
       garbageActionIndex = (garbageActionIndex + 3) % 4;
       updateGarbageSelection();
-    } else if (input.consumePress("ArrowDown")) {
+    } else if (consumeMenuDown()) {
       garbageActionIndex = (garbageActionIndex + 1) % 4;
       updateGarbageSelection();
     }
-    const left = input.consumePress("ArrowLeft");
-    const right = input.consumePress("ArrowRight");
+    const left = consumeMenuLeft();
+    const right = consumeMenuRight();
     if (garbageActionIndex === 0 && (left || right)) {
       updateGarbageSpeed(right ? 1 : -1);
     } else if (garbageActionIndex === 1 && (left || right)) {
@@ -1647,9 +1774,47 @@ function handleMenuInput() {
       } else if (garbageActionIndex === 3) {
         showScreen("mode");
       }
-    } else if (input.consumePress("KeyZ") ||
-               input.consumePress("Escape") ||
-               input.consumePress("Backspace")) {
+    } else if (consumeMenuBack()) {
+      showScreen("mode");
+    }
+  }
+
+  if (menuState === "coop") {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
+      updateGravity(1);
+    } else if (consumeMenuDown()) {
+      updateGravity(-1);
+    } else if (consumeMenuLeft() || consumeMenuRight()) {
+      coopActionIndex = coopActionIndex === 0 ? 1 : 0;
+      updateCoopSelection();
+    } else if (confirm) {
+      if (coopActionIndex === 0) {
+        startGame();
+      } else {
+        showScreen("mode");
+      }
+    } else if (consumeMenuBack()) {
+      showScreen("mode");
+    }
+  }
+
+  if (menuState === "sirtet") {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
+      updateGravity(1);
+    } else if (consumeMenuDown()) {
+      updateGravity(-1);
+    } else if (consumeMenuLeft() || consumeMenuRight()) {
+      sirtetActionIndex = sirtetActionIndex === 0 ? 1 : 0;
+      updateSirtetSelection();
+    } else if (confirm) {
+      if (sirtetActionIndex === 0) {
+        startGame();
+      } else {
+        showScreen("mode");
+      }
+    } else if (consumeMenuBack()) {
       showScreen("mode");
     }
   }
@@ -1674,7 +1839,9 @@ function frame(now) {
       touchPause = null;
     }
   } else {
-    ensureTouchButtons();
+    if (touchEnabled) {
+      ensureTouchButtons();
+    }
   }
   if (!menuActive) {
     game.update(delta);

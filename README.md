@@ -8,6 +8,8 @@ Tetris Flip is a single-player, browser-based puzzle game that mixes classic Tet
 - Chillax: fixed speed (no level increase), relaxed play.
 - Garbage: choose speed (0-35) and height (1-9), clear randomized garbage on both fields; the round ends when all garbage is gone. Leaderboards are tracked per speed/height and ranked by fastest clear time.
 - Redemption: pick starting gravity and 1-3 lives; topping out costs a life, clears the bottom six rows of the active field, and play continues until you run out.
+- Co-op Therapy: two players share the board; P1 plays downward while P2 plays upward with a per-piece placement timer and combined scoring.
+- Sirtet: upside-down Marathon where pieces move upward; soft drop is Up and hard drop is Down.
 
 ## Requirements
 
@@ -97,7 +99,7 @@ Full breakdown (keyboard, gamepad, mouse, touch): `docs/controls.md`
 ## Notes
 
 - Rendering uses a 2D canvas with a 10x40 logical grid.
-- Inactive field blocks are drawn with reduced opacity.
+- Inactive field blocks are drawn with reduced opacity (except in Co-op and Sirtet).
 - Flipping late can cause a jam and immediate lock, with a visual/sound cue.
 
 ## Docs

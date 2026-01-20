@@ -44,9 +44,13 @@
               <span>Redemption</span>
               <span>Lives</span>
             </div>
-            <div class="menu-option is-disabled" data-mode="two-player">
-              <span>2 Player</span>
-              <span>Soon</span>
+            <div class="menu-option" data-mode="coop">
+              <span>Co-op</span>
+              <span>Therapy</span>
+            </div>
+            <div class="menu-option" data-mode="sirtet">
+              <span>Sirtet</span>
+              <span>Upside</span>
             </div>
             <div class="menu-option" data-mode="options">
               <span>Options</span>
@@ -184,6 +188,48 @@
               <div>
                 <div class="menu-sub" id="garbage-score-label">Top 10</div>
                 <ol class="score-list" id="garbage-scores"></ol>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="menu-screen" data-screen="coop">
+          <div class="menu-panel">
+            <div class="menu-title">CO-OP THERAPY</div>
+            <div class="menu-grid">
+              <div>
+                <div>Starting Gravity</div>
+                <div class="marathon-value" id="coop-gravity-value">1</div>
+                <div class="menu-sub">Up/Down to change</div>
+                <div class="menu-actions">
+                  <button id="coop-start" class="is-selected">Start</button>
+                  <button id="coop-back">Back</button>
+                </div>
+                <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
+              </div>
+              <div>
+                <div class="menu-sub">Top 10</div>
+                <ol class="score-list" id="coop-scores"></ol>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="menu-screen" data-screen="sirtet">
+          <div class="menu-panel">
+            <div class="menu-title">SIRTET</div>
+            <div class="menu-grid">
+              <div>
+                <div>Starting Gravity</div>
+                <div class="marathon-value" id="sirtet-gravity-value">1</div>
+                <div class="menu-sub">Up/Down to change</div>
+                <div class="menu-actions">
+                  <button id="sirtet-start" class="is-selected">Start</button>
+                  <button id="sirtet-back">Back</button>
+                </div>
+                <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
+              </div>
+              <div>
+                <div class="menu-sub">Top 10</div>
+                <ol class="score-list" id="sirtet-scores"></ol>
               </div>
             </div>
           </div>

@@ -14,17 +14,29 @@ export class GameLoop {
     this.onPauseBack = callbacks.onPauseBack || (() => {});
     this.board = new Board();
     this.randomizer = new Randomizer();
+    this.p2Randomizer = new Randomizer();
     this.queueSize = 3;
     this.nextQueue = [];
+    this.p2Queue = [];
     this.holdType = null;
     this.holdUsed = false;
+    this.p2HoldType = null;
+    this.p2HoldUsed = false;
     this.startingLevel = 1;
     this.score = 0;
     this.lines = 0;
     this.level = 1;
     this.dropInterval = this.getDropInterval(this.level);
     this.dropTimer = 0;
+    this.p2Score = 0;
+    this.p2Lines = 0;
+    this.p2Level = 1;
+    this.p2DropInterval = this.getDropInterval(this.p2Level);
+    this.p2DropTimer = 0;
+    this.p2PlacementDuration = 5000;
+    this.p2PlacementTimer = 0;
     this.elapsedTimeMs = 0;
+    this.animTimeMs = 0;
     this.freezeLevel = false;
     this.mode = "marathon";
     this.garbageHeight = 0;
@@ -64,6 +76,14 @@ export class GameLoop {
     this.rightHold = 0;
     this.leftRepeat = 0;
     this.rightRepeat = 0;
+    this.p2LeftHold = 0;
+    this.p2RightHold = 0;
+    this.p2LeftRepeat = 0;
+    this.p2RightRepeat = 0;
+    this.p2UpHold = 0;
+    this.p2DownHold = 0;
+    this.p2UpRepeat = 0;
+    this.p2DownRepeat = 0;
     this.lockDelayMs = 500;
     this.lockDelayMinMs = 0;
     this.lockDegradeAfter = 3;
@@ -76,6 +96,11 @@ export class GameLoop {
     this.lockResetCooldownMs = 80;
     this.lockResetCooldown = 0;
     this.isGrounded = false;
+    this.p2LockTimer = 0;
+    this.p2LockMoves = 0;
+    this.p2GroundedTimer = 0;
+    this.p2LockResetCooldown = 0;
+    this.p2IsGrounded = false;
     this.isClearing = false;
     this.clearTimer = 0;
     this.clearDuration = 0;
@@ -98,13 +123,16 @@ export class GameLoop {
     this.lastClearWasRisk = false;
     this.lastClearWasClearout = false;
     this.momentumValue = 0;
+    this.p2MomentumValue = 0;
     this.momentumMax = 100;
     this.momentumBurstTimer = 0;
+    this.p2MomentumBurstTimer = 0;
     this.momentumBurstDuration = 7000;
     this.momentumDecayPerMs = 0.004;
     this.momentumGainTable = [0, 18, 30, 42, 56];
     this.momentumHardDropGain = 4;
     this.momentumRecoveryTimer = 0;
+    this.p2MomentumRecoveryTimer = 0;
     this.momentumRecoveryDuration = 5000;
     this.momentumRecoveryMultiplier = 0.7;
     this.riskHeightThreshold = 14;
@@ -120,6 +148,8 @@ export class GameLoop {
     this.pauseHover = null;
     this.holdBoxRect = null;
     this.activePiece = this.spawnPiece();
+    this.p2Piece = null;
+    this.clearPlayer = null;
   }
 
   getDropInterval(level) {
@@ -140,7 +170,14 @@ export class GameLoop {
     this.lines = 0;
     this.dropInterval = this.getDropInterval(this.level);
     this.dropTimer = 0;
+    this.p2Score = 0;
+    this.p2Lines = 0;
+    this.p2Level = this.startingLevel;
+    this.p2DropInterval = this.getDropInterval(this.p2Level);
+    this.p2DropTimer = 0;
+    this.p2PlacementTimer = 0;
     this.elapsedTimeMs = 0;
+    this.animTimeMs = 0;
   }
 
   setStartingLevel(level) {
@@ -153,6 +190,45 @@ export class GameLoop {
 
   setMode(mode) {
     this.mode = mode || "marathon";
+  }
+
+  isCoopMode() {
+    return this.mode === "coop";
+  }
+
+  isSirtetMode() {
+    return this.mode === "sirtet";
+  }
+
+  getActivePieceOwner() {
+    return this.isSirtetMode() ? this.board.getInactiveOwner() : this.board.getActiveOwner();
+  }
+
+  getP2Owner() {
+    return this.board.getInactiveOwner();
+  }
+
+  getActiveGravityDirection() {
+    return this.isSirtetMode() ? -1 : 1;
+  }
+
+  getMomentumKeys(playerId) {
+    if (playerId === "p2") {
+      return {
+        valueKey: "p2MomentumValue",
+        burstKey: "p2MomentumBurstTimer",
+        recoveryKey: "p2MomentumRecoveryTimer"
+      };
+    }
+    return {
+      valueKey: "momentumValue",
+      burstKey: "momentumBurstTimer",
+      recoveryKey: "momentumRecoveryTimer"
+    };
+  }
+
+  getGridOffsetX() {
+    return GAME_CONFIG.GRID_MARGIN + (this.isCoopMode() ? GAME_CONFIG.HUD_WIDTH : 0);
   }
 
   setGarbageHeight(height) {
@@ -256,6 +332,8 @@ export class GameLoop {
   resetHold() {
     this.holdType = null;
     this.holdUsed = false;
+    this.p2HoldType = null;
+    this.p2HoldUsed = false;
   }
 
   resetRewardState() {
@@ -268,8 +346,11 @@ export class GameLoop {
     this.lastClearWasClearout = false;
     this.callouts = [];
     this.momentumValue = 0;
+    this.p2MomentumValue = 0;
     this.momentumBurstTimer = 0;
+    this.p2MomentumBurstTimer = 0;
     this.momentumRecoveryTimer = 0;
+    this.p2MomentumRecoveryTimer = 0;
   }
 
   addCallout(text, options = {}) {
@@ -296,8 +377,11 @@ export class GameLoop {
     this.resetHold();
     this.resetRewardState();
     this.nextQueue = [];
+    this.p2Queue = [];
     this.refillQueue();
+    this.refillP2Queue();
     this.resetLockState();
+    this.resetP2LockState();
     this.seedGarbage();
     if (this.mode === "redemption") {
       this.lives = this.maxLives;
@@ -320,15 +404,24 @@ export class GameLoop {
     this.clearDuration = 0;
     this.clearRows = [];
     this.clearOwner = null;
+    this.clearPlayer = null;
     this.tetrisFlashTimer = 0;
     this.tetrisFlashDuration = 0;
     this.tetrisTextTimer = 0;
     this.tetrisTextDuration = 0;
+    this.p2Piece = null;
+    this.p2PlacementTimer = 0;
   }
 
   reset() {
     this.resetGameState();
     this.activePiece = this.spawnPiece();
+    if (this.isCoopMode()) {
+      this.p2Piece = this.spawnP2Piece();
+      this.resetP2LockState();
+    } else {
+      this.p2Piece = null;
+    }
   }
 
   getScoreState() {
@@ -336,7 +429,11 @@ export class GameLoop {
       score: this.score,
       lines: this.lines,
       level: this.level,
-      timeMs: this.elapsedTimeMs
+      timeMs: this.elapsedTimeMs,
+      p2Score: this.p2Score,
+      p2Lines: this.p2Lines,
+      p2Level: this.p2Level,
+      combinedScore: this.score + this.p2Score
     };
   }
 
@@ -438,12 +535,27 @@ export class GameLoop {
     }
   }
 
+  refillP2Queue() {
+    while (this.p2Queue.length < this.queueSize) {
+      this.p2Queue.push(this.p2Randomizer.next());
+    }
+  }
+
   takeNextType() {
     if (this.nextQueue.length === 0) {
       this.refillQueue();
     }
     const next = this.nextQueue.shift();
     this.refillQueue();
+    return next;
+  }
+
+  takeNextTypeForP2() {
+    if (this.p2Queue.length === 0) {
+      this.refillP2Queue();
+    }
+    const next = this.p2Queue.shift();
+    this.refillP2Queue();
     return next;
   }
 
@@ -469,12 +581,62 @@ export class GameLoop {
     return value * this.sfxVolume;
   }
 
+  getSpawnPositionForOwner(owner, type) {
+    const x = Math.floor(GAME_CONFIG.COLS / 2);
+    const halfRows = GAME_CONFIG.ROWS / 2;
+    const tempPiece = createPiece(type, x, 0);
+    if (this.isCoopMode()) {
+      if (this.isOwnerActive(owner)) {
+        const minBlockY = this.getMinBlockY(tempPiece);
+        return { x, y: halfRows - minBlockY };
+      }
+      const maxBlockY = this.getMaxBlockYForType(type);
+      const bottomRow = halfRows - 1;
+      return { x, y: bottomRow - maxBlockY };
+    }
+    if (this.isOwnerActive(owner)) {
+      return { x, y: 18 };
+    }
+    const maxBlockY = this.getMaxBlockY(tempPiece);
+    const bottomRow = halfRows - 1;
+    return { x, y: bottomRow - maxBlockY };
+  }
+
+  isSpawnBlockedForOwner(owner, piece, otherPiece = null) {
+    return this.collidesForOwner(piece, owner, 0, 0, piece.rotation, otherPiece);
+  }
+
+  spawnP2Piece() {
+    if (!this.isCoopMode()) return null;
+    const type = this.takeNextTypeForP2();
+    const owner = this.getP2Owner();
+    const pos = this.getSpawnPositionForOwner(owner, type);
+    const piece = createPiece(type, pos.x, pos.y);
+    if (this.isSpawnBlockedForOwner(owner, piece, this.activePiece)) {
+      this.gameOver = true;
+      this.onGameOver();
+      return piece;
+    }
+    this.p2PlacementTimer = this.p2PlacementDuration;
+    return piece;
+  }
+
   spawnPiece() {
     const type = this.takeNextType();
-    const x = Math.floor(GAME_CONFIG.COLS / 2);
-    const y = 18;
-    let piece = createPiece(type, x, y);
-    if (this.isSpawnBlocked()) {
+    const owner = this.getActivePieceOwner();
+    const pos = this.getSpawnPositionForOwner(owner, type);
+    let piece = createPiece(type, pos.x, pos.y);
+    const otherPiece = this.isCoopMode() ? this.p2Piece : null;
+    let blocked = false;
+    if (owner === this.board.getActiveOwner() && !this.isSirtetMode()) {
+      blocked = this.isSpawnBlocked();
+      if (!blocked && otherPiece) {
+        blocked = this.piecesOverlap(piece, otherPiece);
+      }
+    } else {
+      blocked = this.isSpawnBlockedForOwner(owner, piece, otherPiece);
+    }
+    if (blocked) {
       if (this.mode === "redemption" && this.lives > 0
           && !this.lifeLossPending && !this.lifeLossAnimating) {
         this.queueLifeLoss(this.board.getActiveOwner());
@@ -572,6 +734,21 @@ export class GameLoop {
     osc.type = "triangle";
     osc.frequency.value = 140;
     gain.gain.value = this.getSfxGain(0.08);
+    osc.connect(gain).connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.start(now);
+    osc.stop(now + 0.14);
+  }
+
+  playThudSound() {
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.value = 120;
+    gain.gain.value = this.getSfxGain(0.06);
     osc.connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
@@ -811,21 +988,64 @@ export class GameLoop {
     return min;
   }
 
-  overlapsActiveOwnerAtY(piece, testY) {
-    const activeOwner = this.board.getActiveOwner();
+  getMaxBlockY(piece) {
+    const blocks = getBlocks(piece);
+    let max = -Infinity;
+    for (const block of blocks) {
+      if (block.y > max) max = block.y;
+    }
+    return max;
+  }
+
+  getMaxBlockYForType(type) {
+    let max = -Infinity;
+    const tempPiece = createPiece(type, 0, 0);
+    for (let rotation = 0; rotation < 4; rotation += 1) {
+      const blocks = getBlocks(tempPiece, rotation);
+      for (const block of blocks) {
+        if (block.y > max) max = block.y;
+      }
+    }
+    return max;
+  }
+
+  isOwnerActive(owner) {
+    return owner === this.board.getActiveOwner();
+  }
+
+  getLocalRowForOwnerAtRenderY(owner, renderY) {
+    const halfRows = GAME_CONFIG.ROWS / 2;
+    const maxIndex = halfRows - 1;
+    return this.isOwnerActive(owner)
+      ? renderY - halfRows
+      : maxIndex - renderY;
+  }
+
+  overlapsOwnerAtY(piece, owner, testY) {
     const blocks = getBlocks(piece);
     const halfRows = GAME_CONFIG.ROWS / 2;
+    const maxIndex = halfRows - 1;
+    const isActive = this.isOwnerActive(owner);
 
     for (const block of blocks) {
       const x = piece.x + block.x;
       const y = testY + block.y;
       if (x < 0 || x >= GAME_CONFIG.COLS) continue;
-      if (y < 0 || y >= GAME_CONFIG.ROWS) continue;
-      const localRow = y - halfRows;
-      if (localRow < 0 || localRow >= halfRows) continue;
-      const cell = this.board.getCellForOwner(activeOwner, localRow, x);
-      if (cell && cell.value !== 0) {
-        return true;
+      if (isActive) {
+        if (y < 0 || y >= GAME_CONFIG.ROWS) continue;
+        const localRow = y - halfRows;
+        if (localRow < 0 || localRow >= halfRows) continue;
+        const cell = this.board.getCellForOwner(owner, localRow, x);
+        if (cell && cell.value !== 0) {
+          return true;
+        }
+      } else {
+        if (y < 0 || y >= halfRows) continue;
+        const localRow = maxIndex - y;
+        const cell = this.board.getCellForOwner(owner, localRow, x);
+        if (cell && cell.value !== 0) {
+          return true;
+        }
       }
     }
 
@@ -865,93 +1085,156 @@ export class GameLoop {
     return halfRows - topFilled;
   }
 
-  handleFlipJam() {
-    if (!this.overlapsActiveOwnerAtY(this.activePiece, this.activePiece.y)) {
+  handleFlipJamForPiece(piece, owner, gravityDirection, playerId) {
+    if (!piece) return false;
+    if (!this.overlapsOwnerAtY(piece, owner, piece.y)) {
       return false;
     }
 
     const halfRows = GAME_CONFIG.ROWS / 2;
-    const minBlockY = this.getMinBlockY(this.activePiece);
-    const ceilingY = halfRows - minBlockY;
-    const maxUp = Math.max(0, this.activePiece.y - ceilingY);
-    const startY = this.activePiece.y;
+    const minBlockY = this.getMinBlockY(piece);
+    const maxBlockY = this.getMaxBlockY(piece);
+    const shiftDir = gravityDirection === 1 ? -1 : 1;
+    const startY = piece.y;
+    let maxShift = 0;
+
+    if (shiftDir < 0) {
+      const ceilingY = halfRows - minBlockY;
+      maxShift = Math.max(0, piece.y - ceilingY);
+    } else {
+      const floorY = (halfRows - 1) - maxBlockY;
+      maxShift = Math.max(0, floorY - piece.y);
+    }
 
     let shift = null;
-    for (let dy = 0; dy <= maxUp; dy += 1) {
-      if (!this.overlapsActiveOwnerAtY(this.activePiece, this.activePiece.y - dy)) {
-        shift = dy;
+    for (let step = 0; step <= maxShift; step += 1) {
+      if (!this.overlapsOwnerAtY(piece, owner, piece.y + step * shiftDir)) {
+        shift = step;
         break;
       }
     }
 
-    if (shift === null) shift = maxUp;
-    this.activePiece.y -= shift;
+    if (shift === null) shift = maxShift;
+    piece.y += shift * shiftDir;
 
     const jamCells = [];
-    const blocks = getBlocks(this.activePiece);
+    const blocks = getBlocks(piece);
     for (const block of blocks) {
-      const x = this.activePiece.x + block.x;
-      const y = this.activePiece.y + block.y;
+      const x = piece.x + block.x;
+      const y = piece.y + block.y;
       jamCells.push({ x, y });
     }
     this.jamFlashCells = jamCells;
     this.jamFlashTimer = this.jamFlashDuration;
     this.jamAnimTimer = this.jamAnimDuration;
     this.jamAnimFromY = startY;
-    this.jamAnimToY = this.activePiece.y;
-    this.jamAnimPiece = { ...this.activePiece };
+    this.jamAnimToY = piece.y;
+    this.jamAnimPiece = { ...piece };
     this.playSnapSound();
 
     this.lastLockWasFlipJam = true;
-    this.lockPiece();
+    this.lockPiece(playerId);
     return true;
   }
 
-  collides(piece, dx, dy, rotation = piece.rotation) {
-    const activeOwner = this.board.getActiveOwner();
+  piecesOverlap(piece, otherPiece, dx = 0, dy = 0, rotation = piece.rotation) {
+    if (!piece || !otherPiece) return false;
+    const blocks = getBlocks(piece, rotation);
+    const otherBlocks = getBlocks(otherPiece);
+    for (const block of blocks) {
+      const x = piece.x + block.x + dx;
+      const y = piece.y + block.y + dy;
+      for (const otherBlock of otherBlocks) {
+        const ox = otherPiece.x + otherBlock.x;
+        const oy = otherPiece.y + otherBlock.y;
+        if (x === ox && y === oy) return true;
+      }
+    }
+    return false;
+  }
+
+  collidesForOwner(piece, owner, dx, dy, rotation = piece.rotation, otherPiece = null) {
+    if (this.piecesOverlap(piece, otherPiece, dx, dy, rotation)) {
+      return true;
+    }
     const blocks = getBlocks(piece, rotation);
     const halfRows = GAME_CONFIG.ROWS / 2;
+    const maxIndex = halfRows - 1;
+    const isActive = this.isOwnerActive(owner);
 
     for (const block of blocks) {
       const x = piece.x + block.x + dx;
       const y = piece.y + block.y + dy;
 
-      if (x < 0 || x >= GAME_CONFIG.COLS || y >= GAME_CONFIG.ROWS) {
+      if (x < 0 || x >= GAME_CONFIG.COLS) {
         return true;
       }
 
-      if (y < 0) continue;
-      const localRow = y - halfRows;
-      if (localRow < 0 || localRow >= halfRows) continue;
-      const cell = this.board.getCellForOwner(activeOwner, localRow, x);
-      if (cell && cell.value !== 0) {
-        return true;
+      if (isActive) {
+        if (y >= GAME_CONFIG.ROWS) {
+          return true;
+        }
+        if (y < 0) continue;
+        const localRow = y - halfRows;
+        if (localRow < 0 || localRow >= halfRows) continue;
+        const cell = this.board.getCellForOwner(owner, localRow, x);
+        if (cell && cell.value !== 0) {
+          return true;
+        }
+      } else {
+        if (y < 0 || y >= halfRows) {
+          return true;
+        }
+        const localRow = maxIndex - y;
+        const cell = this.board.getCellForOwner(owner, localRow, x);
+        if (cell && cell.value !== 0) {
+          return true;
+        }
       }
     }
 
     return false;
   }
 
-  lockPiece() {
-    const activeOwner = this.board.getActiveOwner();
+  collides(piece, dx, dy, rotation = piece.rotation) {
+    const activeOwner = this.getActivePieceOwner();
+    const otherPiece = this.isCoopMode() ? this.p2Piece : null;
+    return this.collidesForOwner(piece, activeOwner, dx, dy, rotation, otherPiece);
+  }
+
+  lockPiece(playerId = "p1") {
+    const isP2 = playerId === "p2";
+    const piece = isP2 ? this.p2Piece : this.activePiece;
+    if (!piece) return;
+    const owner = isP2 ? this.getP2Owner() : this.getActivePieceOwner();
+    const { valueKey, burstKey, recoveryKey } = this.getMomentumKeys(playerId);
     const wasFlipJam = this.lastLockWasFlipJam;
-    const preClearHeight = this.getOwnerStackHeight(activeOwner);
-    const blocks = getBlocks(this.activePiece);
+    const preClearHeight = this.getOwnerStackHeight(owner);
+    const blocks = getBlocks(piece);
     const halfRows = GAME_CONFIG.ROWS / 2;
+    const maxIndex = halfRows - 1;
+    const isActive = this.isOwnerActive(owner);
     for (const block of blocks) {
-      const x = this.activePiece.x + block.x;
-      const y = this.activePiece.y + block.y;
-      if (y < 0) continue;
-      const localRow = y - halfRows;
-      if (localRow < 0 || localRow >= halfRows) continue;
-      this.board.setCellForOwner(activeOwner, localRow, x, this.activePiece.type);
+      const x = piece.x + block.x;
+      const y = piece.y + block.y;
+      if (isActive) {
+        if (y < 0) continue;
+        const localRow = y - halfRows;
+        if (localRow < 0 || localRow >= halfRows) continue;
+        this.board.setCellForOwner(owner, localRow, x, piece.type);
+      } else {
+        if (y < 0 || y >= halfRows) continue;
+        const localRow = maxIndex - y;
+        if (localRow < 0 || localRow >= halfRows) continue;
+        this.board.setCellForOwner(owner, localRow, x, piece.type);
+      }
     }
 
-    const linesToClear = this.board.findClearLinesForOwner(activeOwner);
+    const linesToClear = this.board.findClearLinesForOwner(owner);
     const cleared = linesToClear.length;
     if (cleared > 0) {
       let momentumBurstTriggered = false;
-      const willClearout = this.isClearoutForOwner(activeOwner, linesToClear);
+      const willClearout = this.isClearoutForOwner(owner, linesToClear);
       this.tetrisStreak = cleared === 4
         ? Math.min(this.tetrisStreak + 1, this.tetrisStreakMax)
         : 0;
@@ -966,14 +1249,14 @@ export class GameLoop {
       this.lastClearWasClearout = willClearout;
       const momentumGain = this.momentumGainTable[cleared] || 0;
       if (momentumGain > 0) {
-        const gainScale = this.momentumRecoveryTimer > 0
+        const gainScale = this[recoveryKey] > 0
           ? this.momentumRecoveryMultiplier
           : 1;
         const scaledGain = Math.max(1, Math.floor(momentumGain * gainScale));
-        this.momentumValue = Math.min(this.momentumMax, this.momentumValue + scaledGain);
-        if (this.momentumValue >= this.momentumMax && this.momentumBurstTimer <= 0) {
-          this.momentumBurstTimer = this.momentumBurstDuration;
-          this.momentumRecoveryTimer = 0;
+        this[valueKey] = Math.min(this.momentumMax, this[valueKey] + scaledGain);
+        if (this[valueKey] >= this.momentumMax && this[burstKey] <= 0) {
+          this[burstKey] = this.momentumBurstDuration;
+          this[recoveryKey] = 0;
           momentumBurstTriggered = true;
         }
       }
@@ -981,7 +1264,8 @@ export class GameLoop {
       this.clearTimer = 0;
       this.clearDuration = cleared === 4 ? 900 : 420;
       this.clearRows = linesToClear;
-      this.clearOwner = activeOwner;
+      this.clearOwner = owner;
+      this.clearPlayer = playerId;
       // Tuning hook: scoring table and multipliers for playtesting.
       const lineScores = [0, 100, 300, 500, 800];
       const flipJumpMultiplier = 1.25;
@@ -996,15 +1280,22 @@ export class GameLoop {
         scoreMultiplier *= (flipChainMultipliers[this.flipChain] || 1);
       }
       if (this.lastClearWasRisk) scoreMultiplier *= riskMultiplier;
-      if (this.momentumBurstTimer > 0) scoreMultiplier *= momentumBurstMultiplier;
+      if (this[burstKey] > 0) scoreMultiplier *= momentumBurstMultiplier;
       if (cleared === 4 && this.tetrisStreak >= 2) {
         scoreMultiplier *= (tetrisStreakMultipliers[this.tetrisStreak] || 1);
       }
-      const baseScore = lineScores[cleared] * this.level;
+      const scoreKey = isP2 ? "p2Score" : "score";
+      const linesKey = isP2 ? "p2Lines" : "lines";
+      const levelKey = isP2 ? "p2Level" : "level";
+      const dropKey = isP2 ? "p2DropInterval" : "dropInterval";
+      let score = this[scoreKey];
+      let lines = this[linesKey];
+      let level = this[levelKey];
+      const baseScore = lineScores[cleared] * level;
       const lineScore = Math.round(baseScore * scoreMultiplier);
-      this.score += lineScore;
+      score += lineScore;
       if (willClearout) {
-        this.score += clearoutBonusBase * this.level;
+        score += clearoutBonusBase * level;
       }
       if (wasFlipJam) {
         this.addCallout("FLIP POP", { color: "#b9ffd1" });
@@ -1030,7 +1321,7 @@ export class GameLoop {
         this.addCallout("CLEAROUT", { color: "#ffe08a", size: 30 });
         this.playClearoutRewardSound();
       }
-      this.lines += cleared;
+      lines += cleared;
       if (cleared === 4) {
         this.playTetrisSound();
         this.tetrisFlashDuration = this.clearDuration;
@@ -1042,12 +1333,15 @@ export class GameLoop {
       }
       const nextLevel = this.freezeLevel
         ? this.startingLevel
-        : this.getLevelForLines(this.lines);
-      if (!this.freezeLevel && nextLevel !== this.level) {
+        : this.getLevelForLines(lines);
+      if (!this.freezeLevel && nextLevel !== level) {
         this.playLevelUpSound(0.85);
       }
-      this.level = nextLevel;
-      this.dropInterval = this.getDropInterval(this.level);
+      level = nextLevel;
+      this[scoreKey] = score;
+      this[linesKey] = lines;
+      this[levelKey] = level;
+      this[dropKey] = this.getDropInterval(level);
     } else {
       this.tetrisStreak = 0;
       this.flipChain = 0;
@@ -1058,17 +1352,24 @@ export class GameLoop {
     }
     this.lastLockWasFlipJam = false;
     if (!this.isClearing) {
-      this.activePiece = this.spawnPiece();
-      this.resetLockState();
-      this.holdUsed = false;
+      if (isP2) {
+        this.p2Piece = this.spawnP2Piece();
+        this.p2HoldUsed = false;
+        this.resetP2LockState();
+      } else {
+        this.activePiece = this.spawnPiece();
+        this.resetLockState();
+        this.holdUsed = false;
+      }
       this.playGroundSound();
     }
   }
 
   hardDrop() {
+    const direction = this.getActiveGravityDirection();
     let dropped = 0;
-    while (!this.collides(this.activePiece, 0, 1)) {
-      this.activePiece.y += 1;
+    while (!this.collides(this.activePiece, 0, direction)) {
+      this.activePiece.y += direction;
       dropped += 1;
     }
     if (dropped > 0) {
@@ -1087,12 +1388,46 @@ export class GameLoop {
     this.lockPiece();
   }
 
+  hardDropP2() {
+    if (!this.p2Piece) return;
+    const owner = this.getP2Owner();
+    const otherPiece = this.activePiece;
+    const direction = -1;
+    let dropped = 0;
+    while (!this.collidesForOwner(this.p2Piece, owner, 0, direction, this.p2Piece.rotation, otherPiece)) {
+      this.p2Piece.y += direction;
+      dropped += 1;
+    }
+    if (dropped > 0) {
+      this.p2Score += dropped * 2;
+      const { valueKey, burstKey, recoveryKey } = this.getMomentumKeys("p2");
+      const gain = this.momentumHardDropGain || 0;
+      if (gain > 0 && this[burstKey] <= 0) {
+        const gainScale = this[recoveryKey] > 0
+          ? this.momentumRecoveryMultiplier
+          : 1;
+        const scaledGain = Math.max(1, Math.floor(gain * gainScale));
+        this[valueKey] = Math.min(this.momentumMax, this[valueKey] + scaledGain);
+      }
+    }
+    this.playHardDropSound();
+    this.lockPiece("p2");
+  }
+
   resetLockState() {
     this.lockTimer = 0;
     this.lockMoves = 0;
     this.groundedTimer = 0;
     this.lockResetCooldown = 0;
     this.isGrounded = false;
+  }
+
+  resetP2LockState() {
+    this.p2LockTimer = 0;
+    this.p2LockMoves = 0;
+    this.p2GroundedTimer = 0;
+    this.p2LockResetCooldown = 0;
+    this.p2IsGrounded = false;
   }
 
   handleHold() {
@@ -1104,8 +1439,20 @@ export class GameLoop {
     } else {
       const swap = this.holdType;
       this.holdType = this.activePiece.type;
-      const piece = createPiece(swap, Math.floor(GAME_CONFIG.COLS / 2), 18);
-      if (this.isSpawnBlocked()) {
+      const owner = this.getActivePieceOwner();
+      const pos = this.getSpawnPositionForOwner(owner, swap);
+      const piece = createPiece(swap, pos.x, pos.y);
+      const otherPiece = this.isCoopMode() ? this.p2Piece : null;
+      let blocked = false;
+      if (owner === this.board.getActiveOwner() && !this.isSirtetMode()) {
+        blocked = this.isSpawnBlocked();
+        if (!blocked && otherPiece) {
+          blocked = this.piecesOverlap(piece, otherPiece);
+        }
+      } else {
+        blocked = this.isSpawnBlockedForOwner(owner, piece, otherPiece);
+      }
+      if (blocked) {
         this.gameOver = true;
         this.onGameOver();
         return;
@@ -1117,12 +1464,43 @@ export class GameLoop {
     this.holdUsed = true;
   }
 
-  getGhostY() {
-    let offset = 0;
-    while (!this.collides(this.activePiece, 0, offset + 1)) {
-      offset += 1;
+  handleP2Hold() {
+    if (this.p2HoldUsed || !this.p2Piece) return;
+    const owner = this.getP2Owner();
+    if (this.p2HoldType === null) {
+      this.p2HoldType = this.p2Piece.type;
+      this.p2Piece = this.spawnP2Piece();
+      if (this.gameOver) return;
+    } else {
+      const swap = this.p2HoldType;
+      this.p2HoldType = this.p2Piece.type;
+      const pos = this.getSpawnPositionForOwner(owner, swap);
+      const piece = createPiece(swap, pos.x, pos.y);
+      if (this.isSpawnBlockedForOwner(owner, piece, this.activePiece)) {
+        this.gameOver = true;
+        this.onGameOver();
+        return;
+      }
+      this.p2Piece = piece;
     }
-    return this.activePiece.y + offset;
+    this.p2HoldUsed = true;
+    this.p2PlacementTimer = this.p2PlacementDuration;
+    this.resetP2LockState();
+  }
+
+  getGhostYForPiece(piece, owner, direction, otherPiece = null) {
+    let offset = 0;
+    while (!this.collidesForOwner(piece, owner, 0, offset + direction, piece.rotation, otherPiece)) {
+      offset += direction;
+    }
+    return piece.y + offset;
+  }
+
+  getGhostY() {
+    const owner = this.getActivePieceOwner();
+    const direction = this.getActiveGravityDirection();
+    const otherPiece = this.isCoopMode() ? this.p2Piece : null;
+    return this.getGhostYForPiece(this.activePiece, owner, direction, otherPiece);
   }
 
   tryMoveHorizontal(dx) {
@@ -1153,12 +1531,247 @@ export class GameLoop {
     return false;
   }
 
+  tryMovePiece(piece, owner, dx, dy, otherPiece = null) {
+    if (!piece) return false;
+    if (!this.collidesForOwner(piece, owner, dx, dy, piece.rotation, otherPiece)) {
+      piece.x += dx;
+      piece.y += dy;
+      return true;
+    }
+    return false;
+  }
+
+  tryRotatePiece(piece, owner, dir, otherPiece = null) {
+    if (!piece) return false;
+    const from = piece.rotation;
+    const to = (from + dir + 4) % 4;
+    const offsets = getKickOffsets(piece.type, from, to);
+    for (const [ox, oy] of offsets) {
+      if (!this.collidesForOwner(piece, owner, ox, oy, to, otherPiece)) {
+        piece.x += ox;
+        piece.y += oy;
+        piece.rotation = to;
+        return true;
+      }
+    }
+    return false;
+  }
+
   registerLockReset() {
-    if (!this.collides(this.activePiece, 0, 1)) return;
+    const direction = this.getActiveGravityDirection();
+    if (!this.collides(this.activePiece, 0, direction)) return;
     if (this.lockResetCooldown > 0) return;
     this.lockTimer = 0;
     this.lockMoves += 1;
     this.lockResetCooldown = this.lockResetCooldownMs;
+  }
+
+  registerP2LockReset() {
+    if (!this.p2Piece) return;
+    const owner = this.getP2Owner();
+    const otherPiece = this.activePiece;
+    if (!this.collidesForOwner(this.p2Piece, owner, 0, -1, this.p2Piece.rotation, otherPiece)) return;
+    if (this.p2LockResetCooldown > 0) return;
+    this.p2LockTimer = 0;
+    this.p2LockMoves += 1;
+    this.p2LockResetCooldown = this.lockResetCooldownMs;
+  }
+
+  updateP2State(delta) {
+    if (!this.p2Piece) return;
+    const owner = this.getP2Owner();
+    const otherPiece = this.activePiece;
+
+    const leftPressed = this.input.consumePress("KeyA");
+    const rightPressed = this.input.consumePress("KeyD");
+    const upPressed = this.input.consumePress("KeyW");
+    const leftHeld = this.input.isDown("KeyA");
+    const rightHeld = this.input.isDown("KeyD");
+    const upHeld = this.input.isDown("KeyW");
+    const downPressed = this.input.consumePress("KeyS");
+
+    if (leftPressed) {
+      const moved = this.tryMovePiece(this.p2Piece, owner, -1, 0, otherPiece);
+      if (moved) {
+        this.registerP2LockReset();
+      } else if (this.piecesOverlap(this.p2Piece, otherPiece, -1, 0)) {
+        this.playThudSound();
+      }
+      this.p2LeftHold = 0;
+      this.p2LeftRepeat = 0;
+    }
+
+    if (rightPressed) {
+      const moved = this.tryMovePiece(this.p2Piece, owner, 1, 0, otherPiece);
+      if (moved) {
+        this.registerP2LockReset();
+      } else if (this.piecesOverlap(this.p2Piece, otherPiece, 1, 0)) {
+        this.playThudSound();
+      }
+      this.p2RightHold = 0;
+      this.p2RightRepeat = 0;
+    }
+
+    if (upPressed) {
+      const moved = this.tryMovePiece(this.p2Piece, owner, 0, -1, otherPiece);
+      if (moved) {
+        this.registerP2LockReset();
+      } else if (this.piecesOverlap(this.p2Piece, otherPiece, 0, -1)) {
+        this.playThudSound();
+      }
+      this.p2UpHold = 0;
+      this.p2UpRepeat = 0;
+    }
+
+    if (downPressed) {
+      this.hardDropP2();
+      return;
+    }
+
+    if (leftHeld && !rightHeld) {
+      this.p2LeftHold += delta;
+      if (this.p2LeftHold >= GAME_CONFIG.DAS_DELAY) {
+        this.p2LeftRepeat += delta;
+        while (this.p2LeftRepeat >= GAME_CONFIG.DAS_ARR) {
+          this.p2LeftRepeat -= GAME_CONFIG.DAS_ARR;
+          const moved = this.tryMovePiece(this.p2Piece, owner, -1, 0, otherPiece);
+          if (moved) {
+            this.registerP2LockReset();
+          } else {
+            if (this.piecesOverlap(this.p2Piece, otherPiece, -1, 0)) {
+              this.playThudSound();
+            }
+            break;
+          }
+        }
+      }
+    } else {
+      this.p2LeftHold = 0;
+      this.p2LeftRepeat = 0;
+    }
+
+    if (rightHeld && !leftHeld) {
+      this.p2RightHold += delta;
+      if (this.p2RightHold >= GAME_CONFIG.DAS_DELAY) {
+        this.p2RightRepeat += delta;
+        while (this.p2RightRepeat >= GAME_CONFIG.DAS_ARR) {
+          this.p2RightRepeat -= GAME_CONFIG.DAS_ARR;
+          const moved = this.tryMovePiece(this.p2Piece, owner, 1, 0, otherPiece);
+          if (moved) {
+            this.registerP2LockReset();
+          } else {
+            if (this.piecesOverlap(this.p2Piece, otherPiece, 1, 0)) {
+              this.playThudSound();
+            }
+            break;
+          }
+        }
+      }
+    } else {
+      this.p2RightHold = 0;
+      this.p2RightRepeat = 0;
+    }
+
+    if (upHeld) {
+      this.p2UpHold += delta;
+      if (this.p2UpHold >= GAME_CONFIG.DAS_DELAY) {
+        this.p2UpRepeat += delta;
+        while (this.p2UpRepeat >= GAME_CONFIG.DAS_ARR) {
+          this.p2UpRepeat -= GAME_CONFIG.DAS_ARR;
+          const moved = this.tryMovePiece(this.p2Piece, owner, 0, -1, otherPiece);
+          if (moved) {
+            this.registerP2LockReset();
+          } else {
+            if (this.piecesOverlap(this.p2Piece, otherPiece, 0, -1)) {
+              this.playThudSound();
+            }
+            break;
+          }
+        }
+      }
+    } else {
+      this.p2UpHold = 0;
+      this.p2UpRepeat = 0;
+    }
+
+    if (this.input.consumePress("KeyJ")) {
+      if (this.tryRotatePiece(this.p2Piece, owner, -1, otherPiece)) {
+        this.playRotateSound();
+        this.registerP2LockReset();
+      }
+    }
+
+    if (this.input.consumePress("KeyK")) {
+      if (this.tryRotatePiece(this.p2Piece, owner, 1, otherPiece)) {
+        this.playRotateSound();
+        this.registerP2LockReset();
+      }
+    }
+
+    if (this.input.consumePress("KeyL")) {
+      this.handleP2Hold();
+    }
+
+    this.p2PlacementTimer = Math.max(0, this.p2PlacementTimer - delta);
+    if (this.p2PlacementTimer === 0) {
+      this.hardDropP2();
+      return;
+    }
+
+    const currentlyGrounded = this.collidesForOwner(
+      this.p2Piece,
+      owner,
+      0,
+      -1,
+      this.p2Piece.rotation,
+      otherPiece
+    );
+    if (currentlyGrounded) {
+      this.p2IsGrounded = true;
+      this.p2LockTimer += delta;
+      this.p2GroundedTimer += delta;
+      if (this.p2LockResetCooldown > 0) {
+        this.p2LockResetCooldown = Math.max(0, this.p2LockResetCooldown - delta);
+      }
+      const extraMoves = Math.max(0, this.p2LockMoves - this.lockDegradeAfter);
+      const effectiveDelay = Math.max(
+        this.lockDelayMinMs,
+        this.lockDelayMs - extraMoves * this.lockDegradeStepMs
+      );
+      if (this.p2LockTimer >= effectiveDelay ||
+          this.p2LockMoves >= this.lockMoveLimit ||
+          this.p2GroundedTimer >= this.groundedMaxMs) {
+        this.lockPiece("p2");
+        return;
+      }
+    } else {
+      this.p2IsGrounded = false;
+      this.p2LockTimer = 0;
+      this.p2LockMoves = 0;
+      this.p2GroundedTimer = 0;
+      this.p2LockResetCooldown = 0;
+    }
+
+  }
+
+  updateMomentumState(delta, valueKey, burstKey, recoveryKey) {
+    if (this[burstKey] > 0) {
+      const wasBursting = this[burstKey] > 0;
+      this[burstKey] = Math.max(0, this[burstKey] - delta);
+      if (wasBursting && this[burstKey] === 0) {
+        this[recoveryKey] = this.momentumRecoveryDuration;
+      }
+    }
+    if (this[recoveryKey] > 0) {
+      this[recoveryKey] = Math.max(0, this[recoveryKey] - delta);
+    } else if (this[valueKey] > 0) {
+      const pct = this.momentumMax > 0 ? this[valueKey] / this.momentumMax : 0;
+      const decayBoost = pct > 0.8 ? 2 : 1;
+      this[valueKey] = Math.max(
+        0,
+        this[valueKey] - delta * this.momentumDecayPerMs * decayBoost
+      );
+    }
   }
 
   update(delta) {
@@ -1221,15 +1834,18 @@ export class GameLoop {
 
     if (this.paused) {
       if (this.pauseConfirmActive) {
-        const left = this.input.consumePress("ArrowLeft");
-        const right = this.input.consumePress("ArrowRight");
-        const up = this.input.consumePress("ArrowUp");
-        const down = this.input.consumePress("ArrowDown");
-        const back = this.input.consumePress("Backspace");
+        const left = this.input.consumePress("ArrowLeft") || this.input.consumePress("KeyA");
+        const right = this.input.consumePress("ArrowRight") || this.input.consumePress("KeyD");
+        const up = this.input.consumePress("ArrowUp") || this.input.consumePress("KeyW");
+        const down = this.input.consumePress("ArrowDown") || this.input.consumePress("KeyS");
+        const back = this.input.consumePress("Backspace") || this.input.consumePress("KeyL");
         if (left || right || up || down || back) {
           this.pauseConfirmIndex = this.pauseConfirmIndex === 0 ? 1 : 0;
         }
-        if (this.input.consumePress("KeyX") || this.input.consumePress("Enter")) {
+        if (this.input.consumePress("KeyX") ||
+            this.input.consumePress("Enter") ||
+            this.input.consumePress("KeyJ") ||
+            this.input.consumePress("KeyK")) {
           if (this.pauseConfirmIndex === 0) {
             this.pauseConfirmActive = false;
             this.paused = false;
@@ -1238,20 +1854,23 @@ export class GameLoop {
             this.pauseConfirmActive = false;
           }
         }
-        if (this.input.consumePress("KeyZ")) {
+        if (this.input.consumePress("KeyZ") || this.input.consumePress("KeyL")) {
           this.pauseConfirmActive = false;
         }
       } else {
-        const left = this.input.consumePress("ArrowLeft");
-        const right = this.input.consumePress("ArrowRight");
-        const up = this.input.consumePress("ArrowUp");
-        const down = this.input.consumePress("ArrowDown");
-        const back = this.input.consumePress("Backspace");
+        const left = this.input.consumePress("ArrowLeft") || this.input.consumePress("KeyA");
+        const right = this.input.consumePress("ArrowRight") || this.input.consumePress("KeyD");
+        const up = this.input.consumePress("ArrowUp") || this.input.consumePress("KeyW");
+        const down = this.input.consumePress("ArrowDown") || this.input.consumePress("KeyS");
+        const back = this.input.consumePress("Backspace") || this.input.consumePress("KeyL");
         if (left || right || up || down || back) {
           const dir = left || up ? -1 : 1;
           this.pauseActionIndex = (this.pauseActionIndex + dir + 3) % 3;
         }
-        if (this.input.consumePress("KeyX") || this.input.consumePress("Enter")) {
+        if (this.input.consumePress("KeyX") ||
+            this.input.consumePress("Enter") ||
+            this.input.consumePress("KeyJ") ||
+            this.input.consumePress("KeyK")) {
           if (this.pauseActionIndex === 0) {
             this.paused = false;
           } else if (this.pauseActionIndex === 1) {
@@ -1262,13 +1881,15 @@ export class GameLoop {
             this.pauseConfirmIndex = 0;
           }
         }
-        if (this.input.consumePress("KeyZ")) {
+        if (this.input.consumePress("KeyZ") || this.input.consumePress("KeyL")) {
           this.pauseConfirmActive = true;
           this.pauseConfirmIndex = 0;
         }
       }
       return;
     }
+
+    this.animTimeMs += delta;
 
     if (this.mode === "garbage") {
       this.elapsedTimeMs += delta;
@@ -1289,22 +1910,9 @@ export class GameLoop {
         }
       }
     }
-    if (this.momentumBurstTimer > 0) {
-      const wasBursting = this.momentumBurstTimer > 0;
-      this.momentumBurstTimer = Math.max(0, this.momentumBurstTimer - delta);
-      if (wasBursting && this.momentumBurstTimer === 0) {
-        this.momentumRecoveryTimer = this.momentumRecoveryDuration;
-      }
-    }
-    if (this.momentumRecoveryTimer > 0) {
-      this.momentumRecoveryTimer = Math.max(0, this.momentumRecoveryTimer - delta);
-    } else if (this.momentumValue > 0) {
-      const pct = this.momentumMax > 0 ? this.momentumValue / this.momentumMax : 0;
-      const decayBoost = pct > 0.8 ? 2 : 1;
-      this.momentumValue = Math.max(
-        0,
-        this.momentumValue - delta * this.momentumDecayPerMs * decayBoost
-      );
+    this.updateMomentumState(delta, "momentumValue", "momentumBurstTimer", "momentumRecoveryTimer");
+    if (this.isCoopMode()) {
+      this.updateMomentumState(delta, "p2MomentumValue", "p2MomentumBurstTimer", "p2MomentumRecoveryTimer");
     }
 
     if (this.isClearing) {
@@ -1316,14 +1924,22 @@ export class GameLoop {
         this.clearDuration = 0;
         this.clearRows = [];
         this.clearOwner = null;
+        const clearedPlayer = this.clearPlayer || "p1";
+        this.clearPlayer = null;
         if (this.mode === "garbage" && !this.hasRemainingGarbage()) {
           this.gameOver = true;
           this.onGarbageCleared();
           return;
         }
-        this.activePiece = this.spawnPiece();
-        this.resetLockState();
-        this.holdUsed = false;
+        if (clearedPlayer === "p2") {
+          this.p2Piece = this.spawnP2Piece();
+          this.p2HoldUsed = false;
+          this.resetP2LockState();
+        } else {
+          this.activePiece = this.spawnPiece();
+          this.resetLockState();
+          this.holdUsed = false;
+        }
         this.playGroundSound();
       }
       return;
@@ -1336,7 +1952,20 @@ export class GameLoop {
       this.updateGridOffsets();
       this.playFlipSound();
       this.flipSinceClear = true;
-      if (this.handleFlipJam()) return;
+      if (this.handleFlipJamForPiece(
+        this.activePiece,
+        this.getActivePieceOwner(),
+        this.getActiveGravityDirection(),
+        "p1"
+      )) return;
+      if (this.isCoopMode() && this.p2Piece) {
+        if (this.handleFlipJamForPiece(
+          this.p2Piece,
+          this.getP2Owner(),
+          -1,
+          "p2"
+        )) return;
+      }
     }
 
     if (this.input.consumePress("KeyC")) {
@@ -1349,13 +1978,21 @@ export class GameLoop {
     const rightHeld = this.input.isDown("ArrowRight");
 
     if (leftPressed) {
-      this.tryMoveHorizontal(-1);
+      const moved = this.tryMoveHorizontal(-1);
+      if (!moved && this.isCoopMode() && this.p2Piece &&
+          this.piecesOverlap(this.activePiece, this.p2Piece, -1, 0)) {
+        this.playThudSound();
+      }
       this.leftHold = 0;
       this.leftRepeat = 0;
     }
 
     if (rightPressed) {
-      this.tryMoveHorizontal(1);
+      const moved = this.tryMoveHorizontal(1);
+      if (!moved && this.isCoopMode() && this.p2Piece &&
+          this.piecesOverlap(this.activePiece, this.p2Piece, 1, 0)) {
+        this.playThudSound();
+      }
       this.rightHold = 0;
       this.rightRepeat = 0;
     }
@@ -1366,7 +2003,13 @@ export class GameLoop {
         this.leftRepeat += delta;
         while (this.leftRepeat >= GAME_CONFIG.DAS_ARR) {
           this.leftRepeat -= GAME_CONFIG.DAS_ARR;
-          if (!this.tryMoveHorizontal(-1)) break;
+          if (!this.tryMoveHorizontal(-1)) {
+            if (this.isCoopMode() && this.p2Piece &&
+                this.piecesOverlap(this.activePiece, this.p2Piece, -1, 0)) {
+              this.playThudSound();
+            }
+            break;
+          }
         }
       }
     } else {
@@ -1380,7 +2023,13 @@ export class GameLoop {
         this.rightRepeat += delta;
         while (this.rightRepeat >= GAME_CONFIG.DAS_ARR) {
           this.rightRepeat -= GAME_CONFIG.DAS_ARR;
-          if (!this.tryMoveHorizontal(1)) break;
+          if (!this.tryMoveHorizontal(1)) {
+            if (this.isCoopMode() && this.p2Piece &&
+                this.piecesOverlap(this.activePiece, this.p2Piece, 1, 0)) {
+              this.playThudSound();
+            }
+            break;
+          }
         }
       }
     } else {
@@ -1400,7 +2049,8 @@ export class GameLoop {
       }
     }
 
-    if (this.input.consumePress("ArrowUp")) {
+    const hardDropKey = this.isSirtetMode() ? "ArrowDown" : "ArrowUp";
+    if (this.input.consumePress(hardDropKey)) {
       this.hardDrop();
       return;
     }
@@ -1425,14 +2075,16 @@ export class GameLoop {
       this.gridOffsetBottom = 0;
     }
 
-    const softDrop = this.input.isDown("ArrowDown");
+    const gravityDir = this.getActiveGravityDirection();
+    const softDropKey = this.isSirtetMode() ? "ArrowUp" : "ArrowDown";
+    const softDrop = this.input.isDown(softDropKey);
     const interval = softDrop ? 40 : this.dropInterval;
 
     this.dropTimer += delta;
     if (this.dropTimer >= interval) {
       this.dropTimer = 0;
-      if (!this.collides(this.activePiece, 0, 1)) {
-        this.activePiece.y += 1;
+      if (!this.collides(this.activePiece, 0, gravityDir)) {
+        this.activePiece.y += gravityDir;
         if (softDrop) {
           this.score += 1;
         }
@@ -1440,7 +2092,7 @@ export class GameLoop {
       }
     }
 
-    const currentlyGrounded = this.collides(this.activePiece, 0, 1);
+    const currentlyGrounded = this.collides(this.activePiece, 0, gravityDir);
     if (currentlyGrounded) {
       this.isGrounded = true;
       this.lockTimer += delta;
@@ -1466,13 +2118,18 @@ export class GameLoop {
       this.groundedTimer = 0;
       this.lockResetCooldown = 0;
     }
+
+    if (this.isCoopMode() && this.p2Piece && !this.isClearing) {
+      this.updateP2State(delta);
+    }
   }
 
   draw() {
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.setTransform(1, 0, 0, 1, GAME_CONFIG.GRID_MARGIN, 0);
+    const gridOffsetX = this.getGridOffsetX();
+    ctx.setTransform(1, 0, 0, 1, gridOffsetX, 0);
 
     const halfRows = GAME_CONFIG.ROWS / 2;
     const spawnStart = halfRows - GAME_CONFIG.SPAWN_BUFFER / 2;
@@ -1504,7 +2161,9 @@ export class GameLoop {
         const cell = this.board.grid[y][x];
         if (cell.value === 0) continue;
         if (!this.board.isRowInOwner(cell.owner, y)) continue;
-        const alpha = cell.owner === activeOwner ? 1 : 0.3;
+        const alpha = (this.isCoopMode() || this.isSirtetMode())
+          ? 1
+          : (cell.owner === activeOwner ? 1 : 0.3);
         let renderY = y;
         const local = this.board.mapRowToLocal(cell.owner, y);
         if (cell.owner === activeOwner) {
@@ -1578,6 +2237,60 @@ export class GameLoop {
         ctx.fillStyle = GAME_CONFIG.COLORS[this.activePiece.type];
         for (const block of blocks) {
           const x = this.activePiece.x + block.x;
+          const y = ghostY + block.y;
+          if (y < 0) continue;
+          const size = GAME_CONFIG.BLOCK_SIZE;
+          ctx.fillRect(x * size + 2, y * size + 2, size - 4, size - 4);
+        }
+        ctx.restore();
+      }
+    }
+
+    if (!this.isClearing && this.isCoopMode() && this.p2Piece) {
+      const blocks = getBlocks(this.p2Piece);
+      const p2Urgent = this.p2PlacementTimer > 0 && this.p2PlacementTimer <= 1000;
+      const shakeStrength = p2Urgent ? 1.2 : 0;
+      const shakeX = p2Urgent ? Math.sin(this.animTimeMs / 45) * shakeStrength : 0;
+      const shakeY = p2Urgent ? Math.cos(this.animTimeMs / 55) * shakeStrength : 0;
+      ctx.save();
+      if (p2Urgent) {
+        ctx.shadowColor = "rgba(255, 200, 140, 0.85)";
+        ctx.shadowBlur = 12;
+        ctx.translate(shakeX, shakeY);
+      }
+      for (const block of blocks) {
+        const x = this.p2Piece.x + block.x;
+        const y = this.p2Piece.y + block.y;
+        if (y < 0) continue;
+        drawCell(ctx, x, y, GAME_CONFIG.COLORS[this.p2Piece.type], 1);
+      }
+      ctx.restore();
+
+      const ghostY = this.getGhostYForPiece(
+        this.p2Piece,
+        this.getP2Owner(),
+        -1,
+        this.activePiece
+      );
+      if (ghostY !== this.p2Piece.y) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(220, 220, 220, 0.7)";
+        ctx.globalAlpha = 0.8;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = "rgba(220, 220, 220, 0.45)";
+        ctx.shadowBlur = 4;
+        for (const block of blocks) {
+          const x = this.p2Piece.x + block.x;
+          const y = ghostY + block.y;
+          if (y < 0) continue;
+          const size = GAME_CONFIG.BLOCK_SIZE;
+          ctx.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
+        }
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 0.16;
+        ctx.fillStyle = GAME_CONFIG.COLORS[this.p2Piece.type];
+        for (const block of blocks) {
+          const x = this.p2Piece.x + block.x;
           const y = ghostY + block.y;
           if (y < 0) continue;
           const size = GAME_CONFIG.BLOCK_SIZE;
@@ -1720,13 +2433,91 @@ export class GameLoop {
       ctx.restore();
     }
 
+    if (this.isCoopMode()) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = "#e6e6e6";
+      ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      const leftHudX = GAME_CONFIG.GRID_MARGIN + 12;
+      let leftHudY = 12;
+      ctx.fillText("SCORE", leftHudX, leftHudY);
+      leftHudY += 20;
+      ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText(String(this.p2Score).padStart(6, "0"), leftHudX, leftHudY);
+      leftHudY += 32;
+      ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText("LEVEL", leftHudX, leftHudY);
+      leftHudY += 20;
+      ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText(String(this.p2Level), leftHudX, leftHudY);
+      leftHudY += 30;
+      ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText("LINES", leftHudX, leftHudY);
+      leftHudY += 20;
+      ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText(String(this.p2Lines), leftHudX, leftHudY);
+      ctx.restore();
+
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = "#e6e6e6";
+      ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      const leftPanelX = GAME_CONFIG.GRID_MARGIN + 12;
+      let leftPanelY = 190;
+      ctx.fillText("HOLD", leftPanelX, leftPanelY);
+      leftPanelY += 18;
+      const holdBox = { x: leftPanelX, y: leftPanelY, w: 96, h: 96 };
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(holdBox.x, holdBox.y, holdBox.w, holdBox.h);
+      ctx.restore();
+      this.drawMiniPiece(ctx, this.p2HoldType, holdBox.x, holdBox.y, holdBox.w, holdBox.h);
+      leftPanelY += 116;
+      ctx.fillText("NEXT", leftPanelX, leftPanelY);
+      leftPanelY += 18;
+      for (let i = 0; i < this.p2Queue.length; i += 1) {
+        this.drawMiniPiece(ctx, this.p2Queue[i], leftPanelX, leftPanelY, 80, 80);
+        leftPanelY += 88;
+      }
+      leftPanelY += 8;
+      const p2TimeLeftMs = Math.max(0, this.p2PlacementTimer);
+      const p2Seconds = Math.ceil(p2TimeLeftMs / 1000);
+      const p2Urgent = p2TimeLeftMs > 0 && p2TimeLeftMs <= 1000;
+      ctx.fillStyle = p2Urgent ? "#ff9a6b" : "#e6e6e6";
+      ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText("TIMER", leftPanelX, leftPanelY);
+      leftPanelY += 18;
+      ctx.font = "24px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+      ctx.fillText(`${p2Seconds}s`, leftPanelX, leftPanelY);
+      const holdBoxSize = 96;
+      const nextStart = 190 + 18 + 96 + 116 + 18;
+      const nextEnd = nextStart + (3 * 88);
+      const pauseTop = nextEnd + 12;
+      const buttonGap = 18;
+      const flipTop = pauseTop + holdBoxSize + buttonGap;
+      const meterOffsetX = 12;
+      const meterOffsetY = 48;
+      const meterTop = flipTop + holdBoxSize + 18 + meterOffsetY;
+      this.drawMomentumMeter(ctx, leftPanelX + meterOffsetX, meterTop, holdBoxSize, 140, {
+        value: this.p2MomentumValue,
+        burstTimer: this.p2MomentumBurstTimer
+      });
+      ctx.restore();
+    }
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#e6e6e6";
     ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    const hudX = GAME_CONFIG.GRID_MARGIN * 2
+    const hudX = gridOffsetX
+      + GAME_CONFIG.GRID_MARGIN
       + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
       + 12;
     let hudY = 12;
@@ -1761,7 +2552,8 @@ export class GameLoop {
     ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    const panelX = GAME_CONFIG.GRID_MARGIN * 2
+    const panelX = gridOffsetX
+      + GAME_CONFIG.GRID_MARGIN
       + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
       + 12;
     let panelY = 190;
@@ -1799,7 +2591,7 @@ export class GameLoop {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.fillStyle = "rgba(0, 0, 0, 1.0)";
       ctx.fillRect(
-        GAME_CONFIG.GRID_MARGIN,
+        gridOffsetX,
         0,
         GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE,
         GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE
@@ -2021,8 +2813,13 @@ export class GameLoop {
     return false;
   }
 
-  drawMomentumMeter(ctx, x, y, w, h) {
-    const pct = this.momentumMax > 0 ? this.momentumValue / this.momentumMax : 0;
+  drawMomentumMeter(ctx, x, y, w, h, options = {}) {
+    const value = Number.isFinite(options.value) ? options.value : this.momentumValue;
+    const max = Number.isFinite(options.max) ? options.max : this.momentumMax;
+    const burstTimer = Number.isFinite(options.burstTimer)
+      ? options.burstTimer
+      : this.momentumBurstTimer;
+    const pct = max > 0 ? value / max : 0;
     const clamped = Math.max(0, Math.min(1, pct));
     let fillColor = "#4cc3ff";
     if (clamped >= 0.75) {
@@ -2033,8 +2830,8 @@ export class GameLoop {
       fillColor = "#4cff9a";
     }
     let outline = "rgba(255, 255, 255, 0.45)";
-    if (this.momentumBurstTimer > 0) {
-      const pulse = 0.5 + 0.5 * Math.sin((this.momentumBurstTimer / 120) * Math.PI * 2);
+    if (burstTimer > 0) {
+      const pulse = 0.5 + 0.5 * Math.sin((burstTimer / 120) * Math.PI * 2);
       const alpha = 0.65 + 0.35 * pulse;
       fillColor = `rgba(255, 90, 90, ${alpha})`;
       outline = `rgba(255, 255, 255, ${0.6 + 0.4 * pulse})`;
@@ -2053,7 +2850,7 @@ export class GameLoop {
     if (fillHeight > 0) {
       ctx.fillStyle = fillColor;
       ctx.fillRect(x + innerPad, fillY, w - innerPad * 2, fillHeight);
-      if (this.momentumBurstTimer > 0) {
+      if (burstTimer > 0) {
         ctx.globalAlpha = 0.5;
         ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
         ctx.fillRect(x + innerPad, fillY, w - innerPad * 2, Math.min(10, fillHeight));

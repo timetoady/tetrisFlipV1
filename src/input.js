@@ -6,6 +6,13 @@ const DEFAULT_KEYS = new Set([
   "KeyZ",
   "KeyX",
   "KeyC",
+  "KeyA",
+  "KeyS",
+  "KeyD",
+  "KeyW",
+  "KeyJ",
+  "KeyK",
+  "KeyL",
   "KeyP",
   "Space",
   "Escape",
@@ -20,6 +27,16 @@ const GAMEPAD_BASE = [
   { index: 13, code: "ArrowDown" },
   { index: 14, code: "ArrowLeft" },
   { index: 15, code: "ArrowRight" },
+  { index: 5, code: "Space" }, // R1 / RB (Flip)
+  { index: 9, code: "KeyP" }, // Start (Pause)
+  { index: 8, code: "Backspace" } // Back (Menu Back)
+];
+
+const GAMEPAD_P2_BASE = [
+  { index: 12, code: "KeyW" },
+  { index: 13, code: "KeyS" },
+  { index: 14, code: "KeyA" },
+  { index: 15, code: "KeyD" },
   { index: 5, code: "Space" }, // R1 / RB (Flip)
   { index: 9, code: "KeyP" }, // Start (Pause)
   { index: 8, code: "Backspace" } // Back (Menu Back)
@@ -93,7 +110,11 @@ export function createInput(target = window, pointerTarget = window) {
 
   function pollGamepad() {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-    const pad = pads && pads.find((item) => item && item.connected);
+    const connected = pads
+      ? Array.from(pads).filter((item) => item && item.connected)
+      : [];
+    const pad = connected[0];
+    const pad2 = connected[1];
     const layout = ROTATE_LAYOUTS[rotateLayout] || ROTATE_LAYOUTS.southEast;
     const mapping = [
       ...GAMEPAD_BASE,
@@ -101,15 +122,18 @@ export function createInput(target = window, pointerTarget = window) {
       { index: layout.rotateCCW, code: "KeyZ" },
       { index: layout.hold, code: "KeyC" },
       { index: layout.flip, code: "Space" }
-    ];
-    if (!pad) {
-      mapping.forEach(({ code }) => setGamepad(code, false));
-      return;
-    }
+    ].map((entry) => ({ ...entry, pad }));
+    const p2Mapping = [
+      ...GAMEPAD_P2_BASE,
+      { index: layout.rotateCW, code: "KeyK" },
+      { index: layout.rotateCCW, code: "KeyJ" },
+      { index: layout.hold, code: "KeyL" },
+      { index: layout.flip, code: "Space" }
+    ].map((entry) => ({ ...entry, pad: pad2 }));
 
     const nextState = new Map();
-    mapping.forEach(({ index, code }) => {
-      const button = pad.buttons[index];
+    [...mapping, ...p2Mapping].forEach(({ pad: activePad, index, code }) => {
+      const button = activePad && activePad.buttons ? activePad.buttons[index] : null;
       const pressedNow = Boolean(button && button.pressed);
       if (!nextState.has(code)) {
         nextState.set(code, pressedNow);
@@ -117,9 +141,7 @@ export function createInput(target = window, pointerTarget = window) {
         nextState.set(code, true);
       }
     });
-    nextState.forEach((pressedNow, code) => {
-      setGamepad(code, pressedNow);
-    });
+    nextState.forEach((pressedNow, code) => setGamepad(code, pressedNow));
   }
 
   const pointerState = new Map();

@@ -121,6 +121,11 @@ Full breakdown: in-app Help (Options -> Help or app menu Help -> Manual), plus `
 - Inactive field blocks are drawn with reduced opacity (except in Co-op and Sirtet).
 - Flipping late can cause a jam and immediate lock, with a visual/sound cue.
 
+## Fan Tribute Disclaimer
+
+Tetris is a trademark of The Tetris Company. This project is a fan tribute game
+and is not affiliated with or endorsed by The Tetris Company.
+
 ## Docs
 
 - Requirements: `docs/requirements-plan.md`

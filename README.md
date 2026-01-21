@@ -1,4 +1,4 @@
-# Tetris Flip (v2.0.0)
+# Tetris Flip (v2.0.1)
 
 Tetris Flip is a puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into top/bottom fields, and you can flip which field is active so pieces fall into the current bottom. Marathon and Chillax modes include scoring/levels, hold/next, HUD, game over handling, and a local top-10 leaderboard, while Garbage, Redemption, Co-op, and Sirtet expand the challenges.
 
@@ -93,7 +93,9 @@ Keyboard (Player 2, Co-op):
 
 Gamepad:
 - D-pad moves, Start pauses, Back returns.
-- Rotate layout is configurable in Options (South/East or South/West).
+- Rotate layout is configurable in Options (South/East, South/West, or Sideways variants).
+- Sideways remaps D-pad + right stick: Up = Move Right, Down = Move Left,
+  Left = Hard Drop, Right = Soft Drop.
 
 Mouse:
 - Choose a mouse scheme in Options (Alternate, Classic, Tetris.com).

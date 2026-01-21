@@ -22,11 +22,21 @@ const DEFAULT_KEYS = new Set([
   "ShiftRight"
 ]);
 
-const GAMEPAD_BASE = [
+const GAMEPAD_DPAD_STANDARD = [
   { index: 12, code: "ArrowUp" },
   { index: 13, code: "ArrowDown" },
   { index: 14, code: "ArrowLeft" },
-  { index: 15, code: "ArrowRight" },
+  { index: 15, code: "ArrowRight" }
+];
+
+const GAMEPAD_DPAD_SIDEWAYS = [
+  { index: 12, code: "ArrowRight" },
+  { index: 13, code: "ArrowLeft" },
+  { index: 14, code: "ArrowUp" },
+  { index: 15, code: "ArrowDown" }
+];
+
+const GAMEPAD_COMMON = [
   { index: 5, code: "Space" }, // R1 / RB (Flip)
   { index: 9, code: "KeyP" }, // Start (Pause)
   { index: 8, code: "Backspace" } // Back (Menu Back)
@@ -36,16 +46,47 @@ const GAMEPAD_P2_BASE = [
   { index: 12, code: "KeyW" },
   { index: 13, code: "KeyS" },
   { index: 14, code: "KeyA" },
-  { index: 15, code: "KeyD" },
-  { index: 5, code: "Space" }, // R1 / RB (Flip)
-  { index: 9, code: "KeyP" }, // Start (Pause)
-  { index: 8, code: "Backspace" } // Back (Menu Back)
+  { index: 15, code: "KeyD" }
 ];
 
 const ROTATE_LAYOUTS = {
-  southEast: { rotateCW: 0, rotateCCW: 1, hold: 2, flip: 3 }, // A/B rotate, X hold, Y flip
-  southWest: { rotateCW: 0, rotateCCW: 2, hold: 1, flip: 3 } // A/X rotate, B hold, Y flip
+  southEast: {
+    rotateCW: 0,
+    rotateCCW: 1,
+    hold: 2,
+    flip: 3,
+    dpad: GAMEPAD_DPAD_STANDARD,
+    rightStick: false
+  }, // A/B rotate, X hold, Y flip
+  southWest: {
+    rotateCW: 0,
+    rotateCCW: 2,
+    hold: 1,
+    flip: 3,
+    dpad: GAMEPAD_DPAD_STANDARD,
+    rightStick: false
+  }, // A/X rotate, B hold, Y flip
+  sidewaysSouthEast: {
+    rotateCW: 0,
+    rotateCCW: 1,
+    hold: 2,
+    flip: 3,
+    dpad: GAMEPAD_DPAD_SIDEWAYS,
+    rightStick: true
+  }, // Sideways A/B rotate, X hold, Y flip
+  sidewaysSouthWest: {
+    rotateCW: 0,
+    rotateCCW: 2,
+    hold: 1,
+    flip: 3,
+    dpad: GAMEPAD_DPAD_SIDEWAYS,
+    rightStick: true
+  } // Sideways A/X rotate, B hold, Y flip
 };
+
+const RIGHT_STICK_AXIS_X = 2;
+const RIGHT_STICK_AXIS_Y = 3;
+const RIGHT_STICK_DEADZONE = 0.4;
 
 export function createInput(target = window, pointerTarget = window) {
   const keyboardDown = new Set();
@@ -108,6 +149,48 @@ export function createInput(target = window, pointerTarget = window) {
     codes.forEach((code) => setVirtual(code, false));
   }
 
+  function addButtonMappings(nextState, pad, mapping) {
+    mapping.forEach(({ index, code }) => {
+      const button = pad && pad.buttons ? pad.buttons[index] : null;
+      const pressedNow = Boolean(button && button.pressed);
+      if (!nextState.has(code)) {
+        nextState.set(code, pressedNow);
+      } else if (pressedNow) {
+        nextState.set(code, true);
+      }
+    });
+  }
+
+  function isDpadActive(pad, mapping) {
+    if (!pad || !pad.buttons) return false;
+    return mapping.some(({ index }) => {
+      const button = pad.buttons[index];
+      return button && button.pressed;
+    });
+  }
+
+  function getAxisValue(pad, index) {
+    if (!pad || !pad.axes || pad.axes.length <= index) return 0;
+    const value = pad.axes[index];
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  function getSidewaysStickCode(pad) {
+    const x = getAxisValue(pad, RIGHT_STICK_AXIS_X);
+    const y = getAxisValue(pad, RIGHT_STICK_AXIS_Y);
+    const absX = Math.abs(x);
+    const absY = Math.abs(y);
+    if (absX < RIGHT_STICK_DEADZONE && absY < RIGHT_STICK_DEADZONE) return null;
+    if (absX > absY) {
+      if (x < -RIGHT_STICK_DEADZONE) return "ArrowUp";
+      if (x > RIGHT_STICK_DEADZONE) return "ArrowDown";
+    } else {
+      if (y < -RIGHT_STICK_DEADZONE) return "ArrowRight";
+      if (y > RIGHT_STICK_DEADZONE) return "ArrowLeft";
+    }
+    return null;
+  }
+
   function pollGamepad() {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const connected = pads
@@ -116,31 +199,31 @@ export function createInput(target = window, pointerTarget = window) {
     const pad = connected[0];
     const pad2 = connected[1];
     const layout = ROTATE_LAYOUTS[rotateLayout] || ROTATE_LAYOUTS.southEast;
-    const mapping = [
-      ...GAMEPAD_BASE,
+    const nextState = new Map();
+    const p1Mapping = [
+      ...layout.dpad,
+      ...GAMEPAD_COMMON,
       { index: layout.rotateCW, code: "KeyX" },
       { index: layout.rotateCCW, code: "KeyZ" },
       { index: layout.hold, code: "KeyC" },
       { index: layout.flip, code: "Space" }
-    ].map((entry) => ({ ...entry, pad }));
+    ];
     const p2Mapping = [
       ...GAMEPAD_P2_BASE,
+      ...GAMEPAD_COMMON,
       { index: layout.rotateCW, code: "KeyK" },
       { index: layout.rotateCCW, code: "KeyJ" },
       { index: layout.hold, code: "KeyL" },
       { index: layout.flip, code: "Space" }
-    ].map((entry) => ({ ...entry, pad: pad2 }));
-
-    const nextState = new Map();
-    [...mapping, ...p2Mapping].forEach(({ pad: activePad, index, code }) => {
-      const button = activePad && activePad.buttons ? activePad.buttons[index] : null;
-      const pressedNow = Boolean(button && button.pressed);
-      if (!nextState.has(code)) {
-        nextState.set(code, pressedNow);
-      } else if (pressedNow) {
-        nextState.set(code, true);
+    ];
+    addButtonMappings(nextState, pad, p1Mapping);
+    addButtonMappings(nextState, pad2, p2Mapping);
+    if (layout.rightStick && pad && !isDpadActive(pad, layout.dpad)) {
+      const stickCode = getSidewaysStickCode(pad);
+      if (stickCode) {
+        nextState.set(stickCode, true);
       }
-    });
+    }
     nextState.forEach((pressedNow, code) => setGamepad(code, pressedNow));
   }
 

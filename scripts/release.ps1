@@ -39,6 +39,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Assert-Command -Name "npm" -InstallHint "Install Node.js LTS."
 if (-not $SkipLinuxBuild) {
   Assert-Command -Name "docker" -InstallHint "Install Docker Desktop."
+  Assert-Command -Name "tar" -InstallHint "Ensure tar is available on PATH (Windows 10+ includes bsdtar)."
 }
 if (-not $SkipWebDeploy) {
   Assert-Command -Name "aws" -InstallHint "Install AWS CLI and run aws configure."

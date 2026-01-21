@@ -32,7 +32,17 @@ Actions:
 - Back/Menu: `Back`
 
 Notes:
-- Change the rotate layout in **Options**: South/East (A/B) or South/West (A/X).
+- Change the rotate layout in **Options**: South/East (A/B), South/West (A/X),
+  Sideways: South/East (A/B), or Sideways: South/West (A/X).
+- Sideways layouts remap the D-pad and right stick for landscape handheld play.
+- Sideways mapping also applies to menus.
+
+Sideways mapping:
+- D-pad up: move right
+- D-pad down: move left
+- D-pad left: hard drop
+- D-pad right: soft drop (hold)
+- Right stick mirrors the D-pad mapping (axis priority, vertical ties).
 
 ## Mouse
 

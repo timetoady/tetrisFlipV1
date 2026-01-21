@@ -131,6 +131,8 @@ const splashWideSrc = `${baseUrl}assets/tetrisflip1.png`;
 const splashTallSrc = `${baseUrl}assets/tetrisflip2.png`;
 const controllerStandardSrc = `${baseUrl}assets/standard%20controller.png`;
 const controllerAlternateSrc = `${baseUrl}assets/alternate%20controller.png`;
+const controllerHandheld1Src = `${baseUrl}assets/handheld1.png`;
+const controllerHandheld2Src = `${baseUrl}assets/handheld2.png`;
 const titleTrackSrc = `${baseUrl}assets/title.mp3`;
 const garbageSuccessBase = `${baseUrl}assets/garbage-success`;
 const garbageSuccessDefaultSrc = `${baseUrl}assets/garbage-success-default.png`;
@@ -182,7 +184,9 @@ let touchEnabled = true;
 
 const ROTATE_LAYOUTS = [
   { id: "southEast", label: "South / East (A/B)" },
-  { id: "southWest", label: "South / West (A/X)" }
+  { id: "southWest", label: "South / West (A/X)" },
+  { id: "sidewaysSouthEast", label: "Sideways: South / East (A/B)" },
+  { id: "sidewaysSouthWest", label: "Sideways: South / West (A/X)" }
 ];
 const ROTATE_LAYOUT_KEY = "tetrisflip:input:rotateLayout";
 let rotateLayoutIndex = 0;
@@ -799,9 +803,15 @@ function applyRotateLayout(index) {
   const layout = ROTATE_LAYOUTS[rotateLayoutIndex];
   optionsRotateValue.textContent = layout.label;
   if (optionsController) {
-    optionsController.src = layout.id === "southWest"
-      ? controllerStandardSrc
-      : controllerAlternateSrc;
+    if (layout.id === "sidewaysSouthEast") {
+      optionsController.src = controllerHandheld1Src;
+    } else if (layout.id === "sidewaysSouthWest") {
+      optionsController.src = controllerHandheld2Src;
+    } else if (layout.id === "southWest") {
+      optionsController.src = controllerStandardSrc;
+    } else {
+      optionsController.src = controllerAlternateSrc;
+    }
   }
   if (input.setGamepadRotateLayout) {
     input.setGamepadRotateLayout(layout.id);

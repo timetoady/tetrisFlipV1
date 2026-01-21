@@ -70,3 +70,32 @@ The AppImage is produced in `release/`.
    - Build web output: `npm run build` (or reuse the `dist/` from `npm run dist`).
    - Deploy to S3: `.\scripts\deploy-aws.ps1 -Bucket game.adamandreason.com -DistributionId YOUR_DIST_ID`
 5) Upload release artifacts to GitHub release.
+
+### CloudFront distribution ID (private)
+
+Keep the distribution ID out of the repo by setting an environment variable:
+
+```powershell
+# One-time (current user)
+[Environment]::SetEnvironmentVariable("CLOUDFRONT_DISTRIBUTION_ID", "YOUR_DIST_ID", "User")
+
+# Current session only
+$env:CLOUDFRONT_DISTRIBUTION_ID = "YOUR_DIST_ID"
+```
+
+Then `scripts/deploy-aws.ps1` will pick it up automatically.
+
+## Release Script (Automated)
+
+Use the release script to run builds + deploy with clear step failures:
+
+```powershell
+.\scripts\release.ps1 -Bucket game.adamandreason.com
+```
+
+Options:
+
+- `-SkipWindowsBuild`
+- `-SkipLinuxBuild`
+- `-SkipWebDeploy`
+- `-AllowDirty`

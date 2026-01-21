@@ -67,7 +67,7 @@ try {
     $dockerScript = "mkdir -p /tmp/build && cd /project && tar --exclude=node_modules --exclude=dist --exclude=release -cf - . | (cd /tmp/build && tar -xf -) && cd /tmp/build && npm ci && npm run build:renderer && npx electron-builder --linux && mkdir -p /project/release && cp -R /tmp/build/release/* /project/release/"
     $dockerArgs = @(
       "run", "--rm",
-      "-v", "$repoRoot:/project",
+      "-v", "${repoRoot}:/project",
       "-w", "/tmp/build",
       "electronuserland/builder:latest",
       "/bin/bash", "-lc", $dockerScript

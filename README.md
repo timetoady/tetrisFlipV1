@@ -1,4 +1,4 @@
-# Tetris Flip (v2.0.1)
+# Tetris Flip (v2.0.2)
 
 Tetris Flip is a puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into top/bottom fields, and you can flip which field is active so pieces fall into the current bottom. Marathon and Chillax modes include scoring/levels, hold/next, HUD, game over handling, and a local top-10 leaderboard, while Garbage, Redemption, Co-op, and Sirtet expand the challenges.
 

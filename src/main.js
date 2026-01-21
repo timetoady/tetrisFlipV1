@@ -129,10 +129,10 @@ const wrap = document.querySelector(".wrap");
 const baseUrl = import.meta.env.BASE_URL || "/";
 const splashWideSrc = `${baseUrl}assets/tetrisflip1.png`;
 const splashTallSrc = `${baseUrl}assets/tetrisflip2.png`;
-const controllerStandardSrc = `${baseUrl}assets/standard%20controller.png`;
-const controllerAlternateSrc = `${baseUrl}assets/alternate%20controller.png`;
-const controllerHandheld1Src = `${baseUrl}assets/handheld1.png`;
-const controllerHandheld2Src = `${baseUrl}assets/handheld2.png`;
+const controllerStandardSrc = `${baseUrl}assets/standard%20controller.ui.png`;
+const controllerAlternateSrc = `${baseUrl}assets/alternate%20controller.ui.png`;
+const controllerHandheld1Src = `${baseUrl}assets/handheld1.ui.png`;
+const controllerHandheld2Src = `${baseUrl}assets/handheld2.ui.png`;
 const titleTrackSrc = `${baseUrl}assets/title.mp3`;
 const garbageSuccessBase = `${baseUrl}assets/garbage-success`;
 const garbageSuccessDefaultSrc = `${baseUrl}assets/garbage-success-default.png`;
@@ -431,6 +431,11 @@ function updateRedemptionGravity(delta) {
 
 function updateRedemptionLives(delta) {
   redemptionLives = Math.min(3, Math.max(1, redemptionLives + delta));
+  updateRedemptionLabels();
+}
+
+function cycleRedemptionLives() {
+  redemptionLives = redemptionLives >= 3 ? 1 : redemptionLives + 1;
   updateRedemptionLabels();
 }
 
@@ -1285,7 +1290,7 @@ if (redemptionLivesRow) {
   redemptionLivesRow.addEventListener("click", () => {
     redemptionActionIndex = 1;
     updateRedemptionSelection();
-    updateRedemptionLives(1);
+    cycleRedemptionLives();
   });
 }
 

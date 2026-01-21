@@ -69,6 +69,10 @@ canvas {
 .menu-wide {
   width: min(680px, 92vw);
 }
+.menu-screen[data-screen="options"] .menu-panel {
+  width: clamp(360px, 88vw, 620px);
+  max-width: none;
+}
 .menu-title {
   font-size: 22px;
   letter-spacing: 2px;
@@ -116,6 +120,9 @@ canvas {
 }
 .menu-option.is-disabled {
   opacity: 0.35;
+}
+.menu-label-short {
+  display: none;
 }
 .menu-grid {
   display: grid;
@@ -383,5 +390,19 @@ canvas {
 @media (max-width: 720px) {
   .menu-help-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .menu-screen[data-screen="options"] .menu-option {
+    font-size: 14px;
+  }
+
+  .menu-screen[data-screen="options"] .menu-label-full {
+    display: none;
+  }
+
+  .menu-screen[data-screen="options"] .menu-label-short {
+    display: inline;
   }
 }

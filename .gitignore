@@ -138,3 +138,12 @@ release
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Android / Capacitor (local)
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/local.properties
+*.jks
+*.keystore

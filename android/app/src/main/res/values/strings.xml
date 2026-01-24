@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tetris Flip</string>
+    <string name="title_activity_main">Tetris Flip</string>
+    <string name="package_name">com.timetoady.tetrisflip</string>
+    <string name="custom_url_scheme">com.timetoady.tetrisflip</string>
+</resources>

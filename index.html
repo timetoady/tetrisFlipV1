@@ -20,6 +20,16 @@
           </div>
         </div>
       </div>
+      <div class="name-modal exit-modal" id="exit-modal" hidden>
+        <div class="name-panel exit-panel">
+          <div class="menu-title">EXIT TETRIS FLIP?</div>
+          <div class="menu-sub">Back again or Yes to exit</div>
+          <div class="menu-actions">
+            <button id="exit-yes">Yes</button>
+            <button id="exit-no">No</button>
+          </div>
+        </div>
+      </div>
       <div class="menu" id="menu" hidden>
         <div class="menu-screen is-active" data-screen="splash">
           <img class="splash-image" id="splash-image" alt="Tetris Flip" />
@@ -58,50 +68,60 @@
               <span>Config</span>
             </div>
             <div class="menu-actions">
-              <button id="mode-back">RETURN TO TITLE</button>
+              <button id="mode-back" data-mode="back">RETURN TO TITLE</button>
             </div>
             <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
           </div>
         </div>
         <div class="menu-screen" data-screen="options">
-          <div class="menu-panel">
-            <div class="menu-title">OPTIONS</div>
-            <div class="menu-option is-selected" data-option="rotate-layout" id="options-rotate">
-              <span class="menu-label">
-                <span class="menu-label-full">Rotate Layout</span>
-                <span class="menu-label-short">Layout</span>
-              </span>
-              <span id="options-rotate-value">South / East</span>
+          <div class="menu-panel options-panel">
+            <div class="menu-title options-title">OPTIONS</div>
+            <div class="options-scroll">
+              <div class="menu-option is-selected" data-option="layout-mode" id="options-layout-mode">
+                <span>Layout Mode</span>
+                <span id="options-layout-mode-value">Standard</span>
+              </div>
+              <div class="menu-option" data-option="orientation" id="options-orientation">
+                <span>Orientation</span>
+                <span id="options-orientation-value">Portrait</span>
+              </div>
+              <div class="menu-option" data-option="rotate-layout" id="options-rotate">
+                <span class="menu-label">
+                  <span class="menu-label-full">Rotate Layout</span>
+                  <span class="menu-label-short">Layout</span>
+                </span>
+                <span id="options-rotate-value">South / East</span>
+              </div>
+              <img
+                class="options-controller"
+                id="options-controller"
+                alt="Controller layout preview"
+              />
+              <div class="menu-option" data-option="mouse-scheme" id="options-mouse">
+                <span>Mouse Controls</span>
+                <span id="options-mouse-value">Classic</span>
+              </div>
+              <div class="menu-option" data-option="music" id="options-music">
+                <span>Music</span>
+                <span id="options-music-value">Main</span>
+              </div>
+              <div class="menu-option" data-option="music-volume" id="options-music-volume">
+                <span>Music Volume</span>
+                <span id="options-music-volume-value">40%</span>
+              </div>
+              <div class="menu-option" data-option="vfx-volume" id="options-vfx-volume">
+                <span>VFX Volume</span>
+                <span id="options-vfx-volume-value">100%</span>
+              </div>
+              <div class="menu-option" data-option="help" id="options-help">
+                <span>Help</span>
+                <span>Manual</span>
+              </div>
+              <div class="menu-actions">
+                <button id="options-back">Back</button>
+              </div>
+              <div class="menu-sub">Left/Right to change. X confirm, Z back</div>
             </div>
-            <img
-              class="options-controller"
-              id="options-controller"
-              alt="Controller layout preview"
-            />
-            <div class="menu-option" data-option="mouse-scheme" id="options-mouse">
-              <span>Mouse Controls</span>
-              <span id="options-mouse-value">Classic</span>
-            </div>
-            <div class="menu-option" data-option="music" id="options-music">
-              <span>Music</span>
-              <span id="options-music-value">Main</span>
-            </div>
-            <div class="menu-option" data-option="music-volume" id="options-music-volume">
-              <span>Music Volume</span>
-              <span id="options-music-volume-value">40%</span>
-            </div>
-            <div class="menu-option" data-option="vfx-volume" id="options-vfx-volume">
-              <span>VFX Volume</span>
-              <span id="options-vfx-volume-value">100%</span>
-            </div>
-            <div class="menu-option" data-option="help" id="options-help">
-              <span>Help</span>
-              <span>Manual</span>
-            </div>
-            <div class="menu-actions">
-              <button id="options-back">Back</button>
-            </div>
-            <div class="menu-sub">Left/Right to change. X confirm, Z back</div>
           </div>
         </div>
         <div class="menu-screen" data-screen="help">
@@ -289,7 +309,7 @@
           <div class="menu-panel">
             <div class="menu-title">MARATHON</div>
             <div class="menu-grid">
-              <div>
+              <div class="menu-column">
                 <div>Starting Gravity</div>
                 <div class="marathon-value" id="gravity-value">1</div>
                 <div class="menu-sub">Up/Down to change</div>
@@ -299,7 +319,7 @@
                 </div>
                 <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
               </div>
-              <div>
+              <div class="menu-column menu-column--scores">
                 <div class="menu-sub">Top 10</div>
                 <ol class="score-list" id="marathon-scores"></ol>
               </div>
@@ -310,7 +330,7 @@
           <div class="menu-panel">
             <div class="menu-title">CHILLAX</div>
             <div class="menu-grid">
-              <div>
+              <div class="menu-column">
                 <div>Starting Gravity</div>
                 <div class="marathon-value" id="chillax-gravity-value">1</div>
                 <div class="menu-sub">Up/Down to change</div>
@@ -320,7 +340,7 @@
                 </div>
                 <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
               </div>
-              <div>
+              <div class="menu-column menu-column--scores">
                 <div class="menu-sub">Top 10</div>
                 <ol class="score-list" id="chillax-scores"></ol>
               </div>
@@ -331,7 +351,7 @@
           <div class="menu-panel">
             <div class="menu-title">REDEMPTION</div>
             <div class="menu-grid">
-              <div>
+              <div class="menu-column">
                 <div class="menu-option is-selected" id="redemption-gravity-row">
                   <span>Starting Gravity</span>
                   <span id="redemption-gravity-value">0</span>
@@ -347,7 +367,7 @@
                 </div>
                 <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
               </div>
-              <div>
+              <div class="menu-column menu-column--scores">
                 <div class="menu-sub">Top 10</div>
                 <ol class="score-list" id="redemption-scores"></ol>
               </div>
@@ -358,7 +378,7 @@
           <div class="menu-panel">
             <div class="menu-title">GARBAGE</div>
             <div class="menu-grid">
-              <div>
+              <div class="menu-column">
                 <div class="menu-option is-selected" id="garbage-speed-row">
                   <span>Speed</span>
                   <span id="garbage-speed-value">0</span>
@@ -374,7 +394,7 @@
                 </div>
                 <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
               </div>
-              <div>
+              <div class="menu-column menu-column--scores">
                 <div class="menu-sub" id="garbage-score-label">Top 10</div>
                 <ol class="score-list" id="garbage-scores"></ol>
               </div>
@@ -385,7 +405,7 @@
           <div class="menu-panel">
             <div class="menu-title">CO-OP THERAPY</div>
             <div class="menu-grid">
-              <div>
+              <div class="menu-column">
                 <div>Starting Gravity</div>
                 <div class="marathon-value" id="coop-gravity-value">1</div>
                 <div class="menu-sub">Up/Down to change</div>
@@ -395,7 +415,7 @@
                 </div>
                 <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
               </div>
-              <div>
+              <div class="menu-column menu-column--scores">
                 <div class="menu-sub">Top 10</div>
                 <ol class="score-list" id="coop-scores"></ol>
               </div>
@@ -406,7 +426,7 @@
           <div class="menu-panel">
             <div class="menu-title">SIRTET</div>
             <div class="menu-grid">
-              <div>
+              <div class="menu-column">
                 <div>Starting Gravity</div>
                 <div class="marathon-value" id="sirtet-gravity-value">1</div>
                 <div class="menu-sub">Up/Down to change</div>
@@ -416,7 +436,7 @@
                 </div>
                 <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
               </div>
-              <div>
+              <div class="menu-column menu-column--scores">
                 <div class="menu-sub">Top 10</div>
                 <ol class="score-list" id="sirtet-scores"></ol>
               </div>
@@ -442,3 +462,10 @@
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
+
+
+
+
+
+
+

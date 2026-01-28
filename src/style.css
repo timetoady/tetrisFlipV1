@@ -58,26 +58,58 @@ canvas {
 .menu-screen.is-active {
   display: block;
 }
+.menu-screen:not(.is-active) {
+  pointer-events: none;
+}
+.menu-screen[data-screen="splash"].is-active {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 1.5vh 2vw 1.5vh;
+  box-sizing: border-box;
+}
 .menu-panel {
   padding: 22px 26px;
   border: 2px solid rgba(255, 255, 255, 0.35);
   background: rgba(12, 12, 12, 0.9);
-  min-width: 360px;
-  max-width: min(560px, 92vw);
+  width: 92vw;
+  max-width: 560px;
+  min-width: 320px;
   box-sizing: border-box;
 }
 .menu-wide {
-  width: min(680px, 92vw);
+  width: 92vw;
+  max-width: 560px;
 }
 .menu-screen[data-screen="options"] .menu-panel {
-  width: clamp(360px, 88vw, 620px);
-  max-width: none;
+  width: 92vw;
+  max-width: 560px;
+}
+
+.menu-screen[data-screen="options"] .options-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-screen[data-screen="options"] .options-title {
+  margin-bottom: 10px;
+}
+
+.menu-screen[data-screen="options"] .options-scroll {
+  max-height: 74vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-top: 4px;
+  padding-bottom: 12px;
 }
 .menu-title {
   font-size: 22px;
   letter-spacing: 2px;
   margin-bottom: 16px;
 }
+
 .menu-sub {
   font-size: 14px;
   opacity: 0.8;
@@ -86,7 +118,7 @@ canvas {
 .menu-actions {
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: 18px;
   margin-top: 18px;
 }
 .menu-actions button {
@@ -158,8 +190,11 @@ canvas {
   opacity: 0.85;
 }
 .splash-image {
-  width: min(760px, 90vw);
+  width: 100%;
+  max-width: none;
   height: auto;
+  max-height: 86vh;
+  object-fit: contain;
   border: 2px solid rgba(255, 255, 255, 0.25);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
@@ -318,11 +353,14 @@ canvas {
 
 .options-controller {
   display: block;
-  width: min(360px, 88vw);
+  width: 100%;
+  max-width: 360px;
   height: auto;
+  max-height: 28vh;
   margin: 14px auto 10px;
   border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+  object-fit: contain;
 }
 
 .menu-help {
@@ -406,3 +444,157 @@ canvas {
     display: inline;
   }
 }
+
+@media (pointer: coarse) {
+  .wrap {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 720px), (max-height: 720px) {
+  .menu-panel {
+    padding: 18px 20px;
+  }
+  .menu-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  .menu-sub {
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  .menu-option {
+    margin: 4px 0;
+  }
+  .menu-actions {
+    margin-top: 12px;
+  }
+}
+
+@media (max-height: 640px) {
+  .menu-panel {
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (orientation: landscape) {
+  .menu-wide {
+    max-width: 680px;
+  }
+  .menu-screen[data-screen="options"] .menu-panel {
+    max-width: 620px;
+  }
+  .splash-image {
+    width: 100%;
+    max-height: 82vh;
+    object-fit: contain;
+  }
+}
+
+
+
+
+.menu-help {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+
+
+@media (max-width: 600px), (max-height: 600px) {
+  .menu-panel {
+    min-width: 0;
+  }
+  .menu-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  .menu-option {
+    font-size: 14px;
+  }
+  .menu-actions button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .menu-sub {
+    font-size: 11px;
+  }
+}
+
+@media (orientation: landscape) and (pointer: coarse) and (max-height: 520px) {
+  .menu-screen[data-screen="mode"] .menu-panel,
+  .menu-screen[data-screen="options"] .menu-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 18px;
+    align-items: start;
+  }
+
+
+  .menu-screen[data-screen="mode"] .menu-title,
+  .menu-screen[data-screen="options"] .menu-title,
+  .menu-screen[data-screen="mode"] .menu-actions,
+  .menu-screen[data-screen="options"] .menu-actions,
+  .menu-screen[data-screen="mode"] .menu-sub,
+  .menu-screen[data-screen="options"] .menu-sub,
+  .menu-screen[data-screen="options"] .options-controller {
+    grid-column: 1 / -1;
+  }
+  .menu-screen[data-screen="mode"] .menu-option,
+  .menu-screen[data-screen="options"] .menu-option {
+    margin: 2px 0;
+  }
+  .menu-screen[data-screen="options"] .options-controller {
+    max-width: 260px;
+    max-height: 24vh;
+    margin: 6px auto;
+  }
+}
+
+.menu[data-screen="splash"] {
+  background: #0b0b0b;
+}
+
+.menu-screen[data-screen="splash"].is-active {
+  padding: 1vh 1vw 1.5vh;
+  background: #0b0b0b;
+}
+
+
+
+
+@media (orientation: portrait) and (pointer: coarse) {
+  .menu-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-grid .menu-column--scores {
+    order: 2;
+  }
+
+  .menu-actions {
+    gap: 24px;
+  }
+
+  .menu-actions button {
+    min-width: 96px;
+  }
+}
+
+
+@media (max-height: 640px) {
+  .menu-screen[data-screen="options"] .options-scroll {
+    max-height: 72vh;
+  }
+}
+

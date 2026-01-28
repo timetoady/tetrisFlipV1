@@ -13,10 +13,15 @@
     "electron:dev": "cross-env VITE_DEV_SERVER_URL=http://localhost:5173 concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build:renderer": "vite build",
     "dist": "npm run build:renderer && electron-builder",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "android:current:debug": "cd android && .\\gradlew.bat assembleCurrentDebug -PTETRISFLIP_JAVA=17",
+    "android:current:install": "cd android && .\\gradlew.bat installCurrentDebug -PTETRISFLIP_JAVA=17",
+    "android:android10:debug": "cd android && .\\gradlew.bat assembleAndroid10Debug -PTETRISFLIP_JAVA=17",
+    "android:android10:install": "cd android && .\\gradlew.bat installAndroid10Debug -PTETRISFLIP_JAVA=17"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",
+    "@capacitor/app": "8.0.0",
     "@capacitor/core": "^8.0.1",
     "electron-updater": "^6.7.3"
   },
@@ -58,8 +63,14 @@
   "overrides": {
     "@electron/rebuild": "4.0.2",
     "tar": "7.5.4",
-    "@capacitor/cli": {
-      "tar": "6.2.0"
-    }
+    "lodash": "4.17.23"
   }
 }
+
+
+
+
+
+
+
+

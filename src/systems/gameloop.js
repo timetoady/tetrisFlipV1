@@ -595,8 +595,9 @@ export class GameLoop {
       return { x, y: bottomRow - maxBlockY };
     }
     if (this.isOwnerActive(owner)) {
-      return { x, y: 18 };
-    }
+        const spawnStart = halfRows - GAME_CONFIG.SPAWN_BUFFER / 2;
+        return { x, y: spawnStart };
+      }
     const maxBlockY = this.getMaxBlockY(tempPiece);
     const bottomRow = halfRows - 1;
     return { x, y: bottomRow - maxBlockY };
@@ -2501,7 +2502,7 @@ export class GameLoop {
       const buttonGap = 18;
       const flipTop = pauseTop + holdBoxSize + buttonGap;
       const meterOffsetX = 12;
-      const meterOffsetY = 48;
+      const meterOffsetY = 48 + (GAME_CONFIG.MOMENTUM_OFFSET_Y || 0);
       const meterTop = flipTop + holdBoxSize + 18 + meterOffsetY;
       this.drawMomentumMeter(ctx, leftPanelX + meterOffsetX, meterTop, holdBoxSize, 140, {
         value: this.p2MomentumValue,
@@ -2581,7 +2582,7 @@ export class GameLoop {
     const buttonGap = 18;
     const flipTop = pauseTop + holdBoxSize + buttonGap;
     const meterOffsetX = 12;
-    const meterOffsetY = 48;
+    const meterOffsetY = 48 + (GAME_CONFIG.MOMENTUM_OFFSET_Y || 0);
     const meterTop = flipTop + holdBoxSize + 18 + meterOffsetY;
     this.drawMomentumMeter(ctx, panelX + meterOffsetX, meterTop, holdBoxSize, 140);
     ctx.restore();
@@ -2946,3 +2947,5 @@ export class GameLoop {
     ctx.restore();
   }
 }
+
+

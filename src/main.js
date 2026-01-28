@@ -58,6 +58,14 @@ const sirtetStart = document.getElementById("sirtet-start");
 /** @type {HTMLButtonElement} */
 const sirtetBack = document.getElementById("sirtet-back");
 /** @type {HTMLElement} */
+/** @type {HTMLElement} */
+const optionsLayoutModeRow = document.getElementById("options-layout-mode");
+/** @type {HTMLElement} */
+const optionsLayoutModeValue = document.getElementById("options-layout-mode-value");
+/** @type {HTMLElement} */
+const optionsOrientationRow = document.getElementById("options-orientation");
+/** @type {HTMLElement} */
+const optionsOrientationValue = document.getElementById("options-orientation-value");
 const optionsRotateRow = document.getElementById("options-rotate");
 /** @type {HTMLElement} */
 const optionsRotateValue = document.getElementById("options-rotate-value");
@@ -171,7 +179,7 @@ let nameEntryActive = false;
 let pendingEntry = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
-const OPTIONS_ITEM_COUNT = 7;
+const OPTIONS_ITEM_COUNT = 9;
 let game = null;
 let activeMode = "marathon";
 let pendingScoreMode = "marathon";
@@ -558,25 +566,61 @@ function updateSirtetSelection() {
   sirtetBack.classList.toggle("is-selected", sirtetActionIndex === 1);
 }
 
+function scrollMenuItemIntoView(element) {
+  if (!element) return;
+  const scroller = element.closest(".options-scroll") || element.closest(".menu-panel");
+  if (!scroller) return;
+  if (scroller.scrollHeight <= scroller.clientHeight) return;
+  const scrollerRect = scroller.getBoundingClientRect();
+  const elRect = element.getBoundingClientRect();
+  const offsetTop = elRect.top - scrollerRect.top;
+  const offsetBottom = elRect.bottom - scrollerRect.bottom;
+  if (offsetTop < 0) {
+    scroller.scrollTop += offsetTop;
+  } else if (offsetBottom > 0) {
+    scroller.scrollTop += offsetBottom;
+  }
+}
+
 function updateOptionsSelection() {
-  if (!optionsRotateRow || !optionsBack) return;
-  optionsRotateRow.classList.toggle("is-selected", optionsIndex === 0);
+  if (!optionsBack) return;
+  if (optionsLayoutModeRow) {
+    optionsLayoutModeRow.classList.toggle("is-selected", optionsIndex === 0);
+  }
+  if (optionsOrientationRow) {
+    optionsOrientationRow.classList.toggle("is-selected", optionsIndex === 1);
+  }
+  if (optionsRotateRow) {
+    optionsRotateRow.classList.toggle("is-selected", optionsIndex === 2);
+  }
   if (optionsMouseRow) {
-    optionsMouseRow.classList.toggle("is-selected", optionsIndex === 1);
+    optionsMouseRow.classList.toggle("is-selected", optionsIndex === 3);
   }
   if (optionsMusicRow) {
-    optionsMusicRow.classList.toggle("is-selected", optionsIndex === 2);
+    optionsMusicRow.classList.toggle("is-selected", optionsIndex === 4);
   }
   if (optionsMusicVolumeRow) {
-    optionsMusicVolumeRow.classList.toggle("is-selected", optionsIndex === 3);
+    optionsMusicVolumeRow.classList.toggle("is-selected", optionsIndex === 5);
   }
   if (optionsVfxVolumeRow) {
-    optionsVfxVolumeRow.classList.toggle("is-selected", optionsIndex === 4);
+    optionsVfxVolumeRow.classList.toggle("is-selected", optionsIndex === 6);
   }
   if (optionsHelpRow) {
-    optionsHelpRow.classList.toggle("is-selected", optionsIndex === 5);
+    optionsHelpRow.classList.toggle("is-selected", optionsIndex === 7);
   }
-  optionsBack.classList.toggle("is-selected", optionsIndex === 6);
+  optionsBack.classList.toggle("is-selected", optionsIndex === 8);
+  const optionItems = [
+    optionsLayoutModeRow,
+    optionsOrientationRow,
+    optionsRotateRow,
+    optionsMouseRow,
+    optionsMusicRow,
+    optionsMusicVolumeRow,
+    optionsVfxVolumeRow,
+    optionsHelpRow,
+    optionsBack
+  ];
+  scrollMenuItemIntoView(optionItems[optionsIndex]);
 }
 
 function updateGameOverSelection() {
@@ -1398,17 +1442,19 @@ modeOptions.forEach((option, index) => {
     updateModeSelection();
     if (option.classList.contains("is-disabled")) return;
     const selected = option.dataset.mode;
-    if (selected === "options") {
+    if (selected === "back") {
+      backToSplash();
+    } else if (selected === "options") {
       showScreen("options");
-      } else if (selected === "marathon" || selected === "chillax"
-        || selected === "garbage" || selected === "redemption"
-        || selected === "coop" || selected === "sirtet") {
-        showScreen(selected);
-      }
+    } else if (selected === "marathon" || selected === "chillax"
+      || selected === "garbage" || selected === "redemption"
+      || selected === "coop" || selected === "sirtet") {
+      showScreen(selected);
+    }
   });
 });
 
-if (modeBack) {
+if (modeBack && !modeOptions.includes(modeBack)) {
   modeBack.addEventListener("click", (event) => {
     event.stopPropagation();
     backToSplash();
@@ -1421,9 +1467,23 @@ if (optionsBack) {
   });
 }
 
+if (optionsLayoutModeRow) {
+  optionsLayoutModeRow.addEventListener("click", () => {
+    optionsIndex = 0;
+    updateOptionsSelection();
+  });
+}
+
+if (optionsOrientationRow) {
+  optionsOrientationRow.addEventListener("click", () => {
+    optionsIndex = 1;
+    updateOptionsSelection();
+  });
+}
+
 if (optionsRotateRow) {
   optionsRotateRow.addEventListener("click", () => {
-    optionsIndex = 0;
+    optionsIndex = 2;
     updateOptionsSelection();
     applyRotateLayout(rotateLayoutIndex + 1);
   });
@@ -1431,7 +1491,7 @@ if (optionsRotateRow) {
 
 if (optionsMouseRow) {
   optionsMouseRow.addEventListener("click", () => {
-    optionsIndex = 1;
+    optionsIndex = 3;
     updateOptionsSelection();
     applyMouseScheme(mouseSchemeIndex + 1);
   });
@@ -1439,7 +1499,7 @@ if (optionsMouseRow) {
 
 if (optionsMusicRow) {
   optionsMusicRow.addEventListener("click", () => {
-    optionsIndex = 2;
+    optionsIndex = 4;
     updateOptionsSelection();
     applyMusicTrack(musicTrackIndex + 1);
   });
@@ -1447,7 +1507,7 @@ if (optionsMusicRow) {
 
 if (optionsMusicVolumeRow) {
   optionsMusicVolumeRow.addEventListener("click", () => {
-    optionsIndex = 3;
+    optionsIndex = 5;
     updateOptionsSelection();
     applyMusicVolume(musicVolumeIndex + 1);
   });
@@ -1455,7 +1515,7 @@ if (optionsMusicVolumeRow) {
 
 if (optionsVfxVolumeRow) {
   optionsVfxVolumeRow.addEventListener("click", () => {
-    optionsIndex = 4;
+    optionsIndex = 6;
     updateOptionsSelection();
     applyVfxVolume(vfxVolumeIndex + 1);
   });
@@ -1463,7 +1523,7 @@ if (optionsVfxVolumeRow) {
 
 if (optionsHelpRow) {
   optionsHelpRow.addEventListener("click", () => {
-    optionsIndex = 5;
+    optionsIndex = 7;
     updateOptionsSelection();
     showScreen("help");
   });
@@ -1667,7 +1727,9 @@ function handleMenuInput() {
     } else if (confirm) {
       if (modeOptions[modeIndex].classList.contains("is-disabled")) return;
       const selected = modeOptions[modeIndex].dataset.mode;
-      if (selected === "options") {
+      if (selected === "back") {
+        backToSplash();
+      } else if (selected === "options") {
         showScreen("options");
       } else if (selected === "marathon" || selected === "chillax"
         || selected === "garbage" || selected === "redemption"
@@ -1692,43 +1754,53 @@ function handleMenuInput() {
     const left = consumeMenuLeft();
     const right = consumeMenuRight();
     if (optionsIndex === 0) {
+      // Layout mode placeholder (no-op for now).
+      if (confirm) {
+        // reserved
+      }
+    } else if (optionsIndex === 1) {
+      // Orientation placeholder (no-op for now).
+      if (confirm) {
+        // reserved
+      }
+    } else if (optionsIndex === 2) {
       if (left || right) {
         const delta = right ? 1 : -1;
         applyRotateLayout(rotateLayoutIndex + delta);
       } else if (confirm) {
         applyRotateLayout(rotateLayoutIndex + 1);
       }
-    } else if (optionsIndex === 1) {
+    } else if (optionsIndex === 3) {
       if (left || right) {
         const delta = right ? 1 : -1;
         applyMouseScheme(mouseSchemeIndex + delta);
       } else if (confirm) {
         applyMouseScheme(mouseSchemeIndex + 1);
       }
-    } else if (optionsIndex === 2) {
+    } else if (optionsIndex === 4) {
       if (left || right) {
         const delta = right ? 1 : -1;
         applyMusicTrack(musicTrackIndex + delta);
       } else if (confirm) {
         applyMusicTrack(musicTrackIndex + 1);
       }
-    } else if (optionsIndex === 3) {
+    } else if (optionsIndex === 5) {
       if (left || right) {
         const delta = right ? 1 : -1;
         applyMusicVolume(musicVolumeIndex + delta);
       } else if (confirm) {
         applyMusicVolume(musicVolumeIndex + 1);
       }
-    } else if (optionsIndex === 4) {
+    } else if (optionsIndex === 6) {
       if (left || right) {
         const delta = right ? 1 : -1;
         applyVfxVolume(vfxVolumeIndex + delta);
       } else if (confirm) {
         applyVfxVolume(vfxVolumeIndex + 1);
       }
-    } else if (optionsIndex === 5 && confirm) {
+    } else if (optionsIndex === 7 && confirm) {
       showScreen("help");
-    } else if (optionsIndex === 6 && confirm) {
+    } else if (optionsIndex === 8 && confirm) {
       showScreen("mode");
     }
     if (consumeMenuBack()) {
@@ -1883,6 +1955,7 @@ function handleMenuInput() {
   }
 }
 
+
 let last = performance.now();
 function frame(now) {
   const delta = now - last;
@@ -1918,3 +1991,15 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+
+
+
+
+
+
+
+
+
+
+

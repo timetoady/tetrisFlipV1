@@ -16,6 +16,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    flavorDimensions "api"
+    productFlavors {
+        current {
+            dimension "api"
+            minSdkVersion rootProject.ext.minSdkVersion
+            targetSdkVersion rootProject.ext.targetSdkVersion
+        }
+        android10 {
+            dimension "api"
+            applicationIdSuffix ".android10"
+            versionNameSuffix "-android10"
+            minSdkVersion 29
+            targetSdkVersion 29
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
@@ -44,6 +59,16 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+def tetrisflipJavaVersion = project.findProperty("TETRISFLIP_JAVA") ?: "17"
+def tetrisflipJava = JavaVersion.toVersion(tetrisflipJavaVersion)
+
+android {
+    compileOptions {
+        sourceCompatibility tetrisflipJava
+        targetCompatibility tetrisflipJava
+    }
+}
+
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
@@ -52,3 +77,6 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+
+

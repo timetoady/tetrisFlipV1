@@ -1,4 +1,4 @@
-# Tetris Flip (v2.0.2)
+﻿# Tetris Flip (v2.0.2)
 
 Tetris Flip is a puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into top/bottom fields, and you can flip which field is active so pieces fall into the current bottom. Marathon and Chillax modes include scoring/levels, hold/next, HUD, game over handling, and a local top-10 leaderboard, while Garbage, Redemption, Co-op, and Sirtet expand the challenges.
 
@@ -34,7 +34,42 @@ npm run preview
 
 Open the URL printed by Vite preview.
 
-## Desktop App (Electron)
+
+## Android (Capacitor)
+
+Prereqs:
+- Android Studio (includes SDK + platform tools)
+- Android SDK path set either via env var or `android/local.properties`
+
+We use `android/local.properties` (git-ignored) so Gradle can find the SDK. On Windows the default SDK path is usually:
+
+```
+sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk
+```
+
+If you prefer env vars, set `ANDROID_SDK_ROOT` (or `ANDROID_HOME`) instead.
+
+Gradle requires JDK 21. On Windows you can point JAVA_HOME at Android Studio's bundled JBR:
+
+```
+JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+```
+
+Build workflow:
+
+```bash
+npm install
+npm run build
+npx cap sync android
+cd android
+./gradlew assembleDebug
+```
+
+Open in Android Studio if needed:
+
+```bash
+npx cap open android
+```## Desktop App (Electron)
 
 Install dependencies:
 
@@ -134,3 +169,5 @@ and is not affiliated with or endorsed by The Tetris Company.
 - Architecture: `docs/architecture.md`
 - TODO: `docs/TODO.md`
 - Workflow: `WORKFLOW.md`
+
+

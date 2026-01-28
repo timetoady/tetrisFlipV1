@@ -4,6 +4,7 @@ export const GAME_CONFIG = {
   BLOCK_SIZE: 30,
   GRID_MARGIN: 28,
   HUD_WIDTH: 160,
+  MOMENTUM_OFFSET_Y: 0,
   VISIBLE_ROWS_TOP: 18,
   VISIBLE_ROWS_BOTTOM: 18,
   SPAWN_BUFFER: 4,
@@ -27,3 +28,4 @@ export const OWNERS = {
   FIELD_A: "FIELD_A",
   FIELD_B: "FIELD_B"
 };
+

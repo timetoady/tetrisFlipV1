@@ -17,6 +17,24 @@ buildscript {
 
 apply from: "variables.gradle"
 
+ext {
+    tetrisflipJavaVersion = project.findProperty("TETRISFLIP_JAVA") ?: "17"
+    tetrisflipJava = JavaVersion.toVersion(tetrisflipJavaVersion)
+}
+
+subprojects { subproject ->
+    subproject.afterEvaluate {
+        if (subproject.plugins.hasPlugin("com.android.application") || subproject.plugins.hasPlugin("com.android.library")) {
+            subproject.android {
+                compileOptions {
+                    sourceCompatibility rootProject.ext.tetrisflipJava
+                    targetCompatibility rootProject.ext.tetrisflipJava
+                }
+            }
+        }
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -27,3 +45,4 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+

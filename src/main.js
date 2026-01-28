@@ -1,4 +1,4 @@
-import { GAME_CONFIG } from "./constants.js";
+﻿import { GAME_CONFIG } from "./constants.js";
 import { createInput } from "./input.js";
 import { GameLoop } from "./systems/gameloop.js";
 
@@ -124,6 +124,12 @@ const nameSave = document.getElementById("name-save");
 /** @type {HTMLButtonElement} */
 const nameSkip = document.getElementById("name-skip");
 /** @type {HTMLElement} */
+const exitModal = document.getElementById("exit-modal");
+/** @type {HTMLButtonElement} */
+const exitYes = document.getElementById("exit-yes");
+/** @type {HTMLButtonElement} */
+const exitNo = document.getElementById("exit-no");
+/** @type {HTMLElement} */
 const overlayTitle = document.getElementById("overlay-title");
 /** @type {HTMLImageElement} */
 const overlayImage = document.getElementById("overlay-image");
@@ -176,6 +182,9 @@ let sirtetActionIndex = 0;
 let gameOverActive = false;
 let gameOverIndex = 0;
 let nameEntryActive = false;
+let exitConfirmActive = false;
+let exitConfirmIndex = 1;
+let nativeApp = null;
 let pendingEntry = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
@@ -198,6 +207,36 @@ const ROTATE_LAYOUTS = [
 ];
 const ROTATE_LAYOUT_KEY = "tetrisflip:input:rotateLayout";
 let rotateLayoutIndex = 0;
+
+const LAYOUT_MODES = [
+  { id: "standard", label: "Standard" },
+  { id: "handheld", label: "Handheld (Compact)" }
+];
+const LAYOUT_MODE_KEY = "tetrisflip:layout:mode";
+let layoutModeIndex = 0;
+
+const ORIENTATION_OPTIONS = [
+  { id: "portrait", label: "Portrait" },
+  { id: "landscape", label: "Landscape" }
+];
+const ORIENTATION_KEY = "tetrisflip:layout:orientation";
+let orientationIndex = 0;
+
+// Snapshot the default gameplay layout from GAME_CONFIG (used to restore standard mode).
+const LAYOUT_BASE = Object.freeze({
+  rows: GAME_CONFIG.ROWS,
+  spawnBuffer: GAME_CONFIG.SPAWN_BUFFER,
+  visibleTop: GAME_CONFIG.VISIBLE_ROWS_TOP,
+  visibleBottom: GAME_CONFIG.VISIBLE_ROWS_BOTTOM,
+  momentumOffsetY: GAME_CONFIG.MOMENTUM_OFFSET_Y
+});
+
+// Compact mode: reduce vertical playfield while keeping the dual-field split balanced.
+const COMPACT_LAYOUT_ADJUST = Object.freeze({
+  // Reduce the "neutral" center band (spawn buffer / 0-labeled rows) for handheld screens.
+  neutral: 2, // affects total rows/spawn buffer
+  field: 2    // affects each field's visible rows
+});
 const MOUSE_SCHEMES = [
   { id: "alternate", label: "Alternate (Wheel Rotate)" },
   { id: "classic", label: "Classic (Wheel Drop)" },
@@ -460,7 +499,10 @@ function startGame() {
       ? "sirtet"
       : "marathon";
   activeMode = mode;
-  setTouchEnabled(mode !== "coop");
+  // Apply layout choice at the moment gameplay starts (not mid-run).
+  const layoutModeId = (LAYOUT_MODES[layoutModeIndex] || LAYOUT_MODES[0]).id;
+  applyLayoutConfig(layoutModeId);
+  setTouchEnabled(mode !== "coop" && layoutModeId !== "handheld");
   setCanvasSize(mode);
   closeMenu();
   if (game.setMode) {
@@ -846,6 +888,87 @@ function updateNameEntrySelection() {
   nameSkip.classList.toggle("is-selected", nameEntryIndex === 1);
 }
 
+function updateExitConfirmSelection() {
+  if (!exitYes || !exitNo) return;
+  exitYes.classList.toggle("is-selected", exitConfirmIndex === 0);
+  exitNo.classList.toggle("is-selected", exitConfirmIndex === 1);
+}
+
+function openExitConfirm() {
+  if (!exitModal) return;
+  exitConfirmActive = true;
+  exitConfirmIndex = 1;
+  updateExitConfirmSelection();
+  exitModal.hidden = false;
+  updateMusicState();
+}
+
+function closeExitConfirm() {
+  if (!exitModal) return;
+  exitConfirmActive = false;
+  exitModal.hidden = true;
+  updateMusicState();
+}
+
+function requestExitApp() {
+  try {
+    if (nativeApp && typeof nativeApp.exitApp === "function") {
+      nativeApp.exitApp();
+      return;
+    }
+  } catch {
+    // ignore
+  }
+  try {
+    window.close();
+  } catch {
+    // ignore
+  }
+}
+function applyLayoutConfig(modeId) {
+  if (modeId === "handheld") {
+    const rows = LAYOUT_BASE.rows - (COMPACT_LAYOUT_ADJUST.neutral + COMPACT_LAYOUT_ADJUST.field * 2);
+    const evenRows = rows - (rows % 2);
+    GAME_CONFIG.ROWS = Math.max(10, evenRows);
+    GAME_CONFIG.SPAWN_BUFFER = Math.max(2, LAYOUT_BASE.spawnBuffer - COMPACT_LAYOUT_ADJUST.neutral);
+    GAME_CONFIG.VISIBLE_ROWS_TOP = Math.max(6, LAYOUT_BASE.visibleTop - COMPACT_LAYOUT_ADJUST.field);
+    GAME_CONFIG.VISIBLE_ROWS_BOTTOM = Math.max(6, LAYOUT_BASE.visibleBottom - COMPACT_LAYOUT_ADJUST.field);
+    GAME_CONFIG.MOMENTUM_OFFSET_Y = LAYOUT_BASE.momentumOffsetY - 300;
+  } else {
+    GAME_CONFIG.ROWS = LAYOUT_BASE.rows;
+    GAME_CONFIG.SPAWN_BUFFER = LAYOUT_BASE.spawnBuffer;
+    GAME_CONFIG.VISIBLE_ROWS_TOP = LAYOUT_BASE.visibleTop;
+    GAME_CONFIG.VISIBLE_ROWS_BOTTOM = LAYOUT_BASE.visibleBottom;
+    GAME_CONFIG.MOMENTUM_OFFSET_Y = LAYOUT_BASE.momentumOffsetY;
+  }
+}
+
+function applyLayoutMode(index) {
+  if (!optionsLayoutModeValue) return;
+  layoutModeIndex = (index + LAYOUT_MODES.length) % LAYOUT_MODES.length;
+  const mode = LAYOUT_MODES[layoutModeIndex];
+  optionsLayoutModeValue.textContent = mode.label;
+  document.documentElement.dataset.layoutMode = mode.id;
+  try {
+    localStorage.setItem(LAYOUT_MODE_KEY, mode.id);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function applyOrientationMode(index) {
+  if (!optionsOrientationValue) return;
+  orientationIndex = (index + ORIENTATION_OPTIONS.length) % ORIENTATION_OPTIONS.length;
+  const mode = ORIENTATION_OPTIONS[orientationIndex];
+  optionsOrientationValue.textContent = mode.label;
+  document.documentElement.dataset.orientation = mode.id;
+  try {
+    localStorage.setItem(ORIENTATION_KEY, mode.id);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 function applyRotateLayout(index) {
   if (!optionsRotateValue) return;
   rotateLayoutIndex = (index + ROTATE_LAYOUTS.length) % ROTATE_LAYOUTS.length;
@@ -1096,6 +1219,62 @@ function setTouchEnabled(enabled) {
 setCanvasSize(activeMode);
 
 const input = createInput(window, canvas);
+function handleNativeBackButton() {
+  if (exitConfirmActive) {
+    requestExitApp();
+    return;
+  }
+  if (menuActive && menuState === "splash") {
+    openExitConfirm();
+    return;
+  }
+  if (menuActive) {
+    input.pressVirtual("Backspace");
+    return;
+  }
+  input.pressVirtual("Escape");
+}
+
+async function initNativeBackHandler() {
+  const cap = window.Capacitor;
+  const platform = cap && typeof cap.getPlatform === "function" ? cap.getPlatform() : "web";
+  if (platform === "web") return;
+
+  try {
+    const mod = await import("@capacitor/app");
+    if (mod && mod.App) {
+      nativeApp = mod.App;
+      if (nativeApp.addListener) {
+        nativeApp.addListener("backButton", handleNativeBackButton);
+      }
+      return;
+    }
+  } catch {
+    // ignore and fall back
+  }
+
+  const legacyApp = cap && cap.Plugins ? cap.Plugins.App : null;
+  if (legacyApp && legacyApp.addListener) {
+    nativeApp = legacyApp;
+    legacyApp.addListener("backButton", handleNativeBackButton);
+  }
+}
+
+initNativeBackHandler();
+try {
+  const stored = localStorage.getItem(LAYOUT_MODE_KEY);
+  const storedIndex = LAYOUT_MODES.findIndex((entry) => entry.id === stored);
+  applyLayoutMode(storedIndex >= 0 ? storedIndex : 0);
+} catch {
+  applyLayoutMode(0);
+}
+try {
+  const stored = localStorage.getItem(ORIENTATION_KEY);
+  const storedIndex = ORIENTATION_OPTIONS.findIndex((entry) => entry.id === stored);
+  applyOrientationMode(storedIndex >= 0 ? storedIndex : 0);
+} catch {
+  applyOrientationMode(0);
+}
 try {
   const stored = localStorage.getItem(ROTATE_LAYOUT_KEY);
   const storedIndex = ROTATE_LAYOUTS.findIndex((entry) => entry.id === stored);
@@ -1205,6 +1384,17 @@ back.addEventListener("click", () => {
   openMenu(wasSuccess ? "garbage" : "mode");
 });
 
+if (exitYes) {
+  exitYes.addEventListener("click", () => {
+    requestExitApp();
+  });
+}
+
+if (exitNo) {
+  exitNo.addEventListener("click", () => {
+    closeExitConfirm();
+  });
+}
 nameSave.addEventListener("click", () => {
   if (!nameEntryActive) return;
   commitNameEntry();
@@ -1402,6 +1592,10 @@ menu.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
   if (menuState === "splash") {
+    if (consumeMenuBack()) {
+      openExitConfirm();
+      return;
+    }
     showScreen("mode");
   }
 });
@@ -1471,6 +1665,7 @@ if (optionsLayoutModeRow) {
   optionsLayoutModeRow.addEventListener("click", () => {
     optionsIndex = 0;
     updateOptionsSelection();
+    applyLayoutMode(layoutModeIndex + 1);
   });
 }
 
@@ -1478,6 +1673,7 @@ if (optionsOrientationRow) {
   optionsOrientationRow.addEventListener("click", () => {
     optionsIndex = 1;
     updateOptionsSelection();
+    applyOrientationMode(orientationIndex + 1);
   });
 }
 
@@ -1654,6 +1850,25 @@ function consumeMenuBack() {
 }
 
 function handleMenuInput() {
+  if (exitConfirmActive) {
+    const left = consumeMenuLeft();
+    const right = consumeMenuRight();
+    const up = consumeMenuUp();
+    const down = consumeMenuDown();
+    if (left || right || up || down) {
+      exitConfirmIndex = exitConfirmIndex === 0 ? 1 : 0;
+      updateExitConfirmSelection();
+    } else if (consumeMenuConfirm()) {
+      if (exitConfirmIndex === 0) {
+        requestExitApp();
+      } else {
+        closeExitConfirm();
+      }
+    } else if (consumeMenuBack()) {
+      requestExitApp();
+    }
+    return;
+  }
   if (nameEntryActive) {
     const left = consumeMenuLeft();
     const right = consumeMenuRight();
@@ -1705,6 +1920,10 @@ function handleMenuInput() {
   if (!menuActive) return;
 
   if (menuState === "splash") {
+    if (consumeMenuBack()) {
+      openExitConfirm();
+      return;
+    }
     if (consumeMenuConfirm() ||
         input.consumePress("Space") ||
         consumeMenuUp() ||
@@ -1754,14 +1973,18 @@ function handleMenuInput() {
     const left = consumeMenuLeft();
     const right = consumeMenuRight();
     if (optionsIndex === 0) {
-      // Layout mode placeholder (no-op for now).
-      if (confirm) {
-        // reserved
+      if (left || right) {
+        const delta = right ? 1 : -1;
+        applyLayoutMode(layoutModeIndex + delta);
+      } else if (confirm) {
+        applyLayoutMode(layoutModeIndex + 1);
       }
     } else if (optionsIndex === 1) {
-      // Orientation placeholder (no-op for now).
-      if (confirm) {
-        // reserved
+      if (left || right) {
+        const delta = right ? 1 : -1;
+        applyOrientationMode(orientationIndex + delta);
+      } else if (confirm) {
+        applyOrientationMode(orientationIndex + 1);
       }
     } else if (optionsIndex === 2) {
       if (left || right) {
@@ -1991,6 +2214,27 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

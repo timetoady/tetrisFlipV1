@@ -8,28 +8,28 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <div class="name-modal" id="name-modal" hidden>
+      <div class="name-panel">
+        <div class="menu-title">NEW HIGH SCORE</div>
+        <div class="menu-sub">Enter your name</div>
+        <input id="name-input" maxlength="12" />
+        <div class="menu-actions">
+          <button id="name-save">Save</button>
+          <button id="name-skip">Skip</button>
+        </div>
+      </div>
+    </div>
+    <div class="name-modal exit-modal" id="exit-modal" hidden>
+      <div class="name-panel exit-panel">
+        <div class="menu-title">EXIT TETRIS FLIP?</div>
+        <div class="menu-sub">Back again or Yes to exit</div>
+        <div class="menu-actions">
+          <button id="exit-yes">Yes</button>
+          <button id="exit-no">No</button>
+        </div>
+      </div>
+    </div>
     <div class="wrap">
-      <div class="name-modal" id="name-modal" hidden>
-        <div class="name-panel">
-          <div class="menu-title">NEW HIGH SCORE</div>
-          <div class="menu-sub">Enter your name</div>
-          <input id="name-input" maxlength="12" />
-          <div class="menu-actions">
-            <button id="name-save">Save</button>
-            <button id="name-skip">Skip</button>
-          </div>
-        </div>
-      </div>
-      <div class="name-modal exit-modal" id="exit-modal" hidden>
-        <div class="name-panel exit-panel">
-          <div class="menu-title">EXIT TETRIS FLIP?</div>
-          <div class="menu-sub">Back again or Yes to exit</div>
-          <div class="menu-actions">
-            <button id="exit-yes">Yes</button>
-            <button id="exit-no">No</button>
-          </div>
-        </div>
-      </div>
       <div class="menu" id="menu" hidden>
         <div class="menu-screen is-active" data-screen="splash">
           <img class="splash-image" id="splash-image" alt="Tetris Flip" />

@@ -1,4 +1,4 @@
-﻿import { GAME_CONFIG } from "./constants.js";
+import { GAME_CONFIG } from "./constants.js";
 import { createInput } from "./input.js";
 import { GameLoop } from "./systems/gameloop.js";
 
@@ -1758,28 +1758,48 @@ function getTouchScale() {
   const touch = window.matchMedia("(pointer: coarse)").matches
     || navigator.maxTouchPoints > 0;
   if (!touch) return 1;
-  const padding = 8;
-  const available = window.innerHeight - padding * 2;
+  const padding = 2;
+  const viewportH = (wrap && wrap.getBoundingClientRect) ? wrap.getBoundingClientRect().height : ((window.visualViewport && window.visualViewport.height) ? window.visualViewport.height : window.innerHeight);
+  const available = viewportH - padding * 2;
   if (available <= 0) return 1;
   return Math.min(1, available / canvas.height);
 }
 
+function setGameplayDataset() {
+  if (!wrap) return;
+  const gameplayVisible = !menuActive && !gameOverActive && !nameEntryActive;
+  wrap.dataset.gameplay = gameplayVisible ? "true" : "false";
+  document.body.dataset.gameplay = (!menuActive) ? "true" : "false";
+}
 function updateViewportScale() {
   if (!wrap) return;
   const menuVisible = menu && !menu.hidden;
+  setGameplayDataset();
   viewportScale = menuVisible ? 1 : getTouchScale();
   if (game && game.setViewportScale) {
     game.setViewportScale(viewportScale);
   }
-  if (viewportScale >= 1) {
-    wrap.style.transform = "";
+
+  // Reset layout + transforms first.
+  wrap.style.transform = "";
+  wrap.style.transformOrigin = "";
+  canvas.style.transform = "";
+  canvas.style.transformOrigin = "";
+
+  if (menuVisible || viewportScale >= 1) {
+    wrap.style.placeItems = "";
   } else {
-    const scaledHeight = canvas.height * viewportScale;
-    const offsetX = 24;
-    const offsetY = Math.max(0, (window.innerHeight - scaledHeight) / 2);
-    wrap.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
-    wrap.style.transformOrigin = "top left";
+    // When scaling is active, keep overlays centered by transforming the canvas only.
+    wrap.style.placeItems = "start";
+    const wrapRect = wrap.getBoundingClientRect();
+    const viewportW = wrapRect.width;
+    const scaledWidth = canvas.width * viewportScale;
+    const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
+    const offsetY = 2;
+    canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
+    canvas.style.transformOrigin = "top left";
   }
+
   positionTouchButtons();
 }
 
@@ -2188,6 +2208,7 @@ function frame(now) {
   }
   handleMenuInput();
   const menuVisible = menu && !menu.hidden;
+  setGameplayDataset();
   if (menuVisible || gameOverActive || nameEntryActive || game.paused) {
     if (touchFlip) {
       touchFlip.remove();
@@ -2214,36 +2235,3 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

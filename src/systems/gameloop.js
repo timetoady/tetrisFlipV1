@@ -47,6 +47,7 @@ export class GameLoop {
     this.freezeLevel = false;
     this.mode = "marathon";
     this.garbageHeight = 0;
+    this.garbageTotalCells = 0;
     this.lives = 0;
     this.maxLives = 0;
     this.lifeLossPending = false;
@@ -264,6 +265,7 @@ export class GameLoop {
     const halfRows = GAME_CONFIG.ROWS / 2;
     const height = Math.min(this.getGarbageRowCount(), halfRows);
     const owners = [OWNERS.FIELD_A, OWNERS.FIELD_B];
+    let totalGarbageCells = 0;
     owners.forEach((owner) => {
       for (let i = 0; i < height; i += 1) {
         const localRow = halfRows - 1 - i;
@@ -277,10 +279,12 @@ export class GameLoop {
         }
         for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
           const value = filled.has(x) ? 8 : 0;
+          if (value === 8) totalGarbageCells += 1;
           this.board.setCellForOwner(owner, localRow, x, value);
         }
       }
     });
+    this.garbageTotalCells = totalGarbageCells;
   }
 
   hasRemainingGarbage() {
@@ -292,6 +296,22 @@ export class GameLoop {
       }
     }
     return false;
+  }
+
+  getGarbageRemainingCells() {
+    let count = 0;
+    for (let y = 0; y < GAME_CONFIG.ROWS; y += 1) {
+      for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
+        if (this.board.grid[y][x].value === 8) count += 1;
+      }
+    }
+    return count;
+  }
+
+  getGarbageProgress() {
+    const remaining = this.getGarbageRemainingCells();
+    const total = Number.isFinite(this.garbageTotalCells) ? this.garbageTotalCells : 0;
+    return { remaining, total };
   }
 
   queueLifeLoss(owner) {
@@ -390,6 +410,7 @@ export class GameLoop {
     this.refillP2Queue();
     this.resetLockState();
     this.resetP2LockState();
+    this.garbageTotalCells = 0;
     this.seedGarbage();
     if (this.mode === "redemption") {
       this.lives = this.maxLives;

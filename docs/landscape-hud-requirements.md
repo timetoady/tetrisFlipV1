@@ -115,8 +115,8 @@ Status: IN PROGRESS (3A baseline implemented; 3B marathon/chillax stats implemen
 - Remaining garbage metric (requires read-only accessor)
 
 #### Checklist
-- [ ] Add remaining garbage metric accessor
-- [ ] Render speed/height + progress bar/text
+- [x] Add remaining garbage metric accessor
+- [x] Render speed/height + progress bar/text
 
 ### 3D: Redemption Mode
 #### Display

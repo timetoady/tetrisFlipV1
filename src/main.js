@@ -168,6 +168,12 @@ const hudP2Next = document.getElementById("hud-p2-next");
 const hudP2MomentumFill = document.getElementById("hud-p2-momentum-fill");
 const landscapeHudRightCoop = document.getElementById("landscape-hud-right-coop");
 const landscapeHudRightRun = document.getElementById("landscape-hud-right-run");
+const landscapeHudRightGarbage = document.getElementById("landscape-hud-right-garbage");
+const hudGarbageSpeed = document.getElementById("hud-garbage-speed");
+const hudGarbageHeight = document.getElementById("hud-garbage-height");
+const hudGarbageRemaining = document.getElementById("hud-garbage-remaining");
+const hudGarbageProgressFill = document.getElementById("hud-garbage-progress-fill");
+const hudGarbageTime = document.getElementById("hud-garbage-time");
 const hudPieceI = document.getElementById("hud-piece-i");
 const hudPieceJ = document.getElementById("hud-piece-j");
 const hudPieceL = document.getElementById("hud-piece-l");
@@ -1979,6 +1985,17 @@ function formatHudNumber(value) {
 }
 
 
+function formatHudTime(ms) {
+  const value = Number(ms);
+  if (!Number.isFinite(value) || value < 0) return "0:00.0";
+  const total = Math.floor(value);
+  const minutes = Math.floor(total / 60000);
+  const seconds = Math.floor((total % 60000) / 1000);
+  const tenths = Math.floor((total % 1000) / 100);
+  return String(minutes) + ":" + String(seconds).padStart(2, "0") + "." + String(tenths);
+}
+
+
 function getPieceCssClass(type) {
   switch (type) {
     case 1: return "piece-i";
@@ -2032,48 +2049,52 @@ function updateLandscapeHud() {
     landscapeHud.hidden = true;
     return;
   }
+
   const nowMs = performance.now();
-  // Throttle heavy DOM + layout work to avoid jank on Android/WebView.
-  if (nowMs - hudLastUpdateMs < 120) {
-    return;
-  }
+  // Throttle DOM/layout work to avoid jank on Android/WebView.
+  if (nowMs - hudLastUpdateMs < 120) return;
   hudLastUpdateMs = nowMs;
+
   if (nowMs - hudLastLayoutMs > 500) {
     const wrapRect = wrap.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
     hudCachedSideSpace = Math.max(0, (wrapRect.width - canvasRect.width) / 2);
     hudLastLayoutMs = nowMs;
   }
+
   const sideSpace = hudCachedSideSpace;
-  if (hudDebugBadge && !hudDebugBadge.hidden) {
-    const hudText = `HUD: ${landscapeHud && !landscapeHud.hidden ? "on" : "off"}  hudAttr:${landscapeHud && landscapeHud.hasAttribute("hidden") ? "hidden" : "show"}  landscape:${landscape}  menu:${menuActive}  side:${Math.round(sideSpace)}  fps:${showFps ? "on" : "off"}  fpsEl:${fpsCounter ? (fpsCounter.hidden ? "hidden" : "shown") : "missing"}  fpsAttr:${fpsCounter && fpsCounter.hasAttribute("hidden") ? "hidden" : "show"}`;
-    if (nowMs - hudLastDebugMs > 250 && hudText !== lastHudDebugText) {
-      hudDebugBadge.textContent = hudText;
-      lastHudDebugText = hudText;
-      hudLastDebugMs = nowMs;
-    }
-  }
+
   // Avoid overlapping the canvas on narrower landscape screens.
   if (sideSpace < 80) {
     landscapeHud.hidden = true;
     return;
   }
+
   landscapeHud.hidden = false;
-  if (!game || !game.getScoreState) return;
+  if (!game || typeof game.getScoreState !== "function") return;
 
   const coop = typeof game.isCoopMode === "function" ? game.isCoopMode() : false;
   const showRunStats = !coop && (activeMode === "marathon" || activeMode === "chillax");
+  const showGarbageHud = !coop && activeMode === "garbage";
+  const showMirrorHud = !coop && !showRunStats && !showGarbageHud;
+
   document.body.dataset.hudMode = activeMode;
+
   const nextHudTight = viewportScale < 0.9 || window.innerHeight < 700;
   if (nextHudTight !== hudTightActive) {
     hudTightActive = nextHudTight;
     document.body.dataset.hudTight = hudTightActive ? "true" : "false";
   }
-  if (landscapeHudRightCoop) landscapeHudRightCoop.hidden = showRunStats;
-  if (landscapeHudRightPanel) landscapeHudRightPanel.classList.toggle("is-boxed", showRunStats);
+
+  if (landscapeHudRightCoop) landscapeHudRightCoop.hidden = !(coop || showMirrorHud);
   if (landscapeHudRightRun) landscapeHudRightRun.hidden = !showRunStats;
+  if (landscapeHudRightGarbage) landscapeHudRightGarbage.hidden = !showGarbageHud;
+  if (landscapeHudRightPanel) landscapeHudRightPanel.classList.toggle("is-boxed", showRunStats || showGarbageHud);
+
   if (landscapeHudRightTitle) {
-    landscapeHudRightTitle.textContent = coop ? "PLAYER 2" : "RUN";
+    landscapeHudRightTitle.textContent = coop
+      ? "PLAYER 2"
+      : (showRunStats ? "RUN" : (showGarbageHud ? "GARBAGE" : ""));
   }
   if (landscapeHudLeftTitle) {
     landscapeHudLeftTitle.textContent = coop ? "PLAYER 1" : "";
@@ -2107,12 +2128,30 @@ function updateLandscapeHud() {
     if (hudPieceTotal) hudPieceTotal.textContent = String((stats && Number.isFinite(stats.total)) ? stats.total : 0);
   }
 
+  if (showGarbageHud) {
+    if (hudGarbageSpeed) hudGarbageSpeed.textContent = String(activeGarbageSpeed);
+    if (hudGarbageTime) hudGarbageTime.textContent = formatHudTime(scoreState.timeMs);
+    if (hudGarbageHeight) hudGarbageHeight.textContent = String(activeGarbageHeight);
+    if (typeof game.getGarbageProgress === "function") {
+      const prog = game.getGarbageProgress();
+      const remaining = prog && Number.isFinite(prog.remaining) ? prog.remaining : 0;
+      const total = prog && Number.isFinite(prog.total) ? prog.total : 0;
+      if (hudGarbageRemaining) hudGarbageRemaining.textContent = String(remaining) + "/" + String(total);
+      if (hudGarbageProgressFill) {
+        const pct = total > 0 ? Math.max(0, Math.min(1, 1 - (remaining / total))) : 0;
+        hudGarbageProgressFill.style.width = String(Math.round(pct * 100)) + "%";
+      }
+    } else {
+      if (hudGarbageRemaining) hudGarbageRemaining.textContent = "--";
+      if (hudGarbageProgressFill) hudGarbageProgressFill.style.width = "0%";
+    }
+  }
+
   if (coop) {
     if (hudP2Score) hudP2Score.textContent = formatHudNumber(p2Score);
     if (hudP2Level) hudP2Level.textContent = String(p2Level);
     if (hudP2Lines) hudP2Lines.textContent = String(p2Lines);
-  } else if (!showRunStats) {
-    // Non-coop: mirror P1 stats on the right for now (later phases will specialize by mode).
+  } else if (showMirrorHud) {
     if (hudP2Score) hudP2Score.textContent = formatHudNumber(p1Score);
     if (hudP2Level) hudP2Level.textContent = String(p1Level);
     if (hudP2Lines) hudP2Lines.textContent = String(p1Lines);
@@ -2120,7 +2159,7 @@ function updateLandscapeHud() {
 
   if (typeof game.getQueueState === "function") {
     const p1Queue = game.getQueueState("p1");
-    const p2Queue = coop ? game.getQueueState("p2") : (showRunStats ? null : p1Queue);
+    const p2Queue = coop ? game.getQueueState("p2") : (showMirrorHud ? p1Queue : null);
 
     setMiniPieceIcon(hudHoldIcon, p1Queue ? p1Queue.holdType : null);
     const p1Next = (p1Queue && Array.isArray(p1Queue.nextQueue)) ? p1Queue.nextQueue : [];
@@ -2130,7 +2169,7 @@ function updateLandscapeHud() {
     setMiniPieceIcon(hudNext3, p1Next[3]);
     setMiniPieceIcon(hudNext4, p1Next[4]);
 
-    if (!showRunStats) {
+    if (coop || showMirrorHud) {
       setMiniPieceIcon(hudP2HoldIcon, p2Queue ? p2Queue.holdType : null);
       const p2Next = (p2Queue && Array.isArray(p2Queue.nextQueue)) ? p2Queue.nextQueue : [];
       setMiniPieceIcon(hudP2Next0, p2Next[0]);
@@ -2140,9 +2179,8 @@ function updateLandscapeHud() {
       setMiniPieceIcon(hudP2Next4, p2Next[4]);
     }
   }
-
-
 }
+
 function positionTouchButtons() {
   if (!touchFlip || !touchPause) return;
   const rect = canvas.getBoundingClientRect();

@@ -308,6 +308,10 @@ export class GameLoop {
     return count;
   }
 
+  getLivesState() {
+    return { lives: this.lives, maxLives: this.maxLives };
+  }
+
   getGarbageProgress() {
     const remaining = this.getGarbageRemainingCells();
     const total = Number.isFinite(this.garbageTotalCells) ? this.garbageTotalCells : 0;

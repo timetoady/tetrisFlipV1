@@ -174,6 +174,9 @@ const hudGarbageHeight = document.getElementById("hud-garbage-height");
 const hudGarbageRemaining = document.getElementById("hud-garbage-remaining");
 const hudGarbageProgressFill = document.getElementById("hud-garbage-progress-fill");
 const hudGarbageTime = document.getElementById("hud-garbage-time");
+const landscapeHudRightRedemption = document.getElementById("landscape-hud-right-redemption");
+const hudRedemptionLives = document.getElementById("hud-redemption-lives");
+const hudRedemptionMax = document.getElementById("hud-redemption-max");
 const hudPieceI = document.getElementById("hud-piece-i");
 const hudPieceJ = document.getElementById("hud-piece-j");
 const hudPieceL = document.getElementById("hud-piece-l");
@@ -2076,7 +2079,8 @@ function updateLandscapeHud() {
   const coop = typeof game.isCoopMode === "function" ? game.isCoopMode() : false;
   const showRunStats = !coop && (activeMode === "marathon" || activeMode === "chillax");
   const showGarbageHud = !coop && activeMode === "garbage";
-  const showMirrorHud = !coop && !showRunStats && !showGarbageHud;
+  const showRedemptionHud = !coop && activeMode === "redemption";
+  const showMirrorHud = !coop && !showRunStats && !showGarbageHud && !showRedemptionHud;
 
   document.body.dataset.hudMode = activeMode;
 
@@ -2088,6 +2092,7 @@ function updateLandscapeHud() {
 
   if (landscapeHudRightCoop) landscapeHudRightCoop.hidden = !(coop || showMirrorHud);
   if (landscapeHudRightRun) landscapeHudRightRun.hidden = !showRunStats;
+  if (landscapeHudRightRedemption) landscapeHudRightRedemption.hidden = !showRedemptionHud;
   if (landscapeHudRightGarbage) landscapeHudRightGarbage.hidden = !showGarbageHud;
   if (landscapeHudRightPanel) landscapeHudRightPanel.classList.toggle("is-boxed", showRunStats || showGarbageHud);
 
@@ -2126,6 +2131,19 @@ function updateLandscapeHud() {
     }
     if (hudIDrought) hudIDrought.textContent = String((stats && Number.isFinite(stats.droughtI)) ? stats.droughtI : 0);
     if (hudPieceTotal) hudPieceTotal.textContent = String((stats && Number.isFinite(stats.total)) ? stats.total : 0);
+  }
+
+  if (showRedemptionHud) {
+    if (typeof game.getLivesState === "function") {
+      const livesState = game.getLivesState();
+      const lives = livesState && Number.isFinite(livesState.lives) ? livesState.lives : 0;
+      const maxLives = livesState && Number.isFinite(livesState.maxLives) ? livesState.maxLives : 0;
+      if (hudRedemptionLives) hudRedemptionLives.textContent = String(lives);
+      if (hudRedemptionMax) hudRedemptionMax.textContent = String(maxLives);
+    } else {
+      if (hudRedemptionLives) hudRedemptionLives.textContent = "--";
+      if (hudRedemptionMax) hudRedemptionMax.textContent = "--";
+    }
   }
 
   if (showGarbageHud) {

@@ -126,8 +126,8 @@ Status: IN PROGRESS (3A baseline implemented; 3B marathon/chillax stats implemen
 - Lives/max lives (likely via accessor)
 
 #### Checklist
-- [ ] Add `getLivesState()` accessor
-- [ ] Render big lives readout
+- [x] Add `getLivesState()` accessor
+- [x] Render big lives readout
 
 ### 3E: Co-op Mode
 #### Display

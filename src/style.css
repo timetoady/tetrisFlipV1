@@ -1015,3 +1015,23 @@ body[data-hud-tight="true"] #hud-p2-next-queue {
   width: 0%;
   background: rgba(122, 122, 122, 0.85);
 }
+
+
+/* Redemption HUD (landscape). */
+#landscape-hud-right-redemption {
+  padding-top: calc(10px * var(--hud-scale, 1));
+}
+
+.redemption-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(14px * var(--hud-scale, 1));
+  padding-top: calc(4px * var(--hud-scale, 1));
+}
+
+.hud-value--lives {
+  font-size: clamp(52px, calc(96px * var(--hud-scale, 1)), 96px);
+  letter-spacing: 2px;
+  color: #ff9a6b;
+  text-shadow: 0 0 18px rgba(255, 154, 107, 0.25);
+}

@@ -90,6 +90,10 @@ const optionsVfxVolumeValue = document.getElementById("options-vfx-volume-value"
 /** @type {HTMLElement} */
 const optionsHelpRow = document.getElementById("options-help");
 /** @type {HTMLButtonElement} */
+/** @type {HTMLElement} */
+const optionsShowFpsRow = document.getElementById("options-show-fps");
+/** @type {HTMLElement} */
+const optionsShowFpsValue = document.getElementById("options-show-fps-value");
 const optionsBack = document.getElementById("options-back");
 /** @type {HTMLButtonElement} */
 const helpBack = document.getElementById("help-back");
@@ -130,6 +134,8 @@ const exitYes = document.getElementById("exit-yes");
 /** @type {HTMLButtonElement} */
 const exitNo = document.getElementById("exit-no");
 /** @type {HTMLElement} */
+/** @type {HTMLElement} */
+let fpsCounter = document.getElementById("fps-counter");
 const overlayTitle = document.getElementById("overlay-title");
 /** @type {HTMLImageElement} */
 const overlayImage = document.getElementById("overlay-image");
@@ -140,6 +146,121 @@ let touchPause = document.getElementById("touch-pause");
 /** @type {HTMLElement} */
 const wrap = document.querySelector(".wrap");
 
+/** @type {HTMLElement | null} */
+let landscapeHud = document.getElementById("landscape-hud");
+/** @type {HTMLElement | null} */
+const landscapeHudLeftTitle = document.getElementById("landscape-hud-left-title");
+/** @type {HTMLElement | null} */
+const landscapeHudRightTitle = document.getElementById("landscape-hud-right-title");
+const hudScore = document.getElementById("hud-score");
+/** @type {HTMLElement | null} */
+let hudDebugBadge = document.getElementById("hud-debug-badge");
+const hudLevel = document.getElementById("hud-level");
+const hudLines = document.getElementById("hud-lines");
+const hudHold = document.getElementById("hud-hold");
+const hudNext = document.getElementById("hud-next");
+const hudMomentumFill = document.getElementById("hud-momentum-fill");
+const hudP2Score = document.getElementById("hud-p2-score");
+const hudP2Level = document.getElementById("hud-p2-level");
+const hudP2Lines = document.getElementById("hud-p2-lines");
+const hudP2Hold = document.getElementById("hud-p2-hold");
+const hudP2Next = document.getElementById("hud-p2-next");
+const hudP2MomentumFill = document.getElementById("hud-p2-momentum-fill");
+const landscapeHudRightCoop = document.getElementById("landscape-hud-right-coop");
+const landscapeHudRightRun = document.getElementById("landscape-hud-right-run");
+const hudPieceI = document.getElementById("hud-piece-i");
+const hudPieceJ = document.getElementById("hud-piece-j");
+const hudPieceL = document.getElementById("hud-piece-l");
+const hudPieceO = document.getElementById("hud-piece-o");
+const hudPieceS = document.getElementById("hud-piece-s");
+const hudPieceT = document.getElementById("hud-piece-t");
+const hudPieceZ = document.getElementById("hud-piece-z");
+const hudIDrought = document.getElementById("hud-i-drought");
+const hudPieceTotal = document.getElementById("hud-piece-total");
+const landscapeHudLeftPanel = document.getElementById("landscape-hud-left");
+const landscapeHudRightPanel = document.getElementById("landscape-hud-right");
+const hudHoldIcon = document.getElementById("hud-hold-icon");
+const hudNext0 = document.getElementById("hud-next-0");
+const hudNext1 = document.getElementById("hud-next-1");
+const hudNext2 = document.getElementById("hud-next-2");
+const hudNext3 = document.getElementById("hud-next-3");
+const hudNext4 = document.getElementById("hud-next-4");
+const hudP2HoldIcon = document.getElementById("hud-p2-hold-icon");
+const hudP2Next0 = document.getElementById("hud-p2-next-0");
+const hudP2Next1 = document.getElementById("hud-p2-next-1");
+const hudP2Next2 = document.getElementById("hud-p2-next-2");
+const hudP2Next3 = document.getElementById("hud-p2-next-3");
+const hudP2Next4 = document.getElementById("hud-p2-next-4");
+
+
+function ensureDebugOverlays() {
+  // If Vite/Capacitor ends up serving an older index.html, create these at runtime so we can still debug layout.
+  hudDebugBadge = document.getElementById("hud-debug-badge");
+
+  if (!fpsCounter) {
+    const el = document.createElement("div");
+    el.className = "fps-counter";
+    el.id = "fps-counter";
+    el.hidden = true;
+    el.textContent = "FPS 0";
+    document.body.appendChild(el);
+    fpsCounter = el;
+  }
+  if (fpsCounter && fpsCounter.parentElement !== document.body) {
+    document.body.appendChild(fpsCounter);
+  }
+
+  if (!landscapeHud) {
+    const el = document.createElement("div");
+    el.className = "landscape-hud";
+    el.id = "landscape-hud";
+    el.hidden = true;
+    document.body.appendChild(el);
+    landscapeHud = el;
+  }
+  if (landscapeHud && landscapeHud.parentElement !== document.body) {
+    document.body.appendChild(landscapeHud);
+  }
+
+  // Ensure there is something to inspect even if index.html is stale/missing HUD children.
+  if (landscapeHud && !landscapeHud.querySelector(".landscape-hud-panel")) {
+    landscapeHud.innerHTML = `
+      <div class="landscape-hud-panel" id="landscape-hud-left">
+        <div class="hud-title" id="landscape-hud-left-title">LEFT HUD</div>
+        <div class="hud-label">(fallback)</div>
+      </div>
+      <div class="landscape-hud-panel" id="landscape-hud-right">
+        <div class="hud-title" id="landscape-hud-right-title">RIGHT HUD</div>
+        <div class="hud-label">(fallback)</div>
+      </div>
+    `;
+  }
+
+  if (!hudDebugBadge) {
+    const el = document.createElement("div");
+    el.id = "hud-debug-badge";
+    el.hidden = true; // Keep available for troubleshooting, but hide by default.
+    el.style.position = "fixed";
+    el.style.top = "28px";
+    el.style.left = "8px";
+    el.style.zIndex = "99999";
+    el.style.background = "rgba(0, 0, 0, 0.35)";
+    el.style.border = "1px solid rgba(255, 255, 255, 0.18)";
+    el.style.padding = "2px 6px";
+    el.style.fontSize = "12px";
+    el.style.letterSpacing = "1px";
+    el.style.pointerEvents = "none";
+    el.textContent = "HUD DEBUG";
+    document.body.appendChild(el);
+    hudDebugBadge = el;
+  }
+  if (hudDebugBadge && typeof hudDebugBadge.hidden === "boolean") {
+    hudDebugBadge.hidden = true;
+  }
+  if (hudDebugBadge && hudDebugBadge.parentElement !== document.body) {
+    document.body.appendChild(hudDebugBadge);
+  }
+}
 const baseUrl = import.meta.env.BASE_URL || "/";
 const splashWideSrc = `${baseUrl}assets/tetrisflip1.png`;
 const splashTallSrc = `${baseUrl}assets/tetrisflip2.png`;
@@ -154,6 +275,7 @@ const garbageSuccessDefaultSrc = `${baseUrl}assets/garbage-success-default.png`;
 overlay.hidden = true;
 menu.hidden = false;
 nameModal.hidden = true;
+ensureDebugOverlays();
 if (touchFlip) {
   touchFlip.remove();
   touchFlip = null;
@@ -188,7 +310,7 @@ let nativeApp = null;
 let pendingEntry = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
-const OPTIONS_ITEM_COUNT = 9;
+const OPTIONS_ITEM_COUNT = 10;
 let game = null;
 let activeMode = "marathon";
 let pendingScoreMode = "marathon";
@@ -257,7 +379,17 @@ let musicTrackIndex = 0;
 const MUSIC_VOLUME_KEY = "tetrisflip:audio:musicVolume";
 const VFX_VOLUME_KEY = "tetrisflip:audio:vfxVolume";
 const MUSIC_VOLUME_MAX = 0.7;
+const SHOW_FPS_KEY = "tetrisflip:debug:showFps";
+let showFps = false;
+let fpsFrames = 0;
+let fpsAccumMs = 0;
 const VFX_VOLUME_MAX = 6.0;
+let hudLastLayoutMs = 0;
+let hudLastUpdateMs = 0;
+let hudCachedSideSpace = 0;
+let hudLastDebugMs = 0;
+let lastHudDebugText = "";
+let hudTightActive = false;
 const VOLUME_STEPS = 10;
 const MUSIC_VOLUMES = Array.from({ length: VOLUME_STEPS + 1 }, (_, index) => {
   const percent = index * 10;
@@ -650,7 +782,10 @@ function updateOptionsSelection() {
   if (optionsHelpRow) {
     optionsHelpRow.classList.toggle("is-selected", optionsIndex === 7);
   }
-  optionsBack.classList.toggle("is-selected", optionsIndex === 8);
+  if (optionsShowFpsRow) {
+    optionsShowFpsRow.classList.toggle("is-selected", optionsIndex === 8);
+  }
+  optionsBack.classList.toggle("is-selected", optionsIndex === 9);
   const optionItems = [
     optionsLayoutModeRow,
     optionsOrientationRow,
@@ -660,6 +795,7 @@ function updateOptionsSelection() {
     optionsMusicVolumeRow,
     optionsVfxVolumeRow,
     optionsHelpRow,
+    optionsShowFpsRow,
     optionsBack
   ];
   scrollMenuItemIntoView(optionItems[optionsIndex]);
@@ -1089,6 +1225,23 @@ function applyVfxVolume(index, playSound = true) {
   }
 }
 
+function applyShowFps(enabled, persist = true) {
+  showFps = Boolean(enabled);
+  if (persist) {
+    try {
+      localStorage.setItem(SHOW_FPS_KEY, showFps ? "true" : "false");
+    } catch {
+      // ignore
+    }
+  }
+  if (optionsShowFpsValue) {
+    optionsShowFpsValue.textContent = showFps ? "On" : "Off";
+  }
+  if (fpsCounter) {
+    fpsCounter.hidden = !showFps;
+  }
+}
+
 function attemptPlay(audio) {
   if (!audio) return;
   const playPromise = audio.play();
@@ -1312,10 +1465,16 @@ try {
 } catch {
   applyVfxVolume(vfxVolumeIndex, false);
 }
+try {
+  const stored = localStorage.getItem(SHOW_FPS_KEY);
+  applyShowFps(stored === "true", false);
+} catch {
+  applyShowFps(false, false);
+}
 game = new GameLoop(ctx, input, {
-  onGameOver() {
-    setOverlayMode("gameover");
-    overlay.hidden = false;
+onGameOver() {
+  setOverlayMode("gameover");
+  overlay.hidden = false;
     gameOverActive = true;
     gameOverIndex = 0;
     updateGameOverSelection();
@@ -1724,6 +1883,14 @@ if (optionsHelpRow) {
     showScreen("help");
   });
 }
+if (optionsShowFpsRow) {
+  optionsShowFpsRow.addEventListener("click", () => {
+    optionsIndex = 8;
+    updateOptionsSelection();
+    applyShowFps(!showFps);
+  });
+}
+
 
 if (helpBack) {
   helpBack.addEventListener("click", () => {
@@ -1776,6 +1943,7 @@ function updateViewportScale() {
   const menuVisible = menu && !menu.hidden;
   setGameplayDataset();
   viewportScale = menuVisible ? 1 : getTouchScale();
+  document.documentElement.style.setProperty("--hud-scale", String(viewportScale.toFixed(3)));
   if (game && game.setViewportScale) {
     game.setViewportScale(viewportScale);
   }
@@ -1803,6 +1971,178 @@ function updateViewportScale() {
   positionTouchButtons();
 }
 
+
+function formatHudNumber(value) {
+  if (!Number.isFinite(value)) return "0";
+  const intValue = Math.max(0, Math.floor(value));
+  return String(intValue).padStart(6, "0");
+}
+
+
+function getPieceCssClass(type) {
+  switch (type) {
+    case 1: return "piece-i";
+    case 2: return "piece-j";
+    case 3: return "piece-l";
+    case 4: return "piece-o";
+    case 5: return "piece-s";
+    case 6: return "piece-t";
+    case 7: return "piece-z";
+    default: return "";
+  }
+}
+
+function setMiniPieceIcon(el, type) {
+  if (!el) return;
+  const css = getPieceCssClass(type);
+  if (!css) {
+    el.className = "mini-piece is-empty";
+    el.setAttribute("aria-hidden", "true");
+    return;
+  }
+  el.removeAttribute("aria-hidden");
+  el.className = `mini-piece ${css}`;
+}
+function updateHudMeter(fillEl, state) {
+  if (!fillEl || !state) return;
+  const value = Number(state.value) || 0;
+  const max = Number(state.max) || 0;
+  const burstTimer = Number(state.burstTimer) || 0;
+  const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
+  fillEl.style.height = `${Math.round(pct * 100)}%`;
+  let fillColor = "#4cc3ff";
+  if (pct >= 0.75) {
+    fillColor = "#ff6b5a";
+  } else if (pct >= 0.5) {
+    fillColor = "#ffd34c";
+  } else if (pct >= 0.25) {
+    fillColor = "#4cff9a";
+  }
+  if (burstTimer > 0) {
+    fillColor = "#ff5a5a";
+  }
+  fillEl.style.background = fillColor;
+}
+
+function updateLandscapeHud() {
+  if (!landscapeHud || !wrap) return;
+  const gameplay = !menuActive;
+  const landscape = window.matchMedia("(orientation: landscape)").matches;
+  if (!gameplay || !landscape) {
+    landscapeHud.hidden = true;
+    return;
+  }
+  const nowMs = performance.now();
+  // Throttle heavy DOM + layout work to avoid jank on Android/WebView.
+  if (nowMs - hudLastUpdateMs < 120) {
+    return;
+  }
+  hudLastUpdateMs = nowMs;
+  if (nowMs - hudLastLayoutMs > 500) {
+    const wrapRect = wrap.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    hudCachedSideSpace = Math.max(0, (wrapRect.width - canvasRect.width) / 2);
+    hudLastLayoutMs = nowMs;
+  }
+  const sideSpace = hudCachedSideSpace;
+  if (hudDebugBadge && !hudDebugBadge.hidden) {
+    const hudText = `HUD: ${landscapeHud && !landscapeHud.hidden ? "on" : "off"}  hudAttr:${landscapeHud && landscapeHud.hasAttribute("hidden") ? "hidden" : "show"}  landscape:${landscape}  menu:${menuActive}  side:${Math.round(sideSpace)}  fps:${showFps ? "on" : "off"}  fpsEl:${fpsCounter ? (fpsCounter.hidden ? "hidden" : "shown") : "missing"}  fpsAttr:${fpsCounter && fpsCounter.hasAttribute("hidden") ? "hidden" : "show"}`;
+    if (nowMs - hudLastDebugMs > 250 && hudText !== lastHudDebugText) {
+      hudDebugBadge.textContent = hudText;
+      lastHudDebugText = hudText;
+      hudLastDebugMs = nowMs;
+    }
+  }
+  // Avoid overlapping the canvas on narrower landscape screens.
+  if (sideSpace < 80) {
+    landscapeHud.hidden = true;
+    return;
+  }
+  landscapeHud.hidden = false;
+  if (!game || !game.getScoreState) return;
+
+  const coop = typeof game.isCoopMode === "function" ? game.isCoopMode() : false;
+  const showRunStats = !coop && (activeMode === "marathon" || activeMode === "chillax");
+  document.body.dataset.hudMode = activeMode;
+  const nextHudTight = viewportScale < 0.9 || window.innerHeight < 700;
+  if (nextHudTight !== hudTightActive) {
+    hudTightActive = nextHudTight;
+    document.body.dataset.hudTight = hudTightActive ? "true" : "false";
+  }
+  if (landscapeHudRightCoop) landscapeHudRightCoop.hidden = showRunStats;
+  if (landscapeHudRightPanel) landscapeHudRightPanel.classList.toggle("is-boxed", showRunStats);
+  if (landscapeHudRightRun) landscapeHudRightRun.hidden = !showRunStats;
+  if (landscapeHudRightTitle) {
+    landscapeHudRightTitle.textContent = coop ? "PLAYER 2" : "RUN";
+  }
+  if (landscapeHudLeftTitle) {
+    landscapeHudLeftTitle.textContent = coop ? "PLAYER 1" : "";
+  }
+
+  const scoreState = game.getScoreState();
+  const p1Score = Number(scoreState.score) || 0;
+  const p1Level = Number(scoreState.level) || 0;
+  const p1Lines = Number(scoreState.lines) || 0;
+  const p2Score = Number(scoreState.p2Score) || 0;
+  const p2Level = Number(scoreState.p2Level) || 0;
+  const p2Lines = Number(scoreState.p2Lines) || 0;
+
+  if (hudScore) hudScore.textContent = formatHudNumber(p1Score);
+  if (hudLevel) hudLevel.textContent = String(p1Level);
+  if (hudLines) hudLines.textContent = String(p1Lines);
+
+  if (showRunStats && typeof game.getPieceStats === "function") {
+    const stats = game.getPieceStats("p1");
+    const counts = (stats && Array.isArray(stats.counts)) ? stats.counts : null;
+    if (counts) {
+      if (hudPieceI) hudPieceI.textContent = String(counts[1] || 0);
+      if (hudPieceJ) hudPieceJ.textContent = String(counts[2] || 0);
+      if (hudPieceL) hudPieceL.textContent = String(counts[3] || 0);
+      if (hudPieceO) hudPieceO.textContent = String(counts[4] || 0);
+      if (hudPieceS) hudPieceS.textContent = String(counts[5] || 0);
+      if (hudPieceT) hudPieceT.textContent = String(counts[6] || 0);
+      if (hudPieceZ) hudPieceZ.textContent = String(counts[7] || 0);
+    }
+    if (hudIDrought) hudIDrought.textContent = String((stats && Number.isFinite(stats.droughtI)) ? stats.droughtI : 0);
+    if (hudPieceTotal) hudPieceTotal.textContent = String((stats && Number.isFinite(stats.total)) ? stats.total : 0);
+  }
+
+  if (coop) {
+    if (hudP2Score) hudP2Score.textContent = formatHudNumber(p2Score);
+    if (hudP2Level) hudP2Level.textContent = String(p2Level);
+    if (hudP2Lines) hudP2Lines.textContent = String(p2Lines);
+  } else if (!showRunStats) {
+    // Non-coop: mirror P1 stats on the right for now (later phases will specialize by mode).
+    if (hudP2Score) hudP2Score.textContent = formatHudNumber(p1Score);
+    if (hudP2Level) hudP2Level.textContent = String(p1Level);
+    if (hudP2Lines) hudP2Lines.textContent = String(p1Lines);
+  }
+
+  if (typeof game.getQueueState === "function") {
+    const p1Queue = game.getQueueState("p1");
+    const p2Queue = coop ? game.getQueueState("p2") : (showRunStats ? null : p1Queue);
+
+    setMiniPieceIcon(hudHoldIcon, p1Queue ? p1Queue.holdType : null);
+    const p1Next = (p1Queue && Array.isArray(p1Queue.nextQueue)) ? p1Queue.nextQueue : [];
+    setMiniPieceIcon(hudNext0, p1Next[0]);
+    setMiniPieceIcon(hudNext1, p1Next[1]);
+    setMiniPieceIcon(hudNext2, p1Next[2]);
+    setMiniPieceIcon(hudNext3, p1Next[3]);
+    setMiniPieceIcon(hudNext4, p1Next[4]);
+
+    if (!showRunStats) {
+      setMiniPieceIcon(hudP2HoldIcon, p2Queue ? p2Queue.holdType : null);
+      const p2Next = (p2Queue && Array.isArray(p2Queue.nextQueue)) ? p2Queue.nextQueue : [];
+      setMiniPieceIcon(hudP2Next0, p2Next[0]);
+      setMiniPieceIcon(hudP2Next1, p2Next[1]);
+      setMiniPieceIcon(hudP2Next2, p2Next[2]);
+      setMiniPieceIcon(hudP2Next3, p2Next[3]);
+      setMiniPieceIcon(hudP2Next4, p2Next[4]);
+    }
+  }
+
+
+}
 function positionTouchButtons() {
   if (!touchFlip || !touchPause) return;
   const rect = canvas.getBoundingClientRect();
@@ -2043,7 +2383,11 @@ function handleMenuInput() {
       }
     } else if (optionsIndex === 7 && confirm) {
       showScreen("help");
-    } else if (optionsIndex === 8 && confirm) {
+    } else if (optionsIndex === 8) {
+      if ((left || right) || confirm) {
+        applyShowFps(!showFps);
+      }
+    } else if (optionsIndex === 9 && confirm) {
       showScreen("mode");
     }
     if (consumeMenuBack()) {
@@ -2204,6 +2548,16 @@ function frame(now) {
   const delta = now - last;
   last = now;
   if (input.update) {
+  if (showFps && fpsCounter) {
+    fpsFrames += 1;
+    fpsAccumMs += delta;
+    if (fpsAccumMs >= 500) {
+      const fps = fpsFrames * 1000 / fpsAccumMs;
+      fpsCounter.textContent = `FPS ${Math.round(fps)}`;
+      fpsFrames = 0;
+      fpsAccumMs = 0;
+    }
+  }
     input.update(delta);
   }
   handleMenuInput();
@@ -2227,6 +2581,7 @@ function frame(now) {
     game.update(delta);
   }
   game.draw();
+  updateLandscapeHud();
   updateMusicState();
   if (game.getPauseCursor) {
     canvas.style.cursor = game.getPauseCursor() || "";

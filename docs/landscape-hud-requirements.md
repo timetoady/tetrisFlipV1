@@ -66,13 +66,13 @@ Status: DONE (2026-01-28)
 
 ## Phase 3: "Useful UI" Side Panels (HTML Overlay, Low Risk)
 
-Status: NOT STARTED
+Status: IN PROGRESS (3A baseline implemented; 3B marathon/chillax stats implemented)
 
 ### Implementation Principle
 - Add DOM-based HUD panels (left/right) outside the canvas.
 - Update values each frame by reading:
   - `game.getScoreState()`
-  - minimal additional read-only accessors on `GameLoop` if needed
+  - Implemented: `getQueueState()` + `getMomentumState()`
 - Avoid mutating gameplay state; avoid reworking rendering.
 
 ### General Requirements
@@ -87,9 +87,9 @@ Status: NOT STARTED
 - Momentum meter (bigger + labeled)
 
 #### Checklist
-- [ ] Add left/right HUD containers in `index.html`
-- [ ] Style with CSS (landscape-only)
-- [ ] Wire per-frame updates in `src/main.js`
+- [x] Add left/right HUD containers in `index.html`
+- [x] Style with CSS (landscape-only)
+- [x] Wire per-frame updates in `src/main.js`
 
 ### 3B: Marathon + Chillax (NES-style stats)
 #### Display
@@ -101,9 +101,9 @@ Status: NOT STARTED
 - Prefer: track stats inside `GameLoop` when pieces spawn.
 
 #### Checklist
-- [ ] Add piece stats tracking (counts + drought) safely
-- [ ] Expose via `game.getStats()` (or extend `getScoreState()` carefully)
-- [ ] Render in side panel for Marathon/Chillax only
+- [x] Add piece stats tracking (counts + drought) safely
+- [x] Expose via `game.getPieceStats()` (or extend `getScoreState()` carefully)
+- [x] Render in side panel for Marathon/Chillax only
 
 ### 3C: Garbage Mode
 #### Display

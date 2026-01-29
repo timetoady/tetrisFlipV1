@@ -644,3 +644,333 @@ body {
 
 
 
+
+:root {
+  --hud-scale: 1;
+}
+
+/* Landscape side HUD panels (Phase 3). Wired from main.js; shown only during gameplay in landscape. */
+.landscape-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+  padding: 16px;
+  gap: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+}
+
+.landscape-hud[hidden] {
+  display: none !important;
+}
+
+.landscape-hud-panel {
+  width: clamp(160px, 22vw, 360px);
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Boxed variant (used for RUN panel so the watermark stays visible). */
+.landscape-hud-panel.is-boxed {
+  padding-top: calc(14px * var(--hud-scale, 1));
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  background: rgba(10, 10, 10, 0.55);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
+}
+
+.hud-title {
+  font-size: 14px;
+  letter-spacing: 2px;
+  opacity: 0.9;
+}
+
+.hud-label {
+  font-size: 12px;
+  letter-spacing: 2px;
+  opacity: 0.7;
+}
+
+.hud-value {
+  font-size: 34px;
+  letter-spacing: 1px;
+  line-height: 1.1;
+}
+
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hud-kv {
+  flex: 1;
+}
+
+.hud-small {
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+.hud-meter-track {
+  margin-top: 6px;
+  height: 120px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  background: rgba(0, 0, 0, 0.75);
+  position: relative;
+  overflow: hidden;
+}
+
+.hud-meter-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0%;
+  background: #4cc3ff;
+}
+
+@media (orientation: portrait) {
+  .landscape-hud {
+    display: none !important;
+  }
+}
+
+/* Tiny FPS counter (optional, debug). */
+.fps-counter {
+  position: fixed;
+  top: 6px;
+  left: 8px;
+  z-index: 9999;
+  padding: 2px 6px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* Phase 3B: Marathon/Chillax RUN panel (NES-style piece stats). */
+.hud-title--secondary {
+  font-size: 12px;
+  letter-spacing: 2px;
+  opacity: 0.8;
+}
+
+.piece-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.piece-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.piece-count {
+  margin-left: auto;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+.piece-icon {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  opacity: 0.85;
+}
+
+.piece-icon .b {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.136);
+  border: 1px solid rgba(255, 255, 255, 0.699);
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+/* Simple 2D icons (monochrome). */
+.piece-i .b:nth-child(1) { left: 0px; top: 6px; }
+.piece-i .b:nth-child(2) { left: 12px; top: 6px; }
+.piece-i .b:nth-child(3) { left: 24px; top: 6px; }
+.piece-i .b:nth-child(4) { left: 36px; top: 6px; }
+
+.piece-o .b:nth-child(1) { left: 12px; top: 0px; }
+.piece-o .b:nth-child(2) { left: 24px; top: 0px; }
+.piece-o .b:nth-child(3) { left: 12px; top: 12px; }
+.piece-o .b:nth-child(4) { left: 24px; top: 12px; }
+
+.piece-t .b:nth-child(1) { left: 12px; top: 0px; }
+.piece-t .b:nth-child(2) { left: 0px; top: 12px; }
+.piece-t .b:nth-child(3) { left: 12px; top: 12px; }
+.piece-t .b:nth-child(4) { left: 24px; top: 12px; }
+
+.piece-j .b:nth-child(1) { left: 0px; top: 0px; }
+.piece-j .b:nth-child(2) { left: 0px; top: 12px; }
+.piece-j .b:nth-child(3) { left: 12px; top: 12px; }
+.piece-j .b:nth-child(4) { left: 24px; top: 12px; }
+
+.piece-l .b:nth-child(1) { left: 24px; top: 0px; }
+.piece-l .b:nth-child(2) { left: 0px; top: 12px; }
+.piece-l .b:nth-child(3) { left: 12px; top: 12px; }
+.piece-l .b:nth-child(4) { left: 24px; top: 12px; }
+
+.piece-s .b:nth-child(1) { left: 12px; top: 0px; }
+.piece-s .b:nth-child(2) { left: 24px; top: 0px; }
+.piece-s .b:nth-child(3) { left: 0px; top: 12px; }
+.piece-s .b:nth-child(4) { left: 12px; top: 12px; }
+
+.piece-z .b:nth-child(1) { left: 0px; top: 0px; }
+.piece-z .b:nth-child(2) { left: 12px; top: 0px; }
+.piece-z .b:nth-child(3) { left: 12px; top: 12px; }
+.piece-z .b:nth-child(4) { left: 24px; top: 12px; }
+/* Left/Co-op HUD layout (no box; optimized for readability). */
+.hud-left-layout {
+  display: flex;
+  flex-direction: column;
+  gap: calc(26px * var(--hud-scale, 1));
+}
+
+.hud-left-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hud-value--score {
+  font-size: clamp(36px, calc(72px * var(--hud-scale, 1)), 72px);
+  letter-spacing: 2px;
+  color: #4cc3ff;
+  text-shadow: 0 0 22px rgba(76, 195, 255, 0.42);
+}
+
+.hud-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-small--stat {
+  font-size: 32px;
+  letter-spacing: 1px;
+}
+
+.hud-left-pieces {
+  display: flex;
+  flex-direction: column;
+  gap: calc(26px * var(--hud-scale, 1));
+  align-items: flex-start;
+}
+
+.hud-piece-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mini-queue {
+  display: flex;
+  flex-direction: column;
+  gap: calc(26px * var(--hud-scale, 1));
+}
+
+.mini-queue--row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mini-piece {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  opacity: 0.7;
+  margin-bottom: 0.75vh;
+  margin-right: 10px;
+}
+
+.mini-piece[hidden] {
+  display: none !important;
+}
+
+.mini-piece .b {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.129);
+  border: 1px solid rgba(255, 255, 255, 0.862);
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+/* RUN panel tweaks: larger piece icons + better spacing. */
+#landscape-hud-right-run .piece-icon {
+  transform: scale(calc(2.35 * var(--hud-scale, 1)));
+  transform-origin: left center;
+  opacity: 0.95;
+}
+
+#landscape-hud-right-run .piece-row {
+  display: grid;
+  grid-template-columns: calc(140px * var(--hud-scale, 1)) 1fr 44px;
+  align-items: center;
+  min-height: calc(74px * var(--hud-scale, 1));
+}
+
+#landscape-hud-right-run .hud-row {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.hud-title:empty {
+  display: none;
+}
+
+#hud-next-queue .mini-piece,
+#hud-p2-next-queue .mini-piece {
+  transform: scale(calc(1.9 * var(--hud-scale, 1)));
+  transform-origin: left top;
+}
+
+#landscape-hud-right-run {
+  padding-bottom: calc(110px * var(--hud-scale, 1));
+}
+
+.hud-stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(28px * var(--hud-scale, 1));
+}
+
+.hud-stat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mini-piece.is-empty {
+  visibility: hidden;
+}
+
+body[data-hud-tight="true"] #hud-next-queue,
+body[data-hud-tight="true"] #hud-p2-next-queue {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(3, auto);
+  direction: rtl;
+  column-gap: calc(26px * var(--hud-scale, 1));
+  row-gap: calc(22px * var(--hud-scale, 1));
+}

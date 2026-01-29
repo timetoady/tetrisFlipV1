@@ -19,6 +19,7 @@
         </div>
       </div>
     </div>
+
     <div class="name-modal exit-modal" id="exit-modal" hidden>
       <div class="name-panel exit-panel">
         <div class="menu-title">EXIT TETRIS FLIP?</div>
@@ -29,6 +30,164 @@
         </div>
       </div>
     </div>
+
+    <div class="landscape-hud" id="landscape-hud" hidden>
+      <div class="landscape-hud-panel" id="landscape-hud-left">
+        <div class="hud-title" id="landscape-hud-left-title">PLAYER 1</div>
+        <div class="hud-left-layout">
+          <div class="hud-left-stats">
+            <div class="hud-label">SCORE</div>
+            <div class="hud-value hud-value--score" id="hud-score">0</div>
+            <div class="hud-stat-row">
+              <div class="hud-stat-col">
+                <div class="hud-label">LEVEL</div>
+                <div class="hud-small hud-small--stat" id="hud-level">0</div>
+              </div>
+              <div class="hud-stat-col">
+                <div class="hud-label">LINES</div>
+                <div class="hud-small hud-small--stat" id="hud-lines">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="hud-left-pieces">
+            <div class="hud-piece-block">
+              <div class="hud-label">HOLD</div>
+              <div class="mini-piece piece-i" id="hud-hold-icon">
+                <span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span>
+              </div>
+            </div>
+            <div class="hud-piece-block">
+              <div class="hud-label">NEXT</div>
+              <div class="mini-queue" id="hud-next-queue">
+                <div class="mini-piece piece-i" id="hud-next-0"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+                <div class="mini-piece piece-i" id="hud-next-1"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+                <div class="mini-piece piece-i" id="hud-next-2"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+                <div class="mini-piece piece-i" id="hud-next-3"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+                <div class="mini-piece piece-i" id="hud-next-4"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="landscape-hud-panel" id="landscape-hud-right">
+        <div class="hud-title" id="landscape-hud-right-title">PLAYER 2</div>
+        <div id="landscape-hud-right-coop">
+        <div class="hud-left-layout hud-left-layout--p2">
+          <div class="hud-left-stats">
+            <div class="hud-label">SCORE</div>
+            <div class="hud-value hud-value--score" id="hud-p2-score">0</div>
+            <div class="hud-stat-row">
+              <div class="hud-stat-col">
+                <div class="hud-label">LEVEL</div>
+                <div class="hud-small hud-small--stat" id="hud-p2-level">0</div>
+              </div>
+              <div class="hud-stat-col">
+                <div class="hud-label">LINES</div>
+                <div class="hud-small hud-small--stat" id="hud-p2-lines">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="hud-left-pieces">
+            <div class="hud-piece-block">
+              <div class="hud-label">HOLD</div>
+              <div class="mini-piece piece-i" id="hud-p2-hold-icon">
+                <span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span>
+              </div>
+            </div>
+            <div class="hud-piece-block">
+              <div class="hud-label">NEXT</div>
+              <div class="mini-queue" id="hud-p2-next-queue">
+                <div class="mini-piece piece-i" id="hud-p2-next-0"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+                <div class="mini-piece piece-i" id="hud-p2-next-1"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+                <div class="mini-piece piece-i" id="hud-p2-next-2"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+                <div class="mini-piece piece-i" id="hud-p2-next-3"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+                <div class="mini-piece piece-i" id="hud-p2-next-4"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+        <div id="landscape-hud-right-run" hidden>
+          <div class="piece-stats" id="hud-piece-stats">
+            <div class="piece-row" data-piece="I">
+              <div class="piece-icon piece-i">
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+              </div>
+              <div class="piece-count" id="hud-piece-i">0</div>
+            </div>
+            <div class="piece-row" data-piece="J">
+              <div class="piece-icon piece-j">
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+              </div>
+              <div class="piece-count" id="hud-piece-j">0</div>
+            </div>
+            <div class="piece-row" data-piece="L">
+              <div class="piece-icon piece-l">
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+              </div>
+              <div class="piece-count" id="hud-piece-l">0</div>
+            </div>
+            <div class="piece-row" data-piece="O">
+              <div class="piece-icon piece-o">
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+              </div>
+              <div class="piece-count" id="hud-piece-o">0</div>
+            </div>
+            <div class="piece-row" data-piece="S">
+              <div class="piece-icon piece-s">
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+              </div>
+              <div class="piece-count" id="hud-piece-s">0</div>
+            </div>
+            <div class="piece-row" data-piece="T">
+              <div class="piece-icon piece-t">
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+              </div>
+              <div class="piece-count" id="hud-piece-t">0</div>
+            </div>
+            <div class="piece-row" data-piece="Z">
+              <div class="piece-icon piece-z">
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+                <span class="b"></span>
+              </div>
+              <div class="piece-count" id="hud-piece-z">0</div>
+            </div>
+          </div>
+          <div class="hud-row">
+            <div class="hud-kv">
+              <div class="hud-label">I DROUGHT</div>
+              <div class="hud-small" id="hud-i-drought">0</div>
+            </div>
+            <div class="hud-kv">
+              <div class="hud-label">TOTAL</div>
+              <div class="hud-small" id="hud-piece-total">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fps-counter" id="fps-counter" hidden>FPS 0</div>
     <div class="wrap">
       <div class="menu" id="menu" hidden>
         <div class="menu-screen is-active" data-screen="splash">
@@ -116,6 +275,10 @@
               <div class="menu-option" data-option="help" id="options-help">
                 <span>Help</span>
                 <span>Manual</span>
+              </div>
+              <div class="menu-option" data-option="show-fps" id="options-show-fps">
+                <span>FPS Counter</span>
+                <span id="options-show-fps-value">Off</span>
               </div>
               <div class="menu-actions">
                 <button id="options-back">Back</button>

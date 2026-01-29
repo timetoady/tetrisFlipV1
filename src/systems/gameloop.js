@@ -15,13 +15,20 @@ export class GameLoop {
     this.board = new Board();
     this.randomizer = new Randomizer();
     this.p2Randomizer = new Randomizer();
-    this.queueSize = 3;
+    this.queueSize = 5;
     this.nextQueue = [];
     this.p2Queue = [];
     this.holdType = null;
     this.holdUsed = false;
     this.p2HoldType = null;
     this.p2HoldUsed = false;
+    // Lightweight spawn stats for landscape HUD (counts + I drought). Updated only when dealing/spawning pieces.
+    this.p1PieceCounts = new Array(8).fill(0);
+    this.p2PieceCounts = new Array(8).fill(0);
+    this.p1TotalSpawns = 0;
+    this.p2TotalSpawns = 0;
+    this.p1IDrought = 0;
+    this.p2IDrought = 0;
     this.startingLevel = 1;
     this.score = 0;
     this.lines = 0;
@@ -376,6 +383,7 @@ export class GameLoop {
     this.resetProgress();
     this.resetHold();
     this.resetRewardState();
+    this.resetPieceStats();
     this.nextQueue = [];
     this.p2Queue = [];
     this.refillQueue();
@@ -436,6 +444,76 @@ export class GameLoop {
       combinedScore: this.score + this.p2Score
     };
   }
+
+  getQueueState(playerId = "p1") {
+    if (playerId === "p2") {
+      return {
+        holdType: this.p2HoldType,
+        nextQueue: this.p2Queue.slice()
+      };
+    }
+    return {
+      holdType: this.holdType,
+      nextQueue: this.nextQueue.slice()
+    };
+  }
+
+  getMomentumState(playerId = "p1") {
+    const keyId = playerId === "p2" ? "p2" : "p1";
+    const { valueKey, burstKey } = this.getMomentumKeys(keyId);
+    return {
+      value: this[valueKey],
+      max: this.momentumMax,
+      burstTimer: this[burstKey]
+    };
+  }
+  resetPieceStats() {
+    this.p1PieceCounts.fill(0);
+    this.p2PieceCounts.fill(0);
+    this.p1TotalSpawns = 0;
+    this.p2TotalSpawns = 0;
+    this.p1IDrought = 0;
+    this.p2IDrought = 0;
+  }
+
+  trackPieceSpawn(playerId, type) {
+    if (!Number.isFinite(type)) return;
+    const t = Math.max(0, Math.min(7, Math.trunc(type)));
+    if (t === 0) return;
+    if (playerId === "p2") {
+      this.p2TotalSpawns += 1;
+      this.p2PieceCounts[t] = (this.p2PieceCounts[t] || 0) + 1;
+      if (t === 1) {
+        this.p2IDrought = 0;
+      } else {
+        this.p2IDrought += 1;
+      }
+      return;
+    }
+    this.p1TotalSpawns += 1;
+    this.p1PieceCounts[t] = (this.p1PieceCounts[t] || 0) + 1;
+    if (t === 1) {
+      this.p1IDrought = 0;
+    } else {
+      this.p1IDrought += 1;
+    }
+  }
+
+  getPieceStats(playerId = "p1") {
+    if (playerId === "p2") {
+      return {
+        counts: this.p2PieceCounts.slice(),
+        droughtI: this.p2IDrought,
+        total: this.p2TotalSpawns
+      };
+    }
+    return {
+      counts: this.p1PieceCounts.slice(),
+      droughtI: this.p1IDrought,
+      total: this.p1TotalSpawns
+    };
+  }
+
 
   handlePauseClick(x, y) {
     if (!this.paused) return;
@@ -547,6 +625,7 @@ export class GameLoop {
     }
     const next = this.nextQueue.shift();
     this.refillQueue();
+    this.trackPieceSpawn("p1", next);
     return next;
   }
 
@@ -556,6 +635,7 @@ export class GameLoop {
     }
     const next = this.p2Queue.shift();
     this.refillP2Queue();
+    this.trackPieceSpawn("p2", next);
     return next;
   }
 
@@ -2481,7 +2561,7 @@ export class GameLoop {
       leftPanelY += 116;
       ctx.fillText("NEXT", leftPanelX, leftPanelY);
       leftPanelY += 18;
-      for (let i = 0; i < this.p2Queue.length; i += 1) {
+      for (let i = 0; i < this.p2Queue.length && i < 3; i += 1) {
         this.drawMiniPiece(ctx, this.p2Queue[i], leftPanelX, leftPanelY, 80, 80);
         leftPanelY += 88;
       }
@@ -2571,7 +2651,7 @@ export class GameLoop {
     panelY += 116;
     ctx.fillText("NEXT", panelX, panelY);
     panelY += 18;
-    for (let i = 0; i < this.nextQueue.length; i += 1) {
+    for (let i = 0; i < this.nextQueue.length && i < 3; i += 1) {
       this.drawMiniPiece(ctx, this.nextQueue[i], panelX, panelY, 80, 80);
       panelY += 88;
     }

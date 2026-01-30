@@ -977,7 +977,7 @@ body[data-hud-tight="true"] #hud-p2-next-queue {
   display: grid;
   grid-auto-flow: column;
   grid-template-rows: repeat(3, auto);
-  direction: rtl;
+  direction: ltr;
   column-gap: calc(26px * var(--hud-scale, 1));
   row-gap: calc(22px * var(--hud-scale, 1));
 }
@@ -1034,4 +1034,10 @@ body[data-hud-tight="true"] #hud-p2-next-queue {
   letter-spacing: 2px;
   color: #ff9a6b;
   text-shadow: 0 0 18px rgba(255, 154, 107, 0.25);
+}
+
+/* Co-op: optional P2 HUD flip for face-to-face tablet play. */
+body[data-hud-mode="coop"][data-flip-p2-hud="true"] #landscape-hud-right {
+  transform: rotate(180deg);
+  transform-origin: center center;
 }

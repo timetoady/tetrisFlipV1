@@ -22,6 +22,7 @@ export class GameLoop {
     this.holdUsed = false;
     this.p2HoldType = null;
     this.p2HoldUsed = false;
+    this.flipP2Hud = false; // co-op accessibility: face-to-face HUD rotation
     // Lightweight spawn stats for landscape HUD (counts + I drought). Updated only when dealing/spawning pieces.
     this.p1PieceCounts = new Array(8).fill(0);
     this.p2PieceCounts = new Array(8).fill(0);
@@ -248,6 +249,10 @@ export class GameLoop {
     const clamped = Math.max(0, Math.min(3, Math.floor(lives)));
     this.maxLives = clamped;
     this.lives = clamped;
+  }
+
+  setFlipP2Hud(enabled) {
+    this.flipP2Hud = Boolean(enabled);
   }
 
   getGarbageRowCount() {
@@ -2540,8 +2545,16 @@ export class GameLoop {
     }
 
     if (this.isCoopMode()) {
+      const p2HudCenterX = (GAME_CONFIG.GRID_MARGIN + GAME_CONFIG.HUD_WIDTH) / 2;
+      const p2HudCenterY = ctx.canvas.height / 2;
+      const p2HudFlipped = this.flipP2Hud;
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (p2HudFlipped) {
+        ctx.translate(p2HudCenterX, p2HudCenterY);
+        ctx.rotate(Math.PI);
+        ctx.translate(-p2HudCenterX, -p2HudCenterY);
+      }
       ctx.fillStyle = "#e6e6e6";
       ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
       ctx.textAlign = "left";
@@ -2568,6 +2581,11 @@ export class GameLoop {
 
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (p2HudFlipped) {
+        ctx.translate(p2HudCenterX, p2HudCenterY);
+        ctx.rotate(Math.PI);
+        ctx.translate(-p2HudCenterX, -p2HudCenterY);
+      }
       ctx.fillStyle = "#e6e6e6";
       ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
       ctx.textAlign = "left";
@@ -3052,5 +3070,6 @@ export class GameLoop {
     ctx.restore();
   }
 }
+
 
 

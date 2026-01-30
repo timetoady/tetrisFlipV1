@@ -94,6 +94,8 @@ const optionsHelpRow = document.getElementById("options-help");
 const optionsShowFpsRow = document.getElementById("options-show-fps");
 /** @type {HTMLElement} */
 const optionsShowFpsValue = document.getElementById("options-show-fps-value");
+const optionsFlipP2HudRow = document.getElementById("options-flip-p2-hud");
+const optionsFlipP2HudValue = document.getElementById("options-flip-p2-hud-value");
 const optionsBack = document.getElementById("options-back");
 /** @type {HTMLButtonElement} */
 const helpBack = document.getElementById("help-back");
@@ -319,7 +321,7 @@ let nativeApp = null;
 let pendingEntry = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
-const OPTIONS_ITEM_COUNT = 10;
+const OPTIONS_ITEM_COUNT = 11;
 let game = null;
 let activeMode = "marathon";
 let pendingScoreMode = "marathon";
@@ -389,7 +391,9 @@ const MUSIC_VOLUME_KEY = "tetrisflip:audio:musicVolume";
 const VFX_VOLUME_KEY = "tetrisflip:audio:vfxVolume";
 const MUSIC_VOLUME_MAX = 0.7;
 const SHOW_FPS_KEY = "tetrisflip:debug:showFps";
+const FLIP_P2_HUD_KEY = "tetrisflip:ui:flipP2Hud";
 let showFps = false;
+let flipP2Hud = false;
 let fpsFrames = 0;
 let fpsAccumMs = 0;
 const VFX_VOLUME_MAX = 6.0;
@@ -794,7 +798,10 @@ function updateOptionsSelection() {
   if (optionsShowFpsRow) {
     optionsShowFpsRow.classList.toggle("is-selected", optionsIndex === 8);
   }
-  optionsBack.classList.toggle("is-selected", optionsIndex === 9);
+  if (optionsFlipP2HudRow) {
+    optionsFlipP2HudRow.classList.toggle("is-selected", optionsIndex === 9);
+  }
+  optionsBack.classList.toggle("is-selected", optionsIndex === 10);
   const optionItems = [
     optionsLayoutModeRow,
     optionsOrientationRow,
@@ -805,6 +812,7 @@ function updateOptionsSelection() {
     optionsVfxVolumeRow,
     optionsHelpRow,
     optionsShowFpsRow,
+    optionsFlipP2HudRow,
     optionsBack
   ];
   scrollMenuItemIntoView(optionItems[optionsIndex]);
@@ -1251,6 +1259,23 @@ function applyShowFps(enabled, persist = true) {
   }
 }
 
+function applyFlipP2Hud(enabled, persist = true) {
+  flipP2Hud = Boolean(enabled);
+  if (persist) {
+    try {
+      localStorage.setItem(FLIP_P2_HUD_KEY, flipP2Hud ? "true" : "false");
+    } catch {
+      // ignore
+    }
+  }
+  if (optionsFlipP2HudValue) {
+    optionsFlipP2HudValue.textContent = flipP2Hud ? "On" : "Off";
+  }
+  document.body.dataset.flipP2Hud = flipP2Hud ? "true" : "false";
+  if (game && typeof game.setFlipP2Hud === "function") {
+    game.setFlipP2Hud(flipP2Hud);
+  }
+}
 function attemptPlay(audio) {
   if (!audio) return;
   const playPromise = audio.play();
@@ -1480,6 +1505,12 @@ try {
 } catch {
   applyShowFps(false, false);
 }
+try {
+  const stored = localStorage.getItem(FLIP_P2_HUD_KEY);
+  applyFlipP2Hud(stored === "true", false);
+} catch {
+  applyFlipP2Hud(false, false);
+}
 game = new GameLoop(ctx, input, {
 onGameOver() {
   setOverlayMode("gameover");
@@ -1529,6 +1560,7 @@ onGameOver() {
   }
 });
 game.setSfxVolume(vfxVolumeValue);
+applyFlipP2Hud(flipP2Hud, false);
 
 retry.addEventListener("click", () => {
   if (nameEntryActive) {
@@ -1897,6 +1929,13 @@ if (optionsShowFpsRow) {
     optionsIndex = 8;
     updateOptionsSelection();
     applyShowFps(!showFps);
+  });
+}
+if (optionsFlipP2HudRow) {
+  optionsFlipP2HudRow.addEventListener("click", () => {
+    optionsIndex = 9;
+    updateOptionsSelection();
+    applyFlipP2Hud(!flipP2Hud);
   });
 }
 
@@ -2443,7 +2482,11 @@ function handleMenuInput() {
       if ((left || right) || confirm) {
         applyShowFps(!showFps);
       }
-    } else if (optionsIndex === 9 && confirm) {
+    } else if (optionsIndex === 9) {
+      if ((left || right) || confirm) {
+        applyFlipP2Hud(!flipP2Hud);
+      }
+    } else if (optionsIndex === 10 && confirm) {
       showScreen("mode");
     }
     if (consumeMenuBack()) {

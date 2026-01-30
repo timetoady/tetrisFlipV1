@@ -132,6 +132,7 @@ Status: IN PROGRESS (3A baseline implemented; 3B marathon/chillax stats implemen
 ### 3E: Co-op Mode
 #### Display
 - Symmetric sidebars:
+- Optional: 'Flip P2 HUD' (rotate 180deg) for face-to-face tablet co-op
   - Left = P1, Right = P2
   - Each shows Score/Level/Lines + momentum
 
@@ -141,6 +142,7 @@ Status: IN PROGRESS (3A baseline implemented; 3B marathon/chillax stats implemen
 #### Checklist
 - [ ] Implement co-op layout rules
 - [ ] Confirm no overlap with pause overlay
+- [x] Add 'Flip P2 HUD' option (rotates P2 canvas HUD + right landscape HUD)
 
 ## Phase 4: Styling/UX Polish
 - [ ] Ensure panels don't cause layout shifts or scrolling

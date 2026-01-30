@@ -92,6 +92,9 @@ Status: IN PROGRESS (3A baseline implemented; 3B marathon/chillax stats implemen
 - [x] Wire per-frame updates in `src/main.js`
 
 ### 3B: Marathon + Chillax (NES-style stats)
+#### Sirtet Note
+- Sirtet uses the same side HUD as Marathon/Chillax, but the right RUN panel is rotated 180deg (theme gag).
+
 #### Display
 - Piece counts: I/J/L/O/S/T/Z spawned
 - "I drought": number of pieces since last I piece

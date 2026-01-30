@@ -1041,3 +1041,8 @@ body[data-hud-mode="coop"][data-flip-p2-hud="true"] #landscape-hud-right {
   transform: rotate(180deg);
   transform-origin: center center;
 }
+/* Sirtet: flip the RUN panel for upside-down vibes. */
+body[data-hud-mode="sirtet"] #landscape-hud-right {
+  transform: rotate(180deg);
+  transform-origin: center center;
+}

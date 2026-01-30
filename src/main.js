@@ -1831,6 +1831,7 @@ function ensureTouchButtons() {
 }
 
 modeOptions.forEach((option, index) => {
+  if (option === modeBack) return;
   option.addEventListener("click", () => {
     modeIndex = index;
     updateModeSelection();
@@ -1848,11 +1849,18 @@ modeOptions.forEach((option, index) => {
   });
 });
 
-if (modeBack && !modeOptions.includes(modeBack)) {
-  modeBack.addEventListener("click", (event) => {
-    event.stopPropagation();
+if (modeBack) {
+  let lastBackActivate = 0;
+  const activateBack = (event) => {
+    const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+    if (now - lastBackActivate < 250) return;
+    lastBackActivate = now;
+    if (event && typeof event.preventDefault === "function") event.preventDefault();
+    if (event && typeof event.stopPropagation === "function") event.stopPropagation();
     backToSplash();
-  });
+  };
+  modeBack.addEventListener("pointerup", activateBack);
+  modeBack.addEventListener("click", activateBack);
 }
 
 if (optionsBack) {
@@ -2116,7 +2124,8 @@ function updateLandscapeHud() {
   if (!game || typeof game.getScoreState !== "function") return;
 
   const coop = typeof game.isCoopMode === "function" ? game.isCoopMode() : false;
-  const showRunStats = !coop && (activeMode === "marathon" || activeMode === "chillax");
+  // Treat "Sirtet" like Marathon/Chillax for landscape HUD, but with a themed twist handled in CSS.
+  const showRunStats = !coop && (activeMode === "marathon" || activeMode === "chillax" || activeMode === "sirtet");
   const showGarbageHud = !coop && activeMode === "garbage";
   const showRedemptionHud = !coop && activeMode === "redemption";
   const showMirrorHud = !coop && !showRunStats && !showGarbageHud && !showRedemptionHud;

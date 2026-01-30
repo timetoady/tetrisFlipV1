@@ -1789,6 +1789,7 @@ if (sirtetBack) {
 }
 
 menu.addEventListener("click", (event) => {
+  if (event && event.defaultPrevented) return;
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
   if (menuState === "splash") {
@@ -1831,7 +1832,6 @@ function ensureTouchButtons() {
 }
 
 modeOptions.forEach((option, index) => {
-  if (option === modeBack) return;
   option.addEventListener("click", () => {
     modeIndex = index;
     updateModeSelection();
@@ -1849,19 +1849,72 @@ modeOptions.forEach((option, index) => {
   });
 });
 
-if (modeBack) {
-  let lastBackActivate = 0;
-  const activateBack = (event) => {
-    const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-    if (now - lastBackActivate < 250) return;
-    lastBackActivate = now;
-    if (event && typeof event.preventDefault === "function") event.preventDefault();
-    if (event && typeof event.stopPropagation === "function") event.stopPropagation();
-    backToSplash();
-  };
-  modeBack.addEventListener("pointerup", activateBack);
-  modeBack.addEventListener("click", activateBack);
-}
+// ModeBack capture fallback: mobile/embedded browsers can swallow button click events (often due to Text targets).
+// Capture-phase + coordinate hit-testing keeps RETURN TO TITLE usable on touch/mouse.
+let lastModeBackActivateMs = 0;
+let modeBackSuppressClickUntil = 0;
+/**
+ * @param {Event} event
+ * @returns {Element | null}
+ */
+const getEventElement = (event) => {
+  const target = event ? event.target : null;
+  if (target instanceof Element) return target;
+  // e.g. when tapping button text, target can be a Text node.
+  if (target instanceof Node && target.parentElement instanceof Element) {
+    return target.parentElement;
+  }
+  return null;
+};
+
+const handleModeBackActivate = (event) => {
+  /** @type {any} */
+  const e = event;
+  if (!menuActive || menuState !== "mode" || !modeBack) return;
+
+  let clientX = e && e.clientX;
+  let clientY = e && e.clientY;
+  if ((clientX == null || clientY == null) && e && e.changedTouches && e.changedTouches[0]) {
+    clientX = e.changedTouches[0].clientX;
+    clientY = e.changedTouches[0].clientY;
+  }
+
+  const el = getEventElement(event);
+  let hit = false;
+  if (clientX != null && clientY != null) {
+    const r = modeBack.getBoundingClientRect();
+    hit = clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+  }
+  if (!hit && el) {
+    hit = !!el.closest("#mode-back");
+  }
+
+  if (!hit) return;
+
+  if (event && typeof event.preventDefault === "function") event.preventDefault();
+  if (event && typeof event.stopPropagation === "function") event.stopPropagation();
+
+  const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  if (now - lastModeBackActivateMs < 250) return;
+  lastModeBackActivateMs = now;
+
+  // Suppress the follow-up click event that would otherwise bubble into the splash screen and immediately re-open MODE SELECT.
+  modeBackSuppressClickUntil = now + 600;
+
+  backToSplash();
+};
+document.addEventListener("pointerup", handleModeBackActivate, true);
+document.addEventListener("touchend", handleModeBackActivate, true);
+document.addEventListener("click", handleModeBackActivate, true);
+
+// Swallow the trailing click after RETURN TO TITLE so splash does not immediately re-open MODE SELECT.
+document.addEventListener("click", (event) => {
+  if (!menuActive) return;
+  const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  if (now > modeBackSuppressClickUntil) return;
+  if (event && typeof event.preventDefault === "function") event.preventDefault();
+  if (event && typeof event.stopPropagation === "function") event.stopPropagation();
+}, true);
 
 if (optionsBack) {
   optionsBack.addEventListener("click", () => {
@@ -1997,6 +2050,10 @@ function setGameplayDataset() {
 function updateViewportScale() {
   if (!wrap) return;
   const menuVisible = menu && !menu.hidden;
+  // Touch buttons sit above the menu (higher z-index); hide them while any menu is open.
+  const hideTouchButtons = menuVisible || !touchEnabled;
+  if (touchFlip) touchFlip.hidden = hideTouchButtons;
+  if (touchPause) touchPause.hidden = hideTouchButtons;
   setGameplayDataset();
   viewportScale = menuVisible ? 1 : getTouchScale();
   document.documentElement.style.setProperty("--hud-scale", String(viewportScale.toFixed(3)));
@@ -2670,6 +2727,10 @@ function frame(now) {
   }
   handleMenuInput();
   const menuVisible = menu && !menu.hidden;
+  // Touch buttons sit above the menu (higher z-index); hide them while any menu is open.
+  const hideTouchButtons = menuVisible || !touchEnabled;
+  if (touchFlip) touchFlip.hidden = hideTouchButtons;
+  if (touchPause) touchPause.hidden = hideTouchButtons;
   setGameplayDataset();
   if (menuVisible || gameOverActive || nameEntryActive || game.paused) {
     if (touchFlip) {

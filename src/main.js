@@ -405,6 +405,7 @@ const MUSIC_TRACKS = [
   { id: "title", label: "Title", src: titleTrackSrc },
   { id: "alt1", label: "Alt 1", src: `${baseUrl}assets/Alt1.mp3` },
   { id: "korobeiniki", label: "Korobeiniki", src: `${baseUrl}assets/TetrisFlipKorobeiniki.mp3` },
+  { id: "alt2", label: "Alt 2", src: `${baseUrl}assets/TetrisFlipAlt2Trim.mp3` },
   { id: "none", label: "None", src: "" }
 ];
 const MUSIC_TRACK_KEY = "tetrisflip:audio:gameTrack";

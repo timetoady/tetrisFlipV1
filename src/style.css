@@ -216,7 +216,7 @@ canvas {
 }
 .score-list li {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 4px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -233,11 +233,15 @@ canvas {
 }
 .score-level {
   opacity: 0.7;
-  width: 42px;
+  width: 48px;
   text-align: right;
+  margin-left: 12px;
 }
 .score-value {
   opacity: 0.85;
+  margin-left: auto;
+  min-width: 86px;
+  text-align: right;
 }
 .splash-image {
   width: 100%;
@@ -1083,3 +1087,5 @@ body[data-hud-mode="sirtet"] #landscape-hud-right {
   transform: rotate(180deg);
   transform-origin: center center;
 }
+
+

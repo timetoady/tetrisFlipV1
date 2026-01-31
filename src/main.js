@@ -950,8 +950,8 @@ function renderScores(scores, listEl, mode) {
     const empty = document.createElement("li");
     empty.innerHTML = "<span class=\"score-rank\">-</span>"
       + "<span class=\"score-name\">No scores yet</span>"
-      + (mode === "garbage" ? "" : "<span class=\"score-level\"></span>")
-      + "<span class=\"score-value\"></span>";
+      + "<span class=\"score-value\"></span>"
+      + (mode === "garbage" ? "" : "<span class=\"score-level\"></span>");
     listEl.appendChild(empty);
     return;
   }
@@ -974,7 +974,7 @@ function renderScores(scores, listEl, mode) {
       const level = document.createElement("span");
       level.className = "score-level";
       level.textContent = Number.isFinite(entry.level) ? ("L" + entry.level) : "L-";
-      item.append(rank, name, level, value);
+      item.append(rank, name, value, level);
     } else {
       item.append(rank, name, value);
     }
@@ -2861,6 +2861,9 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+
+
 
 
 

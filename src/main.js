@@ -2245,8 +2245,11 @@ function updateHudMeter(fillEl, state) {
 function updateLandscapeHud() {
   if (!landscapeHud || !wrap) return;
   const gameplay = !menuActive;
-  const landscape = window.matchMedia("(orientation: landscape)").matches;
-  if (!gameplay || !landscape) {
+  const wrapRect = wrap.getBoundingClientRect();
+  const wideViewport = wrapRect.width > wrapRect.height;
+  // Hide the landscape HUD on portrait-ish layouts (e.g. small handheld screens)
+  // and while name entry is active (keyboard open).
+  if (!gameplay || !wideViewport || nameEntryActive) {
     landscapeHud.hidden = true;
     return;
   }
@@ -2257,7 +2260,6 @@ function updateLandscapeHud() {
   hudLastUpdateMs = nowMs;
 
   if (nowMs - hudLastLayoutMs > 500) {
-    const wrapRect = wrap.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
     hudCachedSideSpace = Math.max(0, (wrapRect.width - canvasRect.width) / 2);
     hudLastLayoutMs = nowMs;

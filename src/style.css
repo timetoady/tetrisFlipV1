@@ -1,4 +1,4 @@
-
+﻿
 
 .hud-value--timer {
   font-size: clamp(24px, calc(44px * var(--hud-scale, 1)), 44px);
@@ -230,6 +230,11 @@ canvas {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.score-level {
+  opacity: 0.7;
+  width: 42px;
+  text-align: right;
 }
 .score-value {
   opacity: 0.85;

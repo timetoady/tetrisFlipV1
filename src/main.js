@@ -950,6 +950,7 @@ function renderScores(scores, listEl, mode) {
     const empty = document.createElement("li");
     empty.innerHTML = "<span class=\"score-rank\">-</span>"
       + "<span class=\"score-name\">No scores yet</span>"
+      + (mode === "garbage" ? "" : "<span class=\"score-level\"></span>")
       + "<span class=\"score-value\"></span>";
     listEl.appendChild(empty);
     return;
@@ -969,7 +970,14 @@ function renderScores(scores, listEl, mode) {
     } else {
       value.textContent = String(entry.score);
     }
-    item.append(rank, name, value);
+    if (mode !== "garbage") {
+      const level = document.createElement("span");
+      level.className = "score-level";
+      level.textContent = Number.isFinite(entry.level) ? ("L" + entry.level) : "L-";
+      item.append(rank, name, level, value);
+    } else {
+      item.append(rank, name, value);
+    }
     listEl.appendChild(item);
   });
 }
@@ -978,13 +986,14 @@ function normalizeEntry(entry) {
   if (entry && typeof entry === "object") {
     return {
       score: Number.isFinite(entry.score) ? entry.score : 0,
-      timeMs: Number.isFinite(entry.timeMs) ? entry.timeMs : null
+      timeMs: Number.isFinite(entry.timeMs) ? entry.timeMs : null,
+      level: Number.isFinite(entry.level) ? entry.level : null
     };
   }
   if (Number.isFinite(entry)) {
-    return { score: entry, timeMs: null };
+    return { score: entry, timeMs: null, level: null };
   }
-  return { score: 0, timeMs: null };
+  return { score: 0, timeMs: null, level: null };
 }
 
 function formatTimeMs(ms) {
@@ -1383,7 +1392,8 @@ function commitNameEntry() {
   const trimmedName = nameInput.value.trim() || "Player 1";
   const entry = {
     name: trimmedName,
-    score: pendingEntry.score
+    score: pendingEntry.score,
+    level: Number.isFinite(pendingEntry.level) ? pendingEntry.level : null
   };
   if (pendingScoreMode === "garbage") {
     entry.timeMs = pendingEntry.timeMs;
@@ -1571,8 +1581,12 @@ onGameOver() {
       updateMusicState();
       return;
     }
-    const { score, combinedScore } = game.getScoreState();
-    const entry = { score: activeMode === "coop" ? combinedScore : score };
+    const { score, combinedScore, level, p2Level } = game.getScoreState();
+    const entryLevel = activeMode === "coop" ? Math.max(level || 0, p2Level || 0) : level;
+    const entry = {
+      score: activeMode === "coop" ? combinedScore : score,
+      level: Number.isFinite(entryLevel) ? entryLevel : null
+    };
     if (qualifiesForScores(entry, scores, activeMode)) {
       openNameEntry(entry, activeMode);
     }
@@ -2847,6 +2861,12 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+
+
+
+
+
 
 
 

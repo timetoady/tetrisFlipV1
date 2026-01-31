@@ -1,10 +1,23 @@
-import { GAME_CONFIG, OWNERS } from "../constants.js";
+﻿import { GAME_CONFIG, OWNERS } from "../constants.js";
 import { Randomizer } from "../utils/randomizer.js";
 import { drawCell, drawGrid } from "../utils/drawing.js";
 import { createPiece, getBlocks } from "../entities/piece.js";
 import { Board } from "../entities/board.js";
 import { getKickOffsets } from "../utils/srs.js";
 
+
+function createCacheCanvas(width, height) {
+  if (typeof OffscreenCanvas !== "undefined") {
+    return new OffscreenCanvas(width, height);
+  }
+  if (typeof document !== "undefined" && document.createElement) {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    return canvas;
+  }
+  return null;
+}
 export class GameLoop {
   constructor(ctx, input, callbacks = {}) {
     this.ctx = ctx;
@@ -13,6 +26,18 @@ export class GameLoop {
     this.onGarbageCleared = callbacks.onGarbageCleared || (() => {});
     this.onPauseBack = callbacks.onPauseBack || (() => {});
     this.board = new Board();
+    this.stackCache = null;
+    this.stackCacheW = 0;
+    this.stackCacheH = 0;
+    this.stackCacheDirty = {
+      [OWNERS.FIELD_A]: true,
+      [OWNERS.FIELD_B]: true
+    };
+    this.gridCache = null;
+    this.gridCacheW = 0;
+    this.gridCacheH = 0;
+    this.gridCacheKey = '';
+    this.gridCachePadX = 32;
     this.randomizer = new Randomizer();
     this.p2Randomizer = new Randomizer();
     this.queueSize = 5;
@@ -289,6 +314,7 @@ export class GameLoop {
         }
       }
     });
+    this.markStackCacheDirty();
     this.garbageTotalCells = totalGarbageCells;
   }
 
@@ -347,6 +373,7 @@ export class GameLoop {
   finalizeLifeLoss() {
     if (this.lifeLossOwner) {
       this.board.removeBottomRowsForOwner(this.lifeLossOwner, 6);
+      this.markStackCacheDirty(this.lifeLossOwner);
     }
     this.lifeLossAnimating = false;
     this.lifeLossHeartTimer = 0;
@@ -409,6 +436,7 @@ export class GameLoop {
 
   resetGameState() {
     this.board.reset();
+    this.markStackCacheDirty();
     this.resetProgress();
     this.resetHold();
     this.resetRewardState();
@@ -1341,6 +1369,8 @@ export class GameLoop {
       }
     }
 
+    this.markStackCacheDirty(owner);
+
     const linesToClear = this.board.findClearLinesForOwner(owner);
     const cleared = linesToClear.length;
     if (cleared > 0) {
@@ -2030,6 +2060,7 @@ export class GameLoop {
       this.clearTimer += delta;
       if (this.clearTimer >= this.clearDuration) {
         this.board.clearLinesForOwner(this.clearOwner, this.clearRows);
+        this.markStackCacheDirty(this.clearOwner);
         this.isClearing = false;
         this.clearTimer = 0;
         this.clearDuration = 0;
@@ -2235,6 +2266,132 @@ export class GameLoop {
     }
   }
 
+  markStackCacheDirty(owner = null) {
+    if (!this.stackCacheDirty) {
+      this.stackCacheDirty = {
+        [OWNERS.FIELD_A]: true,
+        [OWNERS.FIELD_B]: true
+      };
+      return;
+    }
+    if (!owner) {
+      this.stackCacheDirty[OWNERS.FIELD_A] = true;
+      this.stackCacheDirty[OWNERS.FIELD_B] = true;
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(this.stackCacheDirty, owner)) {
+      this.stackCacheDirty[owner] = true;
+    }
+  }
+
+  createStackCacheLayer(width, height) {
+    const canvas = createCacheCanvas(width, height);
+    if (!canvas || !canvas.getContext) return null;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.imageSmoothingEnabled = false;
+    return { canvas, ctx };
+  }
+
+  ensureStackCache() {
+    const size = GAME_CONFIG.BLOCK_SIZE;
+    const halfRows = GAME_CONFIG.ROWS / 2;
+    const width = GAME_CONFIG.COLS * size;
+    const height = halfRows * size;
+    const needsResize = !this.stackCache || this.stackCacheW !== width || this.stackCacheH !== height;
+    if (needsResize) {
+      this.stackCacheW = width;
+      this.stackCacheH = height;
+      this.stackCache = {
+        [OWNERS.FIELD_A]: this.createStackCacheLayer(width, height),
+        [OWNERS.FIELD_B]: this.createStackCacheLayer(width, height)
+      };
+      this.markStackCacheDirty();
+    }
+
+    if (this.stackCacheDirty && this.stackCacheDirty[OWNERS.FIELD_A]) {
+      this.rebuildStackCacheForOwner(OWNERS.FIELD_A);
+    }
+    if (this.stackCacheDirty && this.stackCacheDirty[OWNERS.FIELD_B]) {
+      this.rebuildStackCacheForOwner(OWNERS.FIELD_B);
+    }
+  }
+
+  rebuildStackCacheForOwner(owner) {
+    if (!this.stackCache || !this.stackCacheDirty) return;
+    const layer = this.stackCache[owner];
+    if (!layer || !layer.ctx) {
+      this.stackCacheDirty[owner] = false;
+      return;
+    }
+
+    const ctx = layer.ctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.stackCacheW, this.stackCacheH);
+
+    const halfRows = GAME_CONFIG.ROWS / 2;
+    for (let localRow = 0; localRow < halfRows; localRow += 1) {
+      for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
+        const cell = this.board.getCellForOwner(owner, localRow, x);
+        if (!cell || cell.value === 0 || cell.owner !== owner) continue;
+        drawCell(ctx, x, localRow, GAME_CONFIG.COLORS[cell.value], 1);
+      }
+    }
+
+    this.stackCacheDirty[owner] = false;
+  }
+
+  getStackCacheCanvas(owner) {
+    if (!this.stackCache) return null;
+    const layer = this.stackCache[owner];
+    return layer ? layer.canvas : null;
+  }
+
+  ensureGridCache(topOffset = 0, bottomOffset = 0) {
+    const size = GAME_CONFIG.BLOCK_SIZE;
+    const gridWidth = GAME_CONFIG.COLS * size;
+    const gridHeight = GAME_CONFIG.ROWS * size;
+    const padX = this.gridCachePadX || 32;
+    const width = gridWidth + padX * 2;
+    const height = gridHeight;
+
+    const key = `${width}x${height}|${Number(topOffset).toFixed(3)}|${Number(bottomOffset).toFixed(3)}`;
+    const needsResize = !this.gridCache || this.gridCacheW !== width || this.gridCacheH !== height;
+    if (needsResize) {
+      const canvas = createCacheCanvas(width, height);
+      if (!canvas || !canvas.getContext) {
+        this.gridCache = null;
+        return;
+      }
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        this.gridCache = null;
+        return;
+      }
+      ctx.imageSmoothingEnabled = false;
+      this.gridCache = { canvas, ctx };
+      this.gridCacheW = width;
+      this.gridCacheH = height;
+      this.gridCacheKey = "";
+    }
+
+    if (!this.gridCache || !this.gridCache.ctx) return;
+    if (this.gridCacheKey === key) return;
+
+    const ctx = this.gridCache.ctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.gridCacheW, this.gridCacheH);
+    ctx.setTransform(1, 0, 0, 1, padX, 0);
+    drawGrid(ctx, topOffset, bottomOffset);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    this.gridCacheKey = key;
+  }
+
+  getGridCacheCanvas() {
+    return this.gridCache ? this.gridCache.canvas : null;
+  }
+
   draw() {
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2260,33 +2417,41 @@ export class GameLoop {
     ctx.fillStyle = bottomTint;
     ctx.fillRect(0, (spawnEnd + 1) * size, gridWidth, gridHeight - (spawnEnd + 1) * size);
     ctx.restore();
-
-    drawGrid(ctx, this.gridOffsetTop, this.gridOffsetBottom);
+    this.ensureGridCache(this.gridOffsetTop, this.gridOffsetBottom);
+    const gridCanvas = this.getGridCacheCanvas();
+    if (gridCanvas) {
+      ctx.drawImage(gridCanvas, -(this.gridCachePadX || 32), 0);
+    } else {
+      drawGrid(ctx, this.gridOffsetTop, this.gridOffsetBottom);
+    }
 
     const activeOwner = this.board.getActiveOwner();
     const inactiveOwner = this.board.getInactiveOwner();
     const maxIndex = halfRows - 1;
 
-    for (let y = 0; y < GAME_CONFIG.ROWS; y += 1) {
-      for (let x = 0; x < GAME_CONFIG.COLS; x += 1) {
-        const cell = this.board.grid[y][x];
-        if (cell.value === 0) continue;
-        if (!this.board.isRowInOwner(cell.owner, y)) continue;
-        const alpha = (this.isCoopMode() || this.isSirtetMode())
-          ? 1
-          : (cell.owner === activeOwner ? 1 : 0.3);
-        let renderY = y;
-        const local = this.board.mapRowToLocal(cell.owner, y);
-        if (cell.owner === activeOwner) {
-          renderY = halfRows + local;
-        } else if (cell.owner === inactiveOwner) {
-          renderY = maxIndex - local;
-        }
-        if (renderY < 0 || renderY >= GAME_CONFIG.ROWS) continue;
-        drawCell(ctx, x, renderY, GAME_CONFIG.COLORS[cell.value], alpha);
-      }
+    this.ensureStackCache();
+    const halfHeight = halfRows * size;
+    const fullAlpha = this.isCoopMode() || this.isSirtetMode();
+    const inactiveAlpha = fullAlpha ? 1 : 0.3;
+
+    const activeCanvas = this.getStackCacheCanvas(activeOwner);
+    const inactiveCanvas = this.getStackCacheCanvas(inactiveOwner);
+
+    if (inactiveCanvas) {
+      ctx.save();
+      ctx.globalAlpha = inactiveAlpha;
+      ctx.translate(0, halfHeight);
+      ctx.scale(1, -1);
+      ctx.drawImage(inactiveCanvas, 0, 0);
+      ctx.restore();
     }
 
+    if (activeCanvas) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.drawImage(activeCanvas, 0, halfHeight);
+      ctx.restore();
+    }
     if (this.isClearing && this.clearOwner) {
       const progress = Math.min(1, this.clearTimer / this.clearDuration);
       const angle = Math.PI * progress;
@@ -2916,7 +3081,7 @@ export class GameLoop {
       ctx.restore();
     }
   }
-
+  
   handleLifeLossClick(x, y) {
     if (!this.lifeLossPending || !this.lifeLossButtons) return false;
     const { use, quit } = this.lifeLossButtons;
@@ -3070,6 +3235,12 @@ export class GameLoop {
     ctx.restore();
   }
 }
+
+
+
+
+
+
 
 
 

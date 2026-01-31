@@ -1,4 +1,4 @@
-import { GAME_CONFIG } from "./constants.js";
+﻿import { GAME_CONFIG } from "./constants.js";
 import { createInput } from "./input.js";
 import { GameLoop } from "./systems/gameloop.js";
 
@@ -95,6 +95,7 @@ const optionsShowFpsRow = document.getElementById("options-show-fps");
 /** @type {HTMLElement} */
 const optionsShowFpsValue = document.getElementById("options-show-fps-value");
 const optionsLayoutDebugRow = document.getElementById("options-layout-debug");
+if (optionsLayoutDebugRow) optionsLayoutDebugRow.hidden = true;
 const optionsLayoutDebugValue = document.getElementById("options-layout-debug-value");
 const optionsFlipP2HudRow = document.getElementById("options-flip-p2-hud");
 const optionsFlipP2HudValue = document.getElementById("options-flip-p2-hud-value");
@@ -342,7 +343,7 @@ let nativeApp = null;
 let pendingEntry = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
-const OPTIONS_ITEM_COUNT = 12;
+const OPTIONS_ITEM_COUNT = 11;
 let game = null;
 let activeMode = "marathon";
 let pendingScoreMode = "marathon";
@@ -819,13 +820,10 @@ function updateOptionsSelection() {
   if (optionsShowFpsRow) {
     optionsShowFpsRow.classList.toggle("is-selected", optionsIndex === 8);
   }
-  if (optionsLayoutDebugRow) {
-    optionsLayoutDebugRow.classList.toggle("is-selected", optionsIndex === 9);
-  }
   if (optionsFlipP2HudRow) {
-    optionsFlipP2HudRow.classList.toggle("is-selected", optionsIndex === 10);
+    optionsFlipP2HudRow.classList.toggle("is-selected", optionsIndex === 9);
   }
-  optionsBack.classList.toggle("is-selected", optionsIndex === 11);
+  optionsBack.classList.toggle("is-selected", optionsIndex === 10);
   const optionItems = [
     optionsLayoutModeRow,
     optionsOrientationRow,
@@ -836,7 +834,6 @@ function updateOptionsSelection() {
     optionsVfxVolumeRow,
     optionsHelpRow,
     optionsShowFpsRow,
-    optionsLayoutDebugRow,
     optionsFlipP2HudRow,
     optionsBack
   ];
@@ -2041,16 +2038,9 @@ if (optionsShowFpsRow) {
     applyShowFps(!showFps);
   });
 }
-if (optionsLayoutDebugRow) {
-  optionsLayoutDebugRow.addEventListener("click", () => {
-    optionsIndex = 9;
-    updateOptionsSelection();
-    applyLayoutDebug(!layoutDebugEnabled);
-  });
-}
 if (optionsFlipP2HudRow) {
   optionsFlipP2HudRow.addEventListener("click", () => {
-    optionsIndex = 10;
+    optionsIndex = 9;
     updateOptionsSelection();
     applyFlipP2Hud(!flipP2Hud);
   });
@@ -2646,13 +2636,9 @@ function handleMenuInput() {
       }
     } else if (optionsIndex === 9) {
       if ((left || right) || confirm) {
-        applyLayoutDebug(!layoutDebugEnabled);
-      }
-    } else if (optionsIndex === 10) {
-      if ((left || right) || confirm) {
         applyFlipP2Hud(!flipP2Hud);
       }
-    } else if (optionsIndex === 11 && confirm) {
+    } else if (optionsIndex === 10 && confirm) {
       showScreen("mode");
     }
     if (consumeMenuBack()) {
@@ -2860,4 +2846,6 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+
 

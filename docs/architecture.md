@@ -79,3 +79,26 @@
 - Electron packages the app and outputs to `release/` (configured in `package.json`).
 - Auto-updates use GitHub Releases via `electron-updater`.
 - `patch-package` is used to patch `@electron/rebuild` for ESM tar imports.
+
+## Android (Capacitor)
+
+- Android builds live under `android/` and are generated from the Vite `dist/` output via `capacitor copy`.
+- Handy scripts (see `package.json`):
+  - `npm run android:current:install`
+  - `npm run android:android10:install`
+- Android 10 builds use a dedicated Gradle variant/task (see `android/`) to target older handheld WebView devices.
+- Sideloading/setup notes live in `docs/android-sideload-requirements.md`.
+
+## Low-End Performance Notes
+
+- `src/systems/gameloop.js` uses two offscreen caches to keep draw time stable on weaker Android devices:
+  - **Stack cache**: settled blocks per field are rendered once to an offscreen canvas and blitted each frame; rebuilt only when the board changes (lock, clear, reset, garbage seed, life-loss row removal).
+  - **Grid cache**: the grid overlay (lines + row labels) is cached and only rebuilt when the flip parallax offsets change.
+- Caches use `OffscreenCanvas` when available, otherwise fall back to a regular detached `<canvas>`.
+
+## Debug Overlays
+
+- FPS display is toggled via the Options menu and persisted at `localStorage["tetrisflip:debug:showFps"]`.
+- The **layout debug badge** is intentionally hidden from the Options menu (to keep the menu clean), but can be enabled for troubleshooting:
+  - URL param: `?layoutDebug=1` (web builds)
+  - Or set `localStorage["tetrisflip:layoutDebug"] = "true"`

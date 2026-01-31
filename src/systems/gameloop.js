@@ -277,7 +277,17 @@ export class GameLoop {
   }
 
   setFlipP2Hud(enabled) {
-    this.flipP2Hud = Boolean(enabled);
+    const next = Boolean(enabled);
+    if (this.flipP2Hud === next) return;
+    this.flipP2Hud = next;
+    this.p2UpHold = 0;
+    this.p2UpRepeat = 0;
+    this.p2DownHold = 0;
+    this.p2DownRepeat = 0;
+    this.p2LeftHold = 0;
+    this.p2LeftRepeat = 0;
+    this.p2RightHold = 0;
+    this.p2RightRepeat = 0;
   }
 
   getGarbageRowCount() {
@@ -1723,19 +1733,25 @@ export class GameLoop {
     const owner = this.getP2Owner();
     const otherPiece = this.activePiece;
 
+    const p2SoftDropKey = this.flipP2Hud ? "KeyS" : "KeyW";
+    const p2HardDropKey = this.flipP2Hud ? "KeyW" : "KeyS";
+
+    const p2MoveLeftDx = this.flipP2Hud ? 1 : -1;
+    const p2MoveRightDx = -p2MoveLeftDx;
+
     const leftPressed = this.input.consumePress("KeyA");
     const rightPressed = this.input.consumePress("KeyD");
-    const upPressed = this.input.consumePress("KeyW");
     const leftHeld = this.input.isDown("KeyA");
     const rightHeld = this.input.isDown("KeyD");
-    const upHeld = this.input.isDown("KeyW");
-    const downPressed = this.input.consumePress("KeyS");
+    const softDropPressed = this.input.consumePress(p2SoftDropKey);
+    const softDropHeld = this.input.isDown(p2SoftDropKey);
+    const hardDropPressed = this.input.consumePress(p2HardDropKey);
 
     if (leftPressed) {
-      const moved = this.tryMovePiece(this.p2Piece, owner, -1, 0, otherPiece);
+      const moved = this.tryMovePiece(this.p2Piece, owner, p2MoveLeftDx, 0, otherPiece);
       if (moved) {
         this.registerP2LockReset();
-      } else if (this.piecesOverlap(this.p2Piece, otherPiece, -1, 0)) {
+      } else if (this.piecesOverlap(this.p2Piece, otherPiece, p2MoveLeftDx, 0)) {
         this.playThudSound();
       }
       this.p2LeftHold = 0;
@@ -1743,17 +1759,17 @@ export class GameLoop {
     }
 
     if (rightPressed) {
-      const moved = this.tryMovePiece(this.p2Piece, owner, 1, 0, otherPiece);
+      const moved = this.tryMovePiece(this.p2Piece, owner, p2MoveRightDx, 0, otherPiece);
       if (moved) {
         this.registerP2LockReset();
-      } else if (this.piecesOverlap(this.p2Piece, otherPiece, 1, 0)) {
+      } else if (this.piecesOverlap(this.p2Piece, otherPiece, p2MoveRightDx, 0)) {
         this.playThudSound();
       }
       this.p2RightHold = 0;
       this.p2RightRepeat = 0;
     }
 
-    if (upPressed) {
+    if (softDropPressed) {
       const moved = this.tryMovePiece(this.p2Piece, owner, 0, -1, otherPiece);
       if (moved) {
         this.registerP2LockReset();
@@ -1762,9 +1778,11 @@ export class GameLoop {
       }
       this.p2UpHold = 0;
       this.p2UpRepeat = 0;
+      this.p2DownHold = 0;
+      this.p2DownRepeat = 0;
     }
 
-    if (downPressed) {
+    if (hardDropPressed) {
       this.hardDropP2();
       return;
     }
@@ -1775,11 +1793,11 @@ export class GameLoop {
         this.p2LeftRepeat += delta;
         while (this.p2LeftRepeat >= GAME_CONFIG.DAS_ARR) {
           this.p2LeftRepeat -= GAME_CONFIG.DAS_ARR;
-          const moved = this.tryMovePiece(this.p2Piece, owner, -1, 0, otherPiece);
+          const moved = this.tryMovePiece(this.p2Piece, owner, p2MoveLeftDx, 0, otherPiece);
           if (moved) {
             this.registerP2LockReset();
           } else {
-            if (this.piecesOverlap(this.p2Piece, otherPiece, -1, 0)) {
+            if (this.piecesOverlap(this.p2Piece, otherPiece, p2MoveLeftDx, 0)) {
               this.playThudSound();
             }
             break;
@@ -1797,11 +1815,11 @@ export class GameLoop {
         this.p2RightRepeat += delta;
         while (this.p2RightRepeat >= GAME_CONFIG.DAS_ARR) {
           this.p2RightRepeat -= GAME_CONFIG.DAS_ARR;
-          const moved = this.tryMovePiece(this.p2Piece, owner, 1, 0, otherPiece);
+          const moved = this.tryMovePiece(this.p2Piece, owner, p2MoveRightDx, 0, otherPiece);
           if (moved) {
             this.registerP2LockReset();
           } else {
-            if (this.piecesOverlap(this.p2Piece, otherPiece, 1, 0)) {
+            if (this.piecesOverlap(this.p2Piece, otherPiece, p2MoveRightDx, 0)) {
               this.playThudSound();
             }
             break;
@@ -1813,12 +1831,14 @@ export class GameLoop {
       this.p2RightRepeat = 0;
     }
 
-    if (upHeld) {
-      this.p2UpHold += delta;
-      if (this.p2UpHold >= GAME_CONFIG.DAS_DELAY) {
-        this.p2UpRepeat += delta;
-        while (this.p2UpRepeat >= GAME_CONFIG.DAS_ARR) {
-          this.p2UpRepeat -= GAME_CONFIG.DAS_ARR;
+    if (softDropHeld) {
+      const holdKey = this.flipP2Hud ? "p2DownHold" : "p2UpHold";
+      const repeatKey = this.flipP2Hud ? "p2DownRepeat" : "p2UpRepeat";
+      this[holdKey] += delta;
+      if (this[holdKey] >= GAME_CONFIG.DAS_DELAY) {
+        this[repeatKey] += delta;
+        while (this[repeatKey] >= GAME_CONFIG.DAS_ARR) {
+          this[repeatKey] -= GAME_CONFIG.DAS_ARR;
           const moved = this.tryMovePiece(this.p2Piece, owner, 0, -1, otherPiece);
           if (moved) {
             this.registerP2LockReset();
@@ -1833,6 +1853,8 @@ export class GameLoop {
     } else {
       this.p2UpHold = 0;
       this.p2UpRepeat = 0;
+      this.p2DownHold = 0;
+      this.p2DownRepeat = 0;
     }
 
     if (this.input.consumePress("KeyJ")) {

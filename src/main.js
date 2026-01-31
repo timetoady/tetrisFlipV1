@@ -94,6 +94,8 @@ const optionsHelpRow = document.getElementById("options-help");
 const optionsShowFpsRow = document.getElementById("options-show-fps");
 /** @type {HTMLElement} */
 const optionsShowFpsValue = document.getElementById("options-show-fps-value");
+const optionsLayoutDebugRow = document.getElementById("options-layout-debug");
+const optionsLayoutDebugValue = document.getElementById("options-layout-debug-value");
 const optionsFlipP2HudRow = document.getElementById("options-flip-p2-hud");
 const optionsFlipP2HudValue = document.getElementById("options-flip-p2-hud-value");
 const optionsBack = document.getElementById("options-back");
@@ -147,6 +149,25 @@ let touchFlip = document.getElementById("touch-flip");
 let touchPause = document.getElementById("touch-pause");
 /** @type {HTMLElement} */
 const wrap = document.querySelector(".wrap");
+
+const LAYOUT_DEBUG_STORAGE_KEY = "tetrisflip:layoutDebug";
+
+function readLayoutDebugEnabled() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("layoutDebug")) return true;
+  } catch {
+    // ignore
+  }
+  try {
+    const stored = localStorage.getItem(LAYOUT_DEBUG_STORAGE_KEY);
+    return stored === "1" || stored === "true";
+  } catch {
+    return false;
+  }
+}
+
+let layoutDebugEnabled = readLayoutDebugEnabled();
 
 /** @type {HTMLElement | null} */
 let landscapeHud = document.getElementById("landscape-hud");
@@ -266,7 +287,7 @@ function ensureDebugOverlays() {
     hudDebugBadge = el;
   }
   if (hudDebugBadge && typeof hudDebugBadge.hidden === "boolean") {
-    hudDebugBadge.hidden = true;
+    hudDebugBadge.hidden = !layoutDebugEnabled;
   }
   if (hudDebugBadge && hudDebugBadge.parentElement !== document.body) {
     document.body.appendChild(hudDebugBadge);
@@ -321,7 +342,7 @@ let nativeApp = null;
 let pendingEntry = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
-const OPTIONS_ITEM_COUNT = 11;
+const OPTIONS_ITEM_COUNT = 12;
 let game = null;
 let activeMode = "marathon";
 let pendingScoreMode = "marathon";
@@ -798,10 +819,13 @@ function updateOptionsSelection() {
   if (optionsShowFpsRow) {
     optionsShowFpsRow.classList.toggle("is-selected", optionsIndex === 8);
   }
-  if (optionsFlipP2HudRow) {
-    optionsFlipP2HudRow.classList.toggle("is-selected", optionsIndex === 9);
+  if (optionsLayoutDebugRow) {
+    optionsLayoutDebugRow.classList.toggle("is-selected", optionsIndex === 9);
   }
-  optionsBack.classList.toggle("is-selected", optionsIndex === 10);
+  if (optionsFlipP2HudRow) {
+    optionsFlipP2HudRow.classList.toggle("is-selected", optionsIndex === 10);
+  }
+  optionsBack.classList.toggle("is-selected", optionsIndex === 11);
   const optionItems = [
     optionsLayoutModeRow,
     optionsOrientationRow,
@@ -812,6 +836,7 @@ function updateOptionsSelection() {
     optionsVfxVolumeRow,
     optionsHelpRow,
     optionsShowFpsRow,
+    optionsLayoutDebugRow,
     optionsFlipP2HudRow,
     optionsBack
   ];
@@ -1259,6 +1284,25 @@ function applyShowFps(enabled, persist = true) {
   }
 }
 
+function applyLayoutDebug(enabled, persist = true) {
+  layoutDebugEnabled = Boolean(enabled);
+  if (persist) {
+    try {
+      localStorage.setItem(LAYOUT_DEBUG_STORAGE_KEY, layoutDebugEnabled ? "true" : "false");
+    } catch {
+      // ignore
+    }
+  }
+  if (optionsLayoutDebugValue) {
+    optionsLayoutDebugValue.textContent = layoutDebugEnabled ? "On" : "Off";
+  }
+  ensureDebugOverlays();
+  if (hudDebugBadge) {
+    hudDebugBadge.hidden = !layoutDebugEnabled;
+  }
+  updateHudDebugBadge();
+}
+
 function applyFlipP2Hud(enabled, persist = true) {
   flipP2Hud = Boolean(enabled);
   if (persist) {
@@ -1510,6 +1554,11 @@ try {
   applyFlipP2Hud(stored === "true", false);
 } catch {
   applyFlipP2Hud(false, false);
+}
+try {
+  applyLayoutDebug(layoutDebugEnabled, false);
+} catch {
+  applyLayoutDebug(false, false);
 }
 game = new GameLoop(ctx, input, {
 onGameOver() {
@@ -1992,9 +2041,16 @@ if (optionsShowFpsRow) {
     applyShowFps(!showFps);
   });
 }
+if (optionsLayoutDebugRow) {
+  optionsLayoutDebugRow.addEventListener("click", () => {
+    optionsIndex = 9;
+    updateOptionsSelection();
+    applyLayoutDebug(!layoutDebugEnabled);
+  });
+}
 if (optionsFlipP2HudRow) {
   optionsFlipP2HudRow.addEventListener("click", () => {
-    optionsIndex = 9;
+    optionsIndex = 10;
     updateOptionsSelection();
     applyFlipP2Hud(!flipP2Hud);
   });
@@ -2029,6 +2085,43 @@ function setSplashImage() {
 }
 
 let viewportScale = 1;
+function updateHudDebugBadge() {
+  if (!hudDebugBadge || hudDebugBadge.hidden) return;
+  const vv = window.visualViewport;
+  const wrapRect = wrap && wrap.getBoundingClientRect ? wrap.getBoundingClientRect() : null;
+  const menuRect = menu && menu.getBoundingClientRect ? menu.getBoundingClientRect() : null;
+  const menuPos = menu ? getComputedStyle(menu).position : "";
+  const exitRect = exitModal && exitModal.getBoundingClientRect ? exitModal.getBoundingClientRect() : null;
+  const exitVisible = exitModal ? !exitModal.hidden : false;
+  const exitPanel = (exitVisible && exitModal) ? exitModal.querySelector(".exit-panel") : null;
+  const exitPanelRect = exitPanel && exitPanel.getBoundingClientRect ? exitPanel.getBoundingClientRect() : null;
+  const exitPos = exitModal ? getComputedStyle(exitModal).position : "";
+  const panelPos = exitPanel ? getComputedStyle(exitPanel).position : "";
+  const vw = vv ? Math.round(vv.width) : 0;
+  const vh = vv ? Math.round(vv.height) : 0;
+  const wrapW = wrapRect ? Math.round(wrapRect.width) : 0;
+  const wrapH = wrapRect ? Math.round(wrapRect.height) : 0;
+  const menuW = menuRect ? Math.round(menuRect.width) : 0;
+  const menuH = menuRect ? Math.round(menuRect.height) : 0;
+  const menuY = menuRect ? Math.round(menuRect.top) : 0;
+  const exitW = (exitVisible && exitRect) ? Math.round(exitRect.width) : 0;
+  const exitH = (exitVisible && exitRect) ? Math.round(exitRect.height) : 0;
+  const exitX = (exitVisible && exitRect) ? Math.round(exitRect.left) : 0;
+  const exitY = (exitVisible && exitRect) ? Math.round(exitRect.top) : 0;
+  const panelX = (exitVisible && exitPanelRect) ? Math.round(exitPanelRect.left) : 0;
+  const panelY = (exitVisible && exitPanelRect) ? Math.round(exitPanelRect.top) : 0;
+  const panelW = (exitVisible && exitPanelRect) ? Math.round(exitPanelRect.width) : 0;
+  const panelH = (exitVisible && exitPanelRect) ? Math.round(exitPanelRect.height) : 0;
+  const dpr = window.devicePixelRatio ? Number(window.devicePixelRatio.toFixed(2)) : 1;
+  hudDebugBadge.textContent =
+    "iw " + window.innerWidth + " ih " + window.innerHeight
+    + " vv " + vw + "x" + vh
+    + " wrap " + wrapW + "x" + wrapH
+    + " menu " + menuW + "x" + menuH + "@" + menuY + " " + menuPos
+    + " exit " + (exitVisible ? (exitW + "x" + exitH + "@" + exitX + "," + exitY) : "off") + " " + exitPos
+    + " panel " + (exitVisible ? (panelW + "x" + panelH + "@" + panelX + "," + panelY) : "off") + " " + panelPos
+    + " dpr " + dpr;
+}
 
 function getTouchScale() {
   const touch = window.matchMedia("(pointer: coarse)").matches
@@ -2081,6 +2174,7 @@ function updateViewportScale() {
     canvas.style.transformOrigin = "top left";
   }
 
+  updateHudDebugBadge();
   positionTouchButtons();
 }
 
@@ -2550,9 +2644,13 @@ function handleMenuInput() {
       }
     } else if (optionsIndex === 9) {
       if ((left || right) || confirm) {
+        applyLayoutDebug(!layoutDebugEnabled);
+      }
+    } else if (optionsIndex === 10) {
+      if ((left || right) || confirm) {
         applyFlipP2Hud(!flipP2Hud);
       }
-    } else if (optionsIndex === 10 && confirm) {
+    } else if (optionsIndex === 11 && confirm) {
       showScreen("mode");
     }
     if (consumeMenuBack()) {
@@ -2755,7 +2853,9 @@ function frame(now) {
   if (game.getPauseCursor) {
     canvas.style.cursor = game.getPauseCursor() || "";
   }
+  updateHudDebugBadge();
   positionTouchButtons();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+

@@ -14,10 +14,10 @@
     "build:renderer": "vite build",
     "dist": "npm run build:renderer && electron-builder",
     "postinstall": "patch-package",
-    "android:current:debug": "cd android && .\\gradlew.bat assembleCurrentDebug -PTETRISFLIP_JAVA=17",
-    "android:current:install": "cd android && .\\gradlew.bat installCurrentDebug -PTETRISFLIP_JAVA=17",
-    "android:android10:debug": "cd android && .\\gradlew.bat assembleAndroid10Debug -PTETRISFLIP_JAVA=17",
-    "android:android10:install": "cd android && .\\gradlew.bat installAndroid10Debug -PTETRISFLIP_JAVA=17"
+    "android:current:debug": "npm run build && node node_modules/@capacitor/cli/bin/capacitor copy android && cd android && .\\gradlew.bat assembleCurrentDebug -PTETRISFLIP_JAVA=17",
+    "android:current:install": "npm run build && node node_modules/@capacitor/cli/bin/capacitor copy android && cd android && .\\gradlew.bat installCurrentDebug -PTETRISFLIP_JAVA=17",
+    "android:android10:debug": "npm run build && node node_modules/@capacitor/cli/bin/capacitor copy android && cd android && .\\gradlew.bat assembleAndroid10Debug -PTETRISFLIP_JAVA=17",
+    "android:android10:install": "npm run build && node node_modules/@capacitor/cli/bin/capacitor copy android && cd android && .\\gradlew.bat installAndroid10Debug -PTETRISFLIP_JAVA=17"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",

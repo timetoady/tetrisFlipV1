@@ -79,7 +79,8 @@ Date: 2026-01-24
   - Confirm `android` project uses bundled assets from `dist`.
 - Build + sync workflow:
   - `npm run build`
-  - `npx cap sync android`
+  - `node node_modules/@capacitor/cli/bin/capacitor copy android`
+  - (The `npm run android:*:*` scripts run build + copy automatically.)
 ### 10.1) CLI Template Extraction Workaround
 - If `npx cap sync android` fails with `TypeError: Cannot read properties of undefined (reading 'extract')`,
   apply the patch-package fix for `@capacitor/cli` (see `patches/@capacitor+cli+8.0.1.patch`).

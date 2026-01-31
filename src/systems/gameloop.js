@@ -712,12 +712,40 @@ export class GameLoop {
       const w = /** @type {any} */ (window);
       const AudioCtx = window.AudioContext || w.webkitAudioContext;
       if (!AudioCtx) return null;
-      this.audioCtx = new AudioCtx();
+      try {
+        this.audioCtx = new AudioCtx();
+      } catch {
+        this.audioCtx = null;
+        return null;
+      }
+    }
+    if (this.audioCtx.state === "closed") {
+      this.audioCtx = null;
+      return this.ensureAudioContext();
     }
     if (this.audioCtx.state === "suspended") {
-      this.audioCtx.resume();
+      // Avoid unhandled promise rejections on Android/WebView when resume is denied.
+      this.audioCtx.resume().catch(() => {});
     }
     return this.audioCtx;
+  }
+
+  disconnectAudioNodes(nodes) {
+    for (const node of nodes) {
+      if (!node || !node.disconnect) continue;
+      try {
+        node.disconnect();
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  cleanupOnEnded(sourceNode, nodes) {
+    if (!sourceNode) return;
+    sourceNode.onended = () => {
+      this.disconnectAudioNodes(nodes);
+    };
   }
 
   setSfxVolume(volume) {
@@ -808,6 +836,7 @@ export class GameLoop {
     gain.gain.value = this.getSfxGain(0.22);
     osc.connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
+    this.cleanupOnEnded(osc, [osc, gain]);
     osc.start(now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
     osc.stop(now + 0.09);
@@ -823,6 +852,7 @@ export class GameLoop {
     gain.gain.value = this.getSfxGain(0.06);
     osc.connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
+    this.cleanupOnEnded(osc, [osc, gain]);
     osc.start(now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
     osc.stop(now + 0.08);
@@ -837,6 +867,7 @@ export class GameLoop {
     const now = ctx.currentTime;
     gain.gain.value = this.getSfxGain(0.06);
     osc.connect(gain).connect(ctx.destination);
+    this.cleanupOnEnded(osc, [osc, gain]);
     osc.frequency.setValueAtTime(520, now);
     osc.frequency.setValueAtTime(320, now + 0.32);
     osc.frequency.setValueAtTime(520, now + 0.64);
@@ -871,6 +902,8 @@ export class GameLoop {
     feedback.connect(delay);
     delay.connect(ctx.destination);
 
+    this.cleanupOnEnded(osc, [osc, gain, delay, feedback]);
+
     osc.start(now);
     osc.stop(now + 0.12);
   }
@@ -885,6 +918,7 @@ export class GameLoop {
     gain.gain.value = this.getSfxGain(0.08);
     osc.connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
+    this.cleanupOnEnded(osc, [osc, gain]);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
     osc.start(now);
     osc.stop(now + 0.14);
@@ -900,6 +934,7 @@ export class GameLoop {
     gain.gain.value = this.getSfxGain(0.06);
     osc.connect(gain).connect(ctx.destination);
     const now = ctx.currentTime;
+    this.cleanupOnEnded(osc, [osc, gain]);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
     osc.start(now);
     osc.stop(now + 0.14);
@@ -909,19 +944,57 @@ export class GameLoop {
     const ctx = this.ensureAudioContext();
     if (!ctx) return;
     const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const sub = ctx.createOscillator();
     const filter = ctx.createBiquadFilter();
+    const shaper = ctx.createWaveShaper();
+    const gain = ctx.createGain();
+    const mix = ctx.createGain();
+
+    // Crunchy/rumbly hard drop: square click + sub rumble through soft clip + lowpass.
     osc.type = "square";
-    osc.frequency.value = 75;
-    filter.type = "lowpass";
-    filter.frequency.value = 300;
-    filter.Q.value = 1.4;
-    gain.gain.value = this.getSfxGain(0.045);
-    osc.connect(filter).connect(gain).connect(ctx.destination);
+    sub.type = "sine";
+
     const now = ctx.currentTime;
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+    osc.frequency.setValueAtTime(95, now);
+    osc.frequency.exponentialRampToValueAtTime(55, now + 0.12);
+
+    sub.frequency.setValueAtTime(52, now);
+    sub.frequency.exponentialRampToValueAtTime(38, now + 0.18);
+
+    // Soft clip curve for crunch.
+    const curve = new Float32Array(256);
+    for (let i = 0; i < curve.length; i += 1) {
+      const x = (i / (curve.length - 1)) * 2 - 1;
+      curve[i] = Math.tanh(2.2 * x);
+    }
+    shaper.curve = curve;
+    shaper.oversample = "2x";
+
+    filter.type = "lowpass";
+    filter.Q.value = 1.1;
+    filter.frequency.setValueAtTime(260, now);
+    filter.frequency.exponentialRampToValueAtTime(110, now + 0.20);
+
+    // Slightly louder + longer decay for handhelds.
+    gain.gain.setValueAtTime(this.getSfxGain(0.075), now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+    // Mix the two sources before clipping/filtering.
+    mix.gain.value = 0.9;
+    osc.connect(mix);
+    sub.connect(mix);
+    mix.connect(shaper);
+    shaper.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    this.cleanupOnEnded(sub, [osc, sub, mix, shaper, filter, gain]);
+
     osc.start(now);
-    osc.stop(now + 0.44);
+    sub.start(now);
+    osc.stop(now + 0.60);
+    sub.stop(now + 0.62);
   }
 
   playHeartBreakSound() {
@@ -943,6 +1016,7 @@ export class GameLoop {
     osc.frequency.exponentialRampToValueAtTime(140, now + 0.18);
     osc2.frequency.exponentialRampToValueAtTime(170, now + 0.2);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+    this.cleanupOnEnded(osc2, [osc, osc2, gain]);
     osc.start(now);
     osc2.start(now);
     osc.stop(now + 0.32);
@@ -1008,6 +1082,9 @@ export class GameLoop {
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     lowpass.frequency.setValueAtTime(1000, now);
     lowpass.frequency.exponentialRampToValueAtTime(40, now + duration);
+
+    this.cleanupOnEnded(noise, [noise, lowpass, shaper, gain, lfo, lfoGain, delay, feedback, feedbackFilter, mix]);
+
     noise.start(now);
     noise.stop(now + duration);
     lfo.start(now);
@@ -1030,6 +1107,7 @@ export class GameLoop {
     osc.frequency.setValueAtTime(freq, now);
     osc.frequency.exponentialRampToValueAtTime(freq * 1.12, now + 0.9);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+    this.cleanupOnEnded(osc, [osc, gain]);
     osc.start(now);
     osc.stop(now + 1.05);
   }
@@ -1051,6 +1129,7 @@ export class GameLoop {
     osc.frequency.setValueAtTime(880, now + 1.8);
     osc.frequency.setValueAtTime(990, now + 2.1);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
+    this.cleanupOnEnded(osc, [osc, gain]);
     osc.start(now);
     osc.stop(now + 2.45);
   }
@@ -1067,6 +1146,7 @@ export class GameLoop {
     gain.gain.value = this.getSfxGain(gainValue);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration + 0.06);
     osc.connect(gain).connect(ctx.destination);
+    this.cleanupOnEnded(osc, [osc, gain]);
     osc.start(now);
     osc.stop(now + duration + 0.08);
   }
@@ -1112,6 +1192,7 @@ export class GameLoop {
     osc.frequency.setValueAtTime(659, now + 1.05);
     osc.frequency.setValueAtTime(880, now + 1.4);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+    this.cleanupOnEnded(osc, [osc, gain]);
     osc.start(now);
     osc.stop(now + 1.9);
   }
@@ -3257,6 +3338,23 @@ export class GameLoop {
     ctx.restore();
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

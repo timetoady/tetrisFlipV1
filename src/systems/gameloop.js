@@ -195,7 +195,9 @@ export class GameLoop {
       20, 18, 16, 14, 12, 10, 8, 6, 4, 2
     ];
     const safeLevel = Math.max(0, level);
-    if (safeLevel >= 21) return 1 * (1000 / 60);
+    // Classic plateau: keep late-game at 2 frames per row (NES-style) until level 29.
+    // This avoids the sharp L20->L21 jump to 1 frame per row.
+    if (safeLevel >= 29) return 1 * (1000 / 60);
     const frames = frameTable[Math.min(safeLevel, frameTable.length - 1)];
     return frames * (1000 / 60);
   }

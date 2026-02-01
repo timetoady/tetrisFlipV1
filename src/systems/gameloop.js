@@ -169,6 +169,7 @@ export class GameLoop {
     this.p2MomentumRecoveryTimer = 0;
     this.momentumRecoveryDuration = 5000;
     this.momentumRecoveryMultiplier = 0.7;
+    this.pendingBurstISwap = false;
     this.riskHeightThreshold = 14;
     this.refillQueue();
     this.gameOver = false;
@@ -237,6 +238,10 @@ export class GameLoop {
 
   isVanillaClassicMode() {
     return this.mode === "vanillaClassic";
+  }
+
+  isBurstMode() {
+    return this.mode === "burst";
   }
 
   getActivePieceOwner() {
@@ -429,6 +434,7 @@ export class GameLoop {
     this.p2MomentumBurstTimer = 0;
     this.momentumRecoveryTimer = 0;
     this.p2MomentumRecoveryTimer = 0;
+    this.pendingBurstISwap = false;
   }
 
   addCallout(text, options = {}) {
@@ -690,6 +696,44 @@ export class GameLoop {
     }
   }
 
+  getBurstIChance(cleared, tetrisStreak) {
+    if (!Number.isFinite(cleared)) return 0;
+    const lines = Math.max(0, Math.min(4, Math.trunc(cleared)));
+
+    // Burst Mode tuning: intentionally aggressive (made for LOTS of Tetrises).
+    // Double Tetris should very often I-Boost the next spawn.
+    if (lines === 1) return 1 / 12;
+    if (lines === 2) return 1 / 8;
+    if (lines === 3) return 1 / 6;
+    if (lines === 4) {
+      const streak = Math.max(0, Math.trunc(tetrisStreak || 0));
+      if (streak >= 3) return 19 / 20;
+      if (streak === 2) return 9 / 10;
+      return 1 / 3;
+    }
+    return 0;
+  }
+
+  applyBurstISwap() {
+    const LOOKAHEAD = 14;
+    while (this.nextQueue.length < LOOKAHEAD) {
+      this.nextQueue.push(this.randomizer.next());
+    }
+    const limit = Math.min(LOOKAHEAD, this.nextQueue.length);
+    let idx = -1;
+    for (let i = 0; i < limit; i += 1) {
+      if (this.nextQueue[i] === 1) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx > 0) {
+      const tmp = this.nextQueue[0];
+      this.nextQueue[0] = this.nextQueue[idx];
+      this.nextQueue[idx] = tmp;
+    }
+  }
+
   refillP2Queue() {
     while (this.p2Queue.length < this.queueSize) {
       this.p2Queue.push(this.p2Randomizer.next());
@@ -699,6 +743,11 @@ export class GameLoop {
   takeNextType() {
     if (this.nextQueue.length === 0) {
       this.refillQueue();
+    }
+
+    if (this.pendingBurstISwap && this.isBurstMode()) {
+      this.applyBurstISwap();
+      this.pendingBurstISwap = false;
     }
     const next = this.nextQueue.shift();
     this.refillQueue();
@@ -1557,6 +1606,14 @@ export class GameLoop {
       if (momentumBurstTriggered) {
         this.addCallout("BURST", { color: "#fff07a", size: 30 });
         this.playMomentumBurstSound();
+      }
+
+      if (!isP2 && this.isBurstMode() && this[burstKey] > 0) {
+        const chance = this.getBurstIChance(cleared, this.tetrisStreak);
+        if (chance > 0 && Math.random() < chance) {
+          this.pendingBurstISwap = true;
+          this.addCallout("I-BOOST!", { color: "#4cc3ff", size: 24 });
+        }
       }
       if (willClearout) {
         this.addCallout("CLEAROUT", { color: "#ffe08a", size: 30 });

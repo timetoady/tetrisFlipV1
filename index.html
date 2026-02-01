@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -238,6 +238,10 @@
               <span>Marathon</span>
               <span>Ready</span>
             </div>
+            <div class="menu-option" data-mode="burst">
+              <span>Burst</span>
+              <span>I-Boost</span>
+            </div>
             <div class="menu-option" data-mode="vanillaClassic">
               <span>Vanilla</span>
               <span>Classic</span>
@@ -453,6 +457,21 @@
                   </div>
                 </div>
                 <div class="menu-help-block">
+                  <div class="menu-help-subtitle">Burst</div>
+                  <div class="menu-help-text">
+                    Marathon-style Flip mode with an extra-chaotic Burst. While Burst is active, each line
+                    clear can I-Boost your next spawn by swapping in an I piece from your upcoming bag.
+                  </div>
+                </div>
+                <div class="menu-help-block">
+                  <div class="menu-help-subtitle">Vanilla - Classic</div>
+                  <div class="menu-help-text">
+                    Traditional marathon Tetris without flips on a standard playfield. Flip inputs are
+                    disabled in this mode.
+                  </div>
+                </div>
+
+                <div class="menu-help-block">
                   <div class="menu-help-subtitle">Chillax</div>
                   <div class="menu-help-text">
                     A relaxed marathon with a locked speed. Your starting gravity stays
@@ -498,7 +517,8 @@
                   <div class="menu-help-text">
                     Most modes track score and levels. Tetrises, flip chains, and risky
                     clears build momentum. When the meter fills, Burst boosts score for a
-                    short window, followed by a brief recovery. Garbage focuses on clear time.
+                    short window, followed by a brief recovery. In Burst mode, line clears
+                    during Burst can I-Boost your next piece. Garbage focuses on clear time.
                   </div>
                 </div>
                 <div class="menu-help-block">
@@ -533,6 +553,27 @@
               <div class="menu-column menu-column--scores">
                 <div class="menu-sub">Top 10</div>
                 <ol class="score-list" id="marathon-scores"></ol>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="menu-screen" data-screen="burst">
+          <div class="menu-panel">
+            <div class="menu-title">BURST</div>
+            <div class="menu-grid">
+              <div class="menu-column">
+                <div>Starting Gravity</div>
+                <div class="marathon-value" id="burst-gravity-value">1</div>
+                <div class="menu-sub">Up/Down to change</div>
+                <div class="menu-actions">
+                  <button id="burst-start" class="is-selected">Start</button>
+                  <button id="burst-back">Back</button>
+                </div>
+                <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
+              </div>
+              <div class="menu-column menu-column--scores">
+                <div class="menu-sub">Top 10</div>
+                <ol class="score-list" id="burst-scores"></ol>
               </div>
             </div>
           </div>

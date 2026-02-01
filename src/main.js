@@ -22,6 +22,10 @@ const marathonStart = document.getElementById("marathon-start");
 /** @type {HTMLButtonElement} */
 const marathonBack = document.getElementById("marathon-back");
 /** @type {HTMLButtonElement} */
+const burstStart = document.getElementById("burst-start");
+/** @type {HTMLButtonElement} */
+const burstBack = document.getElementById("burst-back");
+/** @type {HTMLButtonElement} */
 const vanillaClassicStart = document.getElementById("vanilla-classic-start");
 /** @type {HTMLButtonElement} */
 const vanillaClassicBack = document.getElementById("vanilla-classic-back");
@@ -109,6 +113,8 @@ const helpBack = document.getElementById("help-back");
 /** @type {HTMLElement} */
 const gravityValue = document.getElementById("gravity-value");
 /** @type {HTMLElement} */
+const burstGravityValue = document.getElementById("burst-gravity-value");
+/** @type {HTMLElement} */
 const vanillaClassicGravityValue = document.getElementById("vanilla-classic-gravity-value");
 /** @type {HTMLElement} */
 const chillaxGravityValue = document.getElementById("chillax-gravity-value");
@@ -118,6 +124,8 @@ const coopGravityValue = document.getElementById("coop-gravity-value");
 const sirtetGravityValue = document.getElementById("sirtet-gravity-value");
 /** @type {HTMLElement} */
 const marathonScores = document.getElementById("marathon-scores");
+/** @type {HTMLElement} */
+const burstScores = document.getElementById("burst-scores");
 /** @type {HTMLElement} */
 const vanillaClassicScores = document.getElementById("vanilla-classic-scores");
 /** @type {HTMLElement} */
@@ -337,6 +345,7 @@ let redemptionGravity = 0;
 let redemptionLives = 3;
 let modeIndex = 0;
 let marathonActionIndex = 0;
+let burstActionIndex = 0;
 let vanillaClassicActionIndex = 0;
 let chillaxActionIndex = 0;
 let garbageActionIndex = 0;
@@ -483,6 +492,7 @@ let musicPreviewActive = false;
 
 const SCORE_STORAGE_KEYS = {
   marathon: "tetrisflip:marathon:scores",
+  burst: "tetrisflip:burst:scores",
   vanillaClassic: "tetrisflip:vanillaClassic:scores",
   chillax: "tetrisflip:chillax:scores",
   garbage: "tetrisflip:garbage:scores",
@@ -516,6 +526,10 @@ function showScreen(name) {
   if (menuState === "marathon") {
     marathonActionIndex = 0;
     updateMarathonSelection();
+  }
+  if (menuState === "burst") {
+    burstActionIndex = 0;
+    updateBurstSelection();
   }
   if (menuState === "vanillaClassic") {
     vanillaClassicActionIndex = 0;
@@ -595,6 +609,7 @@ function getScoreListElement(mode) {
   if (mode === "redemption") return redemptionScores;
   if (mode === "coop") return coopScores;
   if (mode === "sirtet") return sirtetScores;
+  if (mode === "burst") return burstScores;
   if (mode === "vanillaClassic") return vanillaClassicScores;
   return marathonScores;
 }
@@ -602,6 +617,9 @@ function getScoreListElement(mode) {
 function updateGravityLabels() {
   if (gravityValue) {
     gravityValue.textContent = String(startingGravity);
+  }
+  if (burstGravityValue) {
+    burstGravityValue.textContent = String(startingGravity);
   }
   if (vanillaClassicGravityValue) {
     vanillaClassicGravityValue.textContent = String(startingGravity);
@@ -673,7 +691,9 @@ function cycleRedemptionLives() {
 }
 
 function startGame() {
-  const mode = menuState === "chillax"
+  const mode = menuState === "burst"
+    ? "burst"
+    : menuState === "chillax"
     ? "chillax"
     : menuState === "vanillaClassic"
       ? "vanillaClassic"
@@ -746,6 +766,12 @@ function updateModeSelection() {
 function updateMarathonSelection() {
   marathonStart.classList.toggle("is-selected", marathonActionIndex === 0);
   marathonBack.classList.toggle("is-selected", marathonActionIndex === 1);
+}
+
+function updateBurstSelection() {
+  if (!burstStart || !burstBack) return;
+  burstStart.classList.toggle("is-selected", burstActionIndex === 0);
+  burstBack.classList.toggle("is-selected", burstActionIndex === 1);
 }
 
 function updateVanillaClassicSelection() {
@@ -1883,6 +1909,18 @@ marathonBack.addEventListener("click", () => {
   showScreen("mode");
 });
 
+burstStart.addEventListener("click", () => {
+  burstActionIndex = 0;
+  updateBurstSelection();
+  startGame();
+});
+
+burstBack.addEventListener("click", () => {
+  burstActionIndex = 1;
+  updateBurstSelection();
+  showScreen("mode");
+});
+
 if (vanillaClassicStart) {
   vanillaClassicStart.addEventListener("click", () => {
     vanillaClassicActionIndex = 0;
@@ -2062,7 +2100,7 @@ modeOptions.forEach((option, index) => {
       backToSplash();
     } else if (selected === "options") {
       showScreen("options");
-    } else if (selected === "marathon" || selected === "vanillaClassic" || selected === "chillax"
+    } else if (selected === "marathon" || selected === "burst" || selected === "vanillaClassic" || selected === "chillax"
       || selected === "garbage" || selected === "redemption"
       || selected === "coop" || selected === "sirtet") {
       showScreen(selected);
@@ -2769,7 +2807,7 @@ function handleMenuInput() {
         backToSplash();
       } else if (selected === "options") {
         showScreen("options");
-      } else if (selected === "marathon" || selected === "vanillaClassic" || selected === "chillax"
+      } else if (selected === "marathon" || selected === "burst" || selected === "vanillaClassic" || selected === "chillax"
         || selected === "garbage" || selected === "redemption"
         || selected === "coop" || selected === "sirtet") {
         showScreen(selected);
@@ -2877,6 +2915,26 @@ function handleMenuInput() {
       updateMarathonSelection();
     } else if (confirm) {
       if (marathonActionIndex === 0) {
+        startGame();
+      } else {
+        showScreen("mode");
+      }
+    } else if (consumeMenuBack()) {
+      showScreen("mode");
+    }
+  }
+
+  if (menuState === "burst") {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
+      updateGravity(1);
+    } else if (consumeMenuDown()) {
+      updateGravity(-1);
+    } else if (consumeMenuLeft() || consumeMenuRight()) {
+      burstActionIndex = burstActionIndex === 0 ? 1 : 0;
+      updateBurstSelection();
+    } else if (confirm) {
+      if (burstActionIndex === 0) {
         startGame();
       } else {
         showScreen("mode");

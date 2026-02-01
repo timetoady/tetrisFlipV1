@@ -10,7 +10,7 @@ This summarizes the current input schemes as implemented in `src/input.js` and t
 - Rotate CW: `X`
 - Rotate CCW: `Z`
 - Hold: `C`
-- Flip: `Space` or `Shift`
+- Flip: `Space` or `Shift` (not used in Vanilla - Classic)
 - Pause: `P` or `Esc`
 
 Menus:
@@ -27,7 +27,7 @@ Actions:
 - Rotate CW: `A` (South)
 - Rotate CCW: `B` (East) or `X` (West) depending on layout
 - Hold: the other face button (X or B)
-- Flip: `Y/Triangle` and `RB`
+- Flip: `Y/Triangle` and `RB` (not used in Vanilla - Classic)
 - Pause: `Start`
 - Back/Menu: `Back`
 
@@ -48,7 +48,7 @@ Sideways mapping:
 
 Mouse schemes are selectable in **Options**.
 
-### Alternate (Wheel Rotate) — default
+### Alternate (Wheel Rotate) - default
 - Move: drag left/right
 - Rotate CW/CCW: mouse wheel up/down
 - Soft drop: right click (hold)
@@ -71,7 +71,7 @@ Mouse schemes are selectable in **Options**.
 - Hard drop: swipe up
 - Rotate CW: tap
 - Rotate CCW: two-finger tap/gesture (short swipe)
-- Flip: two-finger swipe down or tap the FLIP button
+- Flip: two-finger swipe down or tap the FLIP button (not used in Vanilla - Classic)
 - Hold: long-press (about 0.4s) or tap the HOLD box
 - Pause: PAUSE button
 

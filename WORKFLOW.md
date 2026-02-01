@@ -37,18 +37,40 @@ npm run dist
 
 Outputs land in `release/`.
 
+## Android (Capacitor)
+
+Build debug APKs:
+
+```bash
+npm run android:current:debug
+npm run android:android10:debug
+```
+
+Install to a connected device:
+
+```bash
+npm run android:current:install
+npm run android:android10:install
+```
+
+APK outputs:
+
+- `android/app/build/outputs/apk/current/debug/app-current-debug.apk`
+- `android/app/build/outputs/apk/android10/debug/app-android10-debug.apk`
+
+
 ## Linux AppImage (Docker)
 
 Requires Docker Desktop running:
 
 ```bash
-docker run --rm -v "C:\Users\adama\Documents\GitHub\tetrisFlipV1:/project" -w /project electronuserland/builder:latest /bin/bash -lc "npm ci && npm run build:renderer && npx electron-builder --linux"
+docker run --rm -v "${PWD}:/project" -w /project electronuserland/builder:latest /bin/bash -lc "npm ci && npm run build:renderer && npx electron-builder --linux"
 ```
 
 Clean container build (recommended, avoids touching host node_modules):
 
 ```bash
-docker run --rm -v "C:\Users\adama\Documents\GitHub\tetrisFlipV1:/project" -w /tmp/build electronuserland/builder:latest /bin/bash -lc "mkdir -p /tmp/build && cd /project && tar --exclude=node_modules --exclude=dist --exclude=release -cf - . | (cd /tmp/build && tar -xf -) && cd /tmp/build && npm ci && npm run build:renderer && npx electron-builder --linux && mkdir -p /project/release && cp -R /tmp/build/release/* /project/release/"
+docker run --rm -v "${PWD}:/project" -w /tmp/build electronuserland/builder:latest /bin/bash -lc "mkdir -p /tmp/build && cd /project && tar --exclude=node_modules --exclude=dist --exclude=release -cf - . | (cd /tmp/build && tar -xf -) && cd /tmp/build && npm ci && npm run build:renderer && npx electron-builder --linux && mkdir -p /project/release && cp -R /tmp/build/release/* /project/release/"
 ```
 
 The AppImage is produced in `release/`.
@@ -66,10 +88,11 @@ The AppImage is produced in `release/`.
 1) Commit changes and bump version (package.json, package-lock.json, README.md).
 2) Build Windows installer: `npm run dist` (creates `release/` artifacts).
 3) Build Linux AppImage (Docker clean build recommended).
-4) Web deploy:
+4) Build Android APKs: `npm run android:current:debug` and `npm run android:android10:debug`.
+5) Web deploy:
    - Build web output: `npm run build` (or reuse the `dist/` from `npm run dist`).
    - Deploy to S3: `.\scripts\deploy-aws.ps1 -Bucket game.adamandreason.com -DistributionId YOUR_DIST_ID`
-5) Upload release artifacts to GitHub release.
+6) Upload release artifacts to GitHub release.
 
 ### CloudFront distribution ID (private)
 

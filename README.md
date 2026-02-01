@@ -1,10 +1,12 @@
-﻿# Tetris Flip (v2.0.2)
+﻿# Tetris Flip (v2.1.0)
 
 Tetris Flip is a puzzle game that mixes classic Tetris with a dual-field flip mechanic. The playfield is split into top/bottom fields, and you can flip which field is active so pieces fall into the current bottom. Marathon and Chillax modes include scoring/levels, hold/next, HUD, game over handling, and a local top-10 leaderboard, while Garbage, Redemption, Co-op, and Sirtet expand the challenges.
 
 ## Modes
 
 - Marathon: classic scoring with level progression and rising speed.
+- Burst: Marathon-style Flip mode with a wilder Burst mechanic. Line clears during Burst can I-Boost your next spawn by swapping in an I piece from your upcoming bag (bag-safe).
+- Vanilla - Classic: traditional Marathon-style Tetris without the flip mechanics on a standard playfield.
 - Chillax: fixed speed (no level increase), relaxed practice runs.
 - Garbage: timed clear challenge. Choose speed (0-35) and height (1-9), clear garbage on both fields, and finish fast. Leaderboards are tracked per speed/height by fastest time.
 - Redemption: limited lives mode. If a piece cannot spawn, you can spend a life to clear the bottom rows and keep going; the run ends when lives are gone.
@@ -151,6 +153,7 @@ Full breakdown: in-app Help (Options -> Help or app menu Help -> Manual), plus `
 - Clearout: emptying the active field after a clear grants a bonus.
 - High Wire: clears at dangerous stack height earn a multiplier.
 - Momentum: clears (and a small hard-drop bonus) fill the meter; Burst at full meter grants a multiplier for a short window, followed by a brief recovery period with reduced gain.
+- Burst Mode: while Burst is active, each line clear can roll an I-Boost that swaps your next piece to an I from your upcoming bag.
 
 ## Notes
 

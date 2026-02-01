@@ -697,6 +697,28 @@ body {
   --hud-scale: 1;
 }
 
+body[data-hud-mode="vanillaClassic"] {
+  --hud-scale: 0.75;
+}
+
+body[data-hud-mode="vanillaClassic"] .landscape-hud-panel {
+  width: clamp(140px, 18vw, 300px);
+  padding: 16px 14px;
+  gap: 10px;
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-value {
+  font-size: 28px;
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-small {
+  font-size: 16px;
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-meter-track {
+  height: 96px;
+}
+
 /* Landscape side HUD panels (Phase 3). Wired from main.js; shown only during gameplay in landscape. */
 .landscape-hud {
   position: fixed;
@@ -775,6 +797,53 @@ body {
   overflow: hidden;
 }
 
+
+.hud-hold-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Hidden by default; shown for Vanilla - Classic only. */
+.hud-meter-track--momentum {
+  display: none;
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-meter-track.hud-meter-track--momentum {
+  display: block;
+  width: calc(48px * var(--hud-scale, 1));
+  height: calc(48px * var(--hud-scale, 1));
+  margin-top: 0;
+  justify-self: end;
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-meter-track--momentum .hud-meter-fill {
+  background: #4cc3ff;
+  bottom: 0;
+  top: auto;
+}
+/* Vanilla - Classic: HOLD icon matches NEXT size for consistency. */
+body[data-hud-mode="vanillaClassic"] #hud-hold-icon {
+  transform: scale(calc(1.9 * var(--hud-scale, 1)));
+  transform-origin: left top;
+}
+
+
+/* Vanilla - Classic: left pieces stretch so the momentum meter can align under LINES. */
+body[data-hud-mode="vanillaClassic"] .hud-left-pieces {
+  align-items: stretch;
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-left-pieces .hud-piece-block {
+  width: 100%;
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-hold-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: calc(18px * var(--hud-scale, 1));
+}
 .hud-meter-fill {
   position: absolute;
   left: 0;
@@ -963,7 +1032,42 @@ body {
   box-sizing: border-box;
 }
 
-/* RUN panel tweaks: larger piece icons + better spacing. */
+
+/* Vanilla - Classic: colorize HOLD/NEXT mini pieces for readability. */
+body[data-hud-mode="vanillaClassic"] .hud-left-pieces .mini-piece.piece-i .b {
+  background: rgba(0, 240, 240, 0.22);
+  border-color: rgba(0, 240, 240, 0.9);
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-left-pieces .mini-piece.piece-j .b {
+  background: rgba(0, 0, 240, 0.22);
+  border-color: rgba(0, 0, 240, 0.9);
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-left-pieces .mini-piece.piece-l .b {
+  background: rgba(240, 160, 0, 0.22);
+  border-color: rgba(240, 160, 0, 0.9);
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-left-pieces .mini-piece.piece-o .b {
+  background: rgba(240, 240, 0, 0.22);
+  border-color: rgba(240, 240, 0, 0.9);
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-left-pieces .mini-piece.piece-s .b {
+  background: rgba(0, 240, 0, 0.22);
+  border-color: rgba(0, 240, 0, 0.9);
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-left-pieces .mini-piece.piece-t .b {
+  background: rgba(160, 0, 240, 0.22);
+  border-color: rgba(160, 0, 240, 0.9);
+}
+
+body[data-hud-mode="vanillaClassic"] .hud-left-pieces .mini-piece.piece-z .b {
+  background: rgba(240, 0, 0, 0.22);
+  border-color: rgba(240, 0, 0, 0.9);
+}/* RUN panel tweaks: larger piece icons + better spacing. */
 #landscape-hud-right-run .piece-icon {
   transform: scale(calc(2.35 * var(--hud-scale, 1)));
   transform-origin: left center;
@@ -995,6 +1099,41 @@ body {
 
 #landscape-hud-right-run {
   padding-bottom: calc(110px * var(--hud-scale, 1));
+}
+/* Vanilla - Classic: shrink RUN panel rows to avoid overflow on shorter landscape screens. */
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run {
+  padding-bottom: calc(28px * var(--hud-scale, 1));
+}
+
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .piece-stats {
+  gap: 4px;
+}
+
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .piece-icon {
+  transform: scale(calc(1.15 * var(--hud-scale, 1)));
+}
+
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .piece-row {
+  grid-template-columns: calc(96px * var(--hud-scale, 1)) 1fr 34px;
+  min-height: calc(44px * var(--hud-scale, 1));
+}
+
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .piece-count {
+  font-size: 16px;
+}
+
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .hud-row {
+  margin-top: 8px;
+  padding-top: 6px;
+}
+
+/* Vanilla - Classic: tighten RUN bottom row to prevent overflow. */
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .hud-row .hud-label {
+  font-size: 9px;
+}
+
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .hud-row .hud-small {
+  font-size: 13px;
 }
 
 .hud-stat-row {
@@ -1087,5 +1226,25 @@ body[data-hud-mode="sirtet"] #landscape-hud-right {
   transform: rotate(180deg);
   transform-origin: center center;
 }
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .piece-icon {
+  transform: scale(calc(1.15 * var(--hud-scale, 1)));
+}
+
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .piece-row {
+  min-height: calc(46px * var(--hud-scale, 1));
+}
+
+body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .piece-count {
+  font-size: 16px;
+}
+
+
+
+
+
+
+
+
+
 
 

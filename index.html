@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -52,8 +52,13 @@
           <div class="hud-left-pieces">
             <div class="hud-piece-block">
               <div class="hud-label">HOLD</div>
-              <div class="mini-piece piece-i" id="hud-hold-icon">
-                <span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span>
+              <div class="hud-hold-row">
+                <div class="mini-piece piece-i" id="hud-hold-icon">
+                  <span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span>
+                </div>
+                <div class="hud-meter-track hud-meter-track--momentum" aria-hidden="true">
+                  <div class="hud-meter-fill" id="hud-momentum-fill"></div>
+                </div>
               </div>
             </div>
             <div class="hud-piece-block">
@@ -232,6 +237,10 @@
             <div class="menu-option is-selected" data-mode="marathon">
               <span>Marathon</span>
               <span>Ready</span>
+            </div>
+            <div class="menu-option" data-mode="vanillaClassic">
+              <span>Vanilla</span>
+              <span>Classic</span>
             </div>
             <div class="menu-option" data-mode="garbage">
               <span>Garbage</span>
@@ -528,6 +537,27 @@
             </div>
           </div>
         </div>
+        <div class="menu-screen" data-screen="vanillaClassic">
+          <div class="menu-panel">
+            <div class="menu-title">VANILLA - CLASSIC</div>
+            <div class="menu-grid">
+              <div class="menu-column">
+                <div>Starting Gravity</div>
+                <div class="marathon-value" id="vanilla-classic-gravity-value">1</div>
+                <div class="menu-sub">Up/Down to change</div>
+                <div class="menu-actions">
+                  <button id="vanilla-classic-start" class="is-selected">Start</button>
+                  <button id="vanilla-classic-back">Back</button>
+                </div>
+                <div class="menu-sub">Use arrows to choose. X confirm, Z back</div>
+              </div>
+              <div class="menu-column menu-column--scores">
+                <div class="menu-sub">Top 10</div>
+                <ol class="score-list" id="vanilla-classic-scores"></ol>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="menu-screen" data-screen="chillax">
           <div class="menu-panel">
             <div class="menu-title">CHILLAX</div>
@@ -664,6 +694,8 @@
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
+
+
 
 
 

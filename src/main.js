@@ -22,6 +22,10 @@ const marathonStart = document.getElementById("marathon-start");
 /** @type {HTMLButtonElement} */
 const marathonBack = document.getElementById("marathon-back");
 /** @type {HTMLButtonElement} */
+const vanillaClassicStart = document.getElementById("vanilla-classic-start");
+/** @type {HTMLButtonElement} */
+const vanillaClassicBack = document.getElementById("vanilla-classic-back");
+/** @type {HTMLButtonElement} */
 const chillaxStart = document.getElementById("chillax-start");
 /** @type {HTMLButtonElement} */
 const chillaxBack = document.getElementById("chillax-back");
@@ -105,6 +109,8 @@ const helpBack = document.getElementById("help-back");
 /** @type {HTMLElement} */
 const gravityValue = document.getElementById("gravity-value");
 /** @type {HTMLElement} */
+const vanillaClassicGravityValue = document.getElementById("vanilla-classic-gravity-value");
+/** @type {HTMLElement} */
 const chillaxGravityValue = document.getElementById("chillax-gravity-value");
 /** @type {HTMLElement} */
 const coopGravityValue = document.getElementById("coop-gravity-value");
@@ -112,6 +118,8 @@ const coopGravityValue = document.getElementById("coop-gravity-value");
 const sirtetGravityValue = document.getElementById("sirtet-gravity-value");
 /** @type {HTMLElement} */
 const marathonScores = document.getElementById("marathon-scores");
+/** @type {HTMLElement} */
+const vanillaClassicScores = document.getElementById("vanilla-classic-scores");
 /** @type {HTMLElement} */
 const chillaxScores = document.getElementById("chillax-scores");
 /** @type {HTMLElement} */
@@ -329,6 +337,7 @@ let redemptionGravity = 0;
 let redemptionLives = 3;
 let modeIndex = 0;
 let marathonActionIndex = 0;
+let vanillaClassicActionIndex = 0;
 let chillaxActionIndex = 0;
 let garbageActionIndex = 0;
 let redemptionActionIndex = 0;
@@ -474,6 +483,7 @@ let musicPreviewActive = false;
 
 const SCORE_STORAGE_KEYS = {
   marathon: "tetrisflip:marathon:scores",
+  vanillaClassic: "tetrisflip:vanillaClassic:scores",
   chillax: "tetrisflip:chillax:scores",
   garbage: "tetrisflip:garbage:scores",
   redemption: "tetrisflip:redemption:scores",
@@ -506,6 +516,10 @@ function showScreen(name) {
   if (menuState === "marathon") {
     marathonActionIndex = 0;
     updateMarathonSelection();
+  }
+  if (menuState === "vanillaClassic") {
+    vanillaClassicActionIndex = 0;
+    updateVanillaClassicSelection();
   }
   if (menuState === "chillax") {
     chillaxActionIndex = 0;
@@ -581,12 +595,16 @@ function getScoreListElement(mode) {
   if (mode === "redemption") return redemptionScores;
   if (mode === "coop") return coopScores;
   if (mode === "sirtet") return sirtetScores;
+  if (mode === "vanillaClassic") return vanillaClassicScores;
   return marathonScores;
 }
 
 function updateGravityLabels() {
   if (gravityValue) {
     gravityValue.textContent = String(startingGravity);
+  }
+  if (vanillaClassicGravityValue) {
+    vanillaClassicGravityValue.textContent = String(startingGravity);
   }
   if (chillaxGravityValue) {
     chillaxGravityValue.textContent = String(startingGravity);
@@ -657,6 +675,8 @@ function cycleRedemptionLives() {
 function startGame() {
   const mode = menuState === "chillax"
     ? "chillax"
+    : menuState === "vanillaClassic"
+      ? "vanillaClassic"
     : menuState === "redemption"
       ? "redemption"
     : menuState === "garbage"
@@ -728,6 +748,11 @@ function updateMarathonSelection() {
   marathonBack.classList.toggle("is-selected", marathonActionIndex === 1);
 }
 
+function updateVanillaClassicSelection() {
+  if (!vanillaClassicStart || !vanillaClassicBack) return;
+  vanillaClassicStart.classList.toggle("is-selected", vanillaClassicActionIndex === 0);
+  vanillaClassicBack.classList.toggle("is-selected", vanillaClassicActionIndex === 1);
+}
 function updateChillaxSelection() {
   if (!chillaxStart || !chillaxBack) return;
   chillaxStart.classList.toggle("is-selected", chillaxActionIndex === 0);
@@ -1111,6 +1136,16 @@ function requestExitApp() {
   }
 }
 function applyLayoutConfig(modeId) {
+  // Vanilla - Classic always uses the standard board + timings (classic Marathon feel).
+  if (activeMode === "vanillaClassic") {
+    GAME_CONFIG.ROWS = LAYOUT_BASE.rows;
+    GAME_CONFIG.SPAWN_BUFFER = LAYOUT_BASE.spawnBuffer;
+    GAME_CONFIG.VISIBLE_ROWS_TOP = LAYOUT_BASE.visibleTop;
+    GAME_CONFIG.VISIBLE_ROWS_BOTTOM = LAYOUT_BASE.visibleBottom;
+    GAME_CONFIG.MOMENTUM_OFFSET_Y = LAYOUT_BASE.momentumOffsetY;
+    return;
+  }
+
   if (modeId === "handheld") {
     const rows = LAYOUT_BASE.rows - (COMPACT_LAYOUT_ADJUST.neutral + COMPACT_LAYOUT_ADJUST.field * 2);
     const evenRows = rows - (rows % 2);
@@ -1436,9 +1471,50 @@ function getCanvasWidthForMode(mode) {
     + leftHud;
 }
 
+function shouldUseVanillaClassicLandscapeCanvas(mode) {
+  if (mode !== "vanillaClassic") return false;
+  if (!wrap || !wrap.getBoundingClientRect) return false;
+  const wrapRect = wrap.getBoundingClientRect();
+  const wideViewport = wrapRect.width > wrapRect.height;
+  if (!wideViewport) return false;
+  const playfieldW = GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE + GAME_CONFIG.GRID_MARGIN * 2;
+  const sideSpace = Math.max(0, (wrapRect.width - playfieldW) / 2);
+  return sideSpace >= 140;
+}
+
 function setCanvasSize(mode) {
-  canvas.width = getCanvasWidthForMode(mode);
-  canvas.height = GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE;
+  const vanillaLandscape = shouldUseVanillaClassicLandscapeCanvas(mode);
+  const wrapRect = (wrap && wrap.getBoundingClientRect) ? wrap.getBoundingClientRect() : null;
+  const portraitViewport = wrapRect ? (wrapRect.width <= wrapRect.height) : (window.innerHeight >= window.innerWidth);
+  const vanillaPortrait = mode === "vanillaClassic" && portraitViewport && !vanillaLandscape;
+
+  const playfieldOnlyW = GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE + GAME_CONFIG.GRID_MARGIN * 2;
+  const vanillaPlayfieldH = (GAME_CONFIG.ROWS / 2) * GAME_CONFIG.BLOCK_SIZE;
+  const vanillaLegacyH = vanillaPlayfieldH + GAME_CONFIG.GRID_MARGIN * 2;
+  const vanillaPortraitTop = 84;
+  const vanillaPortraitBottom = 84;
+  const vanillaPortraitHudW = 120;
+
+  const nextWidth = vanillaLandscape
+    ? playfieldOnlyW
+    : (vanillaPortrait
+      ? (playfieldOnlyW + vanillaPortraitHudW)
+      : getCanvasWidthForMode(mode));
+
+  const nextHeight = (mode === "vanillaClassic")
+    ? (vanillaPortrait
+      ? (vanillaPlayfieldH + vanillaPortraitTop + vanillaPortraitBottom)
+      : vanillaLegacyH)
+    : GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE;
+
+  const nextW = Math.round(nextWidth);
+  const nextH = Math.round(nextHeight);
+  const changed = canvas.width !== nextW || canvas.height !== nextH;
+  if (!changed) return;
+
+  canvas.width = nextW;
+  canvas.height = nextH;
+  hudLastLayoutMs = 0;
 }
 
 function setTouchEnabled(enabled) {
@@ -1745,6 +1821,21 @@ marathonBack.addEventListener("click", () => {
   showScreen("mode");
 });
 
+if (vanillaClassicStart) {
+  vanillaClassicStart.addEventListener("click", () => {
+    vanillaClassicActionIndex = 0;
+    updateVanillaClassicSelection();
+    startGame();
+  });
+}
+if (vanillaClassicBack) {
+  vanillaClassicBack.addEventListener("click", () => {
+    vanillaClassicActionIndex = 1;
+    updateVanillaClassicSelection();
+    showScreen("mode");
+  });
+}
+
 if (chillaxStart) {
   chillaxStart.addEventListener("click", () => {
     chillaxActionIndex = 0;
@@ -1863,7 +1954,14 @@ menu.addEventListener("click", (event) => {
 });
 
 function ensureTouchButtons() {
-  if (!touchFlip) {
+  const wantsFlip = activeMode !== "vanillaClassic";
+  if (!wantsFlip) {
+    if (touchFlip) {
+      touchFlip.remove();
+      touchFlip = null;
+    }
+  }
+  if (wantsFlip && !touchFlip) {
     const button = document.createElement("button");
     button.className = "touch-flip";
     button.id = "touch-flip";
@@ -1902,7 +2000,7 @@ modeOptions.forEach((option, index) => {
       backToSplash();
     } else if (selected === "options") {
       showScreen("options");
-    } else if (selected === "marathon" || selected === "chillax"
+    } else if (selected === "marathon" || selected === "vanillaClassic" || selected === "chillax"
       || selected === "garbage" || selected === "redemption"
       || selected === "coop" || selected === "sirtet") {
       showScreen(selected);
@@ -2069,6 +2167,7 @@ if (helpBack) {
 }
 
 renderScores(loadScores(getScoreStorageKey("marathon")), marathonScores, "marathon");
+renderScores(loadScores(getScoreStorageKey("vanillaClassic")), vanillaClassicScores, "vanillaClassic");
 renderScores(loadScores(getScoreStorageKey("chillax")), chillaxScores, "chillax");
 renderGarbageScores();
 renderScores(loadScores(getScoreStorageKey("redemption")), redemptionScores, "redemption");
@@ -2133,10 +2232,15 @@ function getTouchScale() {
     || navigator.maxTouchPoints > 0;
   if (!touch) return 1;
   const padding = 2;
-  const viewportH = (wrap && wrap.getBoundingClientRect) ? wrap.getBoundingClientRect().height : ((window.visualViewport && window.visualViewport.height) ? window.visualViewport.height : window.innerHeight);
-  const available = viewportH - padding * 2;
-  if (available <= 0) return 1;
-  return Math.min(1, available / canvas.height);
+  const wrapRect = (wrap && wrap.getBoundingClientRect) ? wrap.getBoundingClientRect() : null;
+  const viewportW = wrapRect ? wrapRect.width : ((window.visualViewport && window.visualViewport.width) ? window.visualViewport.width : window.innerWidth);
+  const viewportH = wrapRect ? wrapRect.height : ((window.visualViewport && window.visualViewport.height) ? window.visualViewport.height : window.innerHeight);
+  const availableW = viewportW - padding * 2;
+  const availableH = viewportH - padding * 2;
+  if (availableW <= 0 || availableH <= 0) return 1;
+  const scaleW = availableW / canvas.width;
+  const scaleH = availableH / canvas.height;
+  return Math.min(1, scaleW, scaleH);
 }
 
 function setGameplayDataset() {
@@ -2152,6 +2256,7 @@ function updateViewportScale() {
   const hideTouchButtons = menuVisible || !touchEnabled;
   if (touchFlip) touchFlip.hidden = hideTouchButtons;
   if (touchPause) touchPause.hidden = hideTouchButtons;
+  setCanvasSize(activeMode);
   setGameplayDataset();
   viewportScale = menuVisible ? 1 : getTouchScale();
   document.documentElement.style.setProperty("--hud-scale", String(viewportScale.toFixed(3)));
@@ -2172,9 +2277,14 @@ function updateViewportScale() {
     wrap.style.placeItems = "start";
     const wrapRect = wrap.getBoundingClientRect();
     const viewportW = wrapRect.width;
+    const viewportH = wrapRect.height;
     const scaledWidth = canvas.width * viewportScale;
+    const scaledHeight = canvas.height * viewportScale;
     const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
-    const offsetY = 2;
+    let offsetY = 2;
+    if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
+      offsetY = Math.max(2, (viewportH - scaledHeight) / 2);
+    }
     canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
     canvas.style.transformOrigin = "top left";
   }
@@ -2256,6 +2366,9 @@ function updateLandscapeHud() {
   // and while name entry is active (keyboard open).
   if (!gameplay || !wideViewport || nameEntryActive) {
     landscapeHud.hidden = true;
+    if (game && typeof game.setLandscapeHudActive === "function") {
+      game.setLandscapeHudActive(false);
+    }
     return;
   }
 
@@ -2273,17 +2386,24 @@ function updateLandscapeHud() {
   const sideSpace = hudCachedSideSpace;
 
   // Avoid overlapping the canvas on narrower landscape screens.
-  if (sideSpace < 80) {
+  const minSideSpace = activeMode === "vanillaClassic" ? 140 : 80;
+  if (sideSpace < minSideSpace) {
     landscapeHud.hidden = true;
+    if (game && typeof game.setLandscapeHudActive === "function") {
+      game.setLandscapeHudActive(false);
+    }
     return;
   }
 
   landscapeHud.hidden = false;
+  if (game && typeof game.setLandscapeHudActive === "function") {
+    game.setLandscapeHudActive(true);
+  }
   if (!game || typeof game.getScoreState !== "function") return;
 
   const coop = typeof game.isCoopMode === "function" ? game.isCoopMode() : false;
   // Treat "Sirtet" like Marathon/Chillax for landscape HUD, but with a themed twist handled in CSS.
-  const showRunStats = !coop && (activeMode === "marathon" || activeMode === "chillax" || activeMode === "sirtet");
+  const showRunStats = !coop && (activeMode === "marathon" || activeMode === "vanillaClassic" || activeMode === "chillax" || activeMode === "sirtet");
   const showGarbageHud = !coop && activeMode === "garbage";
   const showRedemptionHud = !coop && activeMode === "redemption";
   const showMirrorHud = !coop && !showRunStats && !showGarbageHud && !showRedemptionHud;
@@ -2403,17 +2523,32 @@ function updateLandscapeHud() {
       setMiniPieceIcon(hudP2Next4, p2Next[4]);
     }
   }
+  if (activeMode === "vanillaClassic" && typeof game.getMomentumState === "function") {
+    updateHudMeter(hudMomentumFill, game.getMomentumState("p1"));
+  }
 }
 
 function positionTouchButtons() {
   if (!touchFlip || !touchPause) return;
   const rect = canvas.getBoundingClientRect();
   const rectScale = rect.width / canvas.width;
+
+  const isVanillaClassic = activeMode === "vanillaClassic";
+  if (isVanillaClassic) {
+    touchFlip.hidden = true;
+    const pauseSize = 84 * rectScale;
+    const pad = 12;
+    touchPause.style.width = `${pauseSize}px`;
+    touchPause.style.height = `${pauseSize}px`;
+    touchPause.style.left = `${Math.round(rect.right - pauseSize - pad)}px`;
+    touchPause.style.top = `${Math.round(rect.top + pad)}px`;
+    return;
+  }
+
   const holdBoxSize = 96 * rectScale;
   const holdBoxX = GAME_CONFIG.GRID_MARGIN * 2
     + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
     + 12;
-  const holdBoxY = 190 + 18;
   const gap = 18 * rectScale;
   const flipWidth = holdBoxSize;
   const flipHeight = holdBoxSize;
@@ -2572,7 +2707,7 @@ function handleMenuInput() {
         backToSplash();
       } else if (selected === "options") {
         showScreen("options");
-      } else if (selected === "marathon" || selected === "chillax"
+      } else if (selected === "marathon" || selected === "vanillaClassic" || selected === "chillax"
         || selected === "garbage" || selected === "redemption"
         || selected === "coop" || selected === "sirtet") {
         showScreen(selected);
@@ -2689,6 +2824,25 @@ function handleMenuInput() {
     }
   }
 
+  if (menuState === "vanillaClassic") {
+    const confirm = consumeMenuConfirm();
+    if (consumeMenuUp()) {
+      updateGravity(1);
+    } else if (consumeMenuDown()) {
+      updateGravity(-1);
+    } else if (consumeMenuLeft() || consumeMenuRight()) {
+      vanillaClassicActionIndex = vanillaClassicActionIndex === 0 ? 1 : 0;
+      updateVanillaClassicSelection();
+    } else if (confirm) {
+      if (vanillaClassicActionIndex === 0) {
+        startGame();
+      } else {
+        showScreen("mode");
+      }
+    } else if (consumeMenuBack()) {
+      showScreen("mode");
+    }
+  }
   if (menuState === "chillax") {
     const confirm = consumeMenuConfirm();
     if (consumeMenuUp()) {
@@ -2861,6 +3015,31 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

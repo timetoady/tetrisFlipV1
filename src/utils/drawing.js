@@ -87,3 +87,34 @@ export function drawGrid(ctx, topOffset = 0, bottomOffset = 0) {
 
   ctx.restore();
 }
+
+export function drawGridClassic(ctx, offsetY = 0) {
+  const { COLS, ROWS, BLOCK_SIZE } = GAME_CONFIG;
+  const width = COLS * BLOCK_SIZE;
+  const rows = ROWS / 2;
+  const height = rows * BLOCK_SIZE;
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+  ctx.lineWidth = 1;
+
+  for (let x = -1; x <= COLS + 1; x += 1) {
+    const px = x * BLOCK_SIZE + 0.5;
+    if (px < 0 || px > width) continue;
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px, height);
+    ctx.stroke();
+  }
+
+  for (let y = 0; y <= rows; y += 1) {
+    const py = y * BLOCK_SIZE + offsetY + 0.5;
+    if (py < 0 || py > height) continue;
+    ctx.beginPath();
+    ctx.moveTo(0, py);
+    ctx.lineTo(width, py);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}

@@ -1,4 +1,4 @@
-﻿import { GAME_CONFIG } from "./constants.js";
+import { GAME_CONFIG } from "./constants.js";
 import { createInput } from "./input.js";
 import { GameLoop } from "./systems/gameloop.js";
 
@@ -1362,20 +1362,72 @@ function applyFlipP2Hud(enabled, persist = true) {
     game.setFlipP2Hud(flipP2Hud);
   }
 }
-function attemptPlay(audio) {
+const MUSIC_RECOVERY_STALL_MS = 6000;
+const MUSIC_RECOVERY_COOLDOWN_MS = 20000;
+
+function attemptPlay(audio, now = performance.now()) {
   if (!audio) return;
-  const playPromise = audio.play();
-  if (playPromise && typeof playPromise.catch === "function") {
-    playPromise.catch(() => {});
+  audio.__tetrisFlipLastPlayAttemptMs = now;
+  try {
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {});
+    }
+  } catch {
+    // Ignore playback failures.
   }
 }
 
+function ensureMusicPlaying(audio, now = performance.now()) {
+  if (!audio) return;
+  if (document.hidden) return;
+
+  // If the element is not backed by an active src (e.g. "None"), don't fight it.
+  if (!audio.src) return;
+
+  const isBroken = audio.paused || audio.error;
+  if (!isBroken) {
+    const t = audio.currentTime;
+    if (Number.isFinite(t)) {
+      audio.__tetrisFlipLastProgressTime = t;
+      audio.__tetrisFlipLastProgressMs = now;
+    }
+    return;
+  }
+
+  const lastProgress = audio.__tetrisFlipLastProgressMs || 0;
+  if ((now - lastProgress) < MUSIC_RECOVERY_STALL_MS) return;
+
+  const lastAttempt = audio.__tetrisFlipLastPlayAttemptMs || 0;
+  if ((now - lastAttempt) < MUSIC_RECOVERY_COOLDOWN_MS) return;
+
+
+  const resumeTime = audio.__tetrisFlipLastProgressTime;
+  if (Number.isFinite(resumeTime) && Number.isFinite(audio.currentTime)
+      && (audio.currentTime + 0.25) < resumeTime) {
+    try {
+      audio.currentTime = resumeTime;
+    } catch {
+      // Ignore seek failures.
+    }
+  }
+  // On some Android WebViews, the audio element can pause silently. Keep recovery light:
+  // do not call load() or reset currentTime here to avoid restarting the track.
+  attemptPlay(audio, now);
+}
 function stopAudio(audio) {
   if (!audio) return;
-  audio.pause();
-  audio.currentTime = 0;
+  try {
+    audio.pause();
+  } catch {
+    // ignore
+  }
+  try {
+    audio.currentTime = 0;
+  } catch {
+    // ignore
+  }
 }
-
 function setMusicMode(mode) {
   if (musicMode === mode) return;
   musicMode = mode;
@@ -1396,7 +1448,7 @@ function setMusicMode(mode) {
   }
 }
 
-function updateMusicState() {
+function updateMusicState(now = performance.now()) {
   if (menuState === "options" && musicPreviewActive) {
     setMusicMode("preview");
     return;
@@ -1415,8 +1467,18 @@ function updateMusicState() {
   if (musicPaused) {
     musicPaused = false;
     if (gameMusicEnabled) {
-      attemptPlay(gameMusic);
+      attemptPlay(gameMusic, now);
     }
+  }
+  const shouldRecoverGameMusic = activeMode === "vanillaClassic"
+    && !useTitle
+    && game
+    && !game.paused
+    && gameMusicEnabled
+    && musicMode === "game";
+
+  if (shouldRecoverGameMusic) {
+    ensureMusicPlaying(gameMusic, now);
   }
 }
 
@@ -3006,7 +3068,7 @@ function frame(now) {
   }
   game.draw();
   updateLandscapeHud();
-  updateMusicState();
+  updateMusicState(now);
   if (game.getPauseCursor) {
     canvas.style.cursor = game.getPauseCursor() || "";
   }

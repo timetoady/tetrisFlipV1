@@ -115,13 +115,18 @@ Run the end-to-end ship script (builds, tags, GitHub release upload, and AWS dep
 
 ```powershell
 # Dry run
-.\scripts\ship.ps1 -DryRun
+.\scripts\ship.cmd -DryRun
 
 # Full ship
-.\scripts\ship.ps1 -Bucket game.adamandreason.com
+.\scripts\ship.cmd -Bucket game.adamandreason.com
 
 # Skip steps
-.\scripts\ship.ps1 -SkipLinuxBuild -SkipAndroidBuild
+.\scripts\ship.cmd -SkipLinuxBuild -SkipAndroidBuild
+```
+
+```bash
+# Bash/WSL
+bash ./scripts/ship.sh --DryRun
 ```
 ## Release Script (Automated)
 

@@ -53,16 +53,16 @@ function Invoke-Step {
 function Invoke-External {
   param(
     [Parameter(Mandatory=$true)][string]$FilePath,
-    [Parameter(ValueFromRemainingArguments=$true)][string[]]$Args
+    [string[]]$Arguments
   )
 
-  $pretty = $Args -join ' '
+  $pretty = $Arguments -join ' '
   if ($DryRun) {
     Write-Host "[dry-run] $FilePath $pretty"
     return
   }
 
-  & $FilePath @Args
+  & $FilePath @Arguments
   if ($LASTEXITCODE -ne 0) {
     throw "Command failed ($LASTEXITCODE): $FilePath $pretty"
   }
@@ -400,5 +400,6 @@ try {
 } finally {
   Pop-Location
 }
+
 
 

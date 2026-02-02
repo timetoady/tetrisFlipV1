@@ -338,12 +338,64 @@ const screens = document.querySelectorAll("[data-screen]");
 const modeOptions = Array.from(document.querySelectorAll("[data-mode]"));
 let menuState = "splash";
 let menuActive = true;
+const MENU_NAV_REPEAT_DELAY_MS = 500;
+const MENU_NAV_REPEAT_INTERVAL_MS = 60;
+const menuNavRepeatState = {
+  up: { armed: false, nextAt: 0 },
+  down: { armed: false, nextAt: 0 }
+};
+
+function resetMenuNavRepeat() {
+  menuNavRepeatState.up.armed = false;
+  menuNavRepeatState.up.nextAt = 0;
+  menuNavRepeatState.down.armed = false;
+  menuNavRepeatState.down.nextAt = 0;
+}
+
+/**
+ * Menu-only conservative key repeat (does not affect gameplay).
+ * @param {"up"|"down"} direction
+ * @param {string[]} codes
+ */
+function consumeMenuNavRepeat(direction, codes) {
+  const state = menuNavRepeatState[direction];
+  const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+
+  let pressed = false;
+  let down = false;
+  for (const code of codes) {
+    if (!pressed && input.consumePress(code)) pressed = true;
+    if (!down && input.isDown(code)) down = true;
+  }
+
+  if (!down) {
+    state.armed = false;
+    state.nextAt = 0;
+    return pressed;
+  }
+
+  if (pressed) {
+    state.armed = true;
+    state.nextAt = now + MENU_NAV_REPEAT_DELAY_MS;
+    return true;
+  }
+
+  if (!state.armed || !state.nextAt) return false;
+
+  if (now >= state.nextAt) {
+    state.nextAt = now + MENU_NAV_REPEAT_INTERVAL_MS;
+    return true;
+  }
+
+  return false;
+}
 let startingGravity = 0;
 let garbageSpeed = 0;
 let garbageHeight = 1;
 let redemptionGravity = 0;
 let redemptionLives = 3;
 let modeIndex = 0;
+let modeNavColumn = 0;
 let marathonActionIndex = 0;
 let burstActionIndex = 0;
 let vanillaClassicActionIndex = 0;
@@ -519,8 +571,10 @@ function showScreen(name) {
     screen.classList.toggle("is-active", screen.dataset.screen === name);
   });
   menuState = name;
+  resetMenuNavRepeat();
   if (menuState === "mode") {
     modeIndex = 0;
+    modeNavColumn = 0;
     updateModeSelection();
   }
   if (menuState === "marathon") {
@@ -761,6 +815,190 @@ function updateModeSelection() {
   modeOptions.forEach((option, index) => {
     option.classList.toggle("is-selected", index === modeIndex);
   });
+}
+
+function getModeMenuLayout() {
+  /** @type {{index:number, el:HTMLElement, rect:DOMRect, cx:number, cy:number}[]} */
+  const items = [];
+  modeOptions.forEach((el, index) => {
+    if (!(el instanceof HTMLElement)) return;
+    const rect = el.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    items.push({ index, el, rect, cx, cy });
+  });
+  if (!items.length) return null;
+
+  const nonBack = items.filter((item) => item.el.dataset.mode !== "back");
+  const xValues = nonBack.map((item) => item.cx).sort((a, b) => a - b);
+  let columnCenters = [];
+  if (xValues.length <= 1) {
+    columnCenters = [xValues[0] ?? items[0].cx];
+  } else {
+    const spread = xValues[xValues.length - 1] - xValues[0];
+    if (spread < 40) {
+      const mean = xValues.reduce((sum, v) => sum + v, 0) / xValues.length;
+      columnCenters = [mean];
+    } else {
+      const threshold = Math.max(48, spread * 0.25);
+      /** @type {{mean:number,count:number}[]} */
+      const clusters = [];
+      for (const v of xValues) {
+        const last = clusters[clusters.length - 1];
+        if (!last || Math.abs(v - last.mean) > threshold) {
+          clusters.push({ mean: v, count: 1 });
+        } else {
+          last.mean = (last.mean * last.count + v) / (last.count + 1);
+          last.count += 1;
+        }
+      }
+      columnCenters = clusters.map((c) => c.mean).sort((a, b) => a - b);
+    }
+  }
+  const colCount = Math.max(1, columnCenters.length);
+  modeNavColumn = Math.max(0, Math.min(colCount - 1, modeNavColumn));
+
+  const sortedByY = [...items].sort((a, b) => a.cy - b.cy || a.cx - b.cx);
+  const avgHeight = sortedByY.reduce((sum, item) => sum + item.rect.height, 0) / sortedByY.length;
+  const rowThreshold = Math.max(12, avgHeight * 0.75);
+
+  /** @type {{cy:number, items: {index:number, el:HTMLElement, rect:DOMRect, cx:number, cy:number}[]}[]} */
+  const rows = [];
+  for (const item of sortedByY) {
+    const lastRow = rows[rows.length - 1];
+    if (!lastRow || Math.abs(item.cy - lastRow.cy) > rowThreshold) {
+      rows.push({ cy: item.cy, items: [item] });
+    } else {
+      lastRow.items.push(item);
+      lastRow.cy = (lastRow.cy * (lastRow.items.length - 1) + item.cy) / lastRow.items.length;
+    }
+  }
+
+  const rowCount = rows.length;
+  /** @type {(number|null)[][]} */
+  const cells = Array.from({ length: rowCount }, () => Array.from({ length: colCount }, () => null));
+  /** @type {Map<number, {row:number, col:number, isBack:boolean}>} */
+  const indexToPos = new Map();
+  let backRow = null;
+
+  const getNearestCol = (x) => {
+    let bestCol = 0;
+    let bestDist = Infinity;
+    for (let col = 0; col < colCount; col += 1) {
+      const dist = Math.abs(columnCenters[col] - x);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestCol = col;
+      }
+    }
+    return bestCol;
+  };
+
+  rows.forEach((row, rowIndex) => {
+    row.items.forEach((item) => {
+      const isBack = item.el.dataset.mode === "back";
+      if (isBack) {
+        backRow = rowIndex;
+        for (let col = 0; col < colCount; col += 1) {
+          cells[rowIndex][col] = item.index;
+        }
+        indexToPos.set(item.index, { row: rowIndex, col: modeNavColumn, isBack: true });
+        return;
+      }
+      const col = getNearestCol(item.cx);
+      if (cells[rowIndex][col] == null) {
+        cells[rowIndex][col] = item.index;
+      }
+      indexToPos.set(item.index, { row: rowIndex, col, isBack: false });
+    });
+  });
+
+  return { cells, rowCount, colCount, indexToPos, backRow };
+}
+
+function syncModeNavColumnFromSelection() {
+  const layout = getModeMenuLayout();
+  if (!layout) return;
+  const pos = layout.indexToPos.get(modeIndex);
+  if (pos && !pos.isBack) {
+    modeNavColumn = pos.col;
+  }
+  modeNavColumn = Math.max(0, Math.min(layout.colCount - 1, modeNavColumn));
+}
+
+/**
+ * @param {"up"|"down"|"left"|"right"} direction
+ */
+function moveModeSelection(direction) {
+  const layout = getModeMenuLayout();
+  if (!layout) return;
+
+  const currentEl = modeOptions[modeIndex];
+  const currentIsBack = !!(currentEl && currentEl.dataset && currentEl.dataset.mode === "back");
+
+  if ((direction === "left" || direction === "right") && layout.colCount < 2) return;
+  if (currentIsBack && (direction === "left" || direction === "right")) return;
+
+  const currentPos = layout.indexToPos.get(modeIndex);
+  let row = currentPos ? currentPos.row : 0;
+  let col = currentPos ? currentPos.col : modeNavColumn;
+  if (currentIsBack && layout.backRow != null) {
+    row = layout.backRow;
+    col = modeNavColumn;
+  }
+  col = Math.max(0, Math.min(layout.colCount - 1, col));
+
+  /** @type {number|null} */
+  let nextIndex = null;
+
+  if (direction === "up" || direction === "down") {
+    const delta = direction === "down" ? 1 : -1;
+    for (let r = row + delta; r >= 0 && r < layout.rowCount; r += delta) {
+      const idx = layout.cells[r][col];
+      if (idx != null) {
+        nextIndex = idx;
+        break;
+      }
+    }
+    if (nextIndex == null) {
+      const start = direction === "down" ? 0 : layout.rowCount - 1;
+      const end = direction === "down" ? layout.rowCount : -1;
+      const step = direction === "down" ? 1 : -1;
+      for (let r = start; r !== end; r += step) {
+        const idx = layout.cells[r][col];
+        if (idx != null) {
+          nextIndex = idx;
+          break;
+        }
+      }
+    }
+  } else {
+    const targetCol = direction === "right"
+      ? (col + 1) % layout.colCount
+      : (col + layout.colCount - 1) % layout.colCount;
+    const inRow = layout.cells[row] ? layout.cells[row][targetCol] : null;
+    if (inRow != null) {
+      nextIndex = inRow;
+    } else {
+      let bestDist = Infinity;
+      for (let r = 0; r < layout.rowCount; r += 1) {
+        const idx = layout.cells[r][targetCol];
+        if (idx == null) continue;
+        const dist = Math.abs(r - row);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nextIndex = idx;
+        }
+      }
+    }
+  }
+
+  if (nextIndex == null || nextIndex === modeIndex) return;
+
+  modeIndex = nextIndex;
+  updateModeSelection();
+  syncModeNavColumnFromSelection();
 }
 
 function updateMarathonSelection() {
@@ -2094,6 +2332,7 @@ modeOptions.forEach((option, index) => {
   option.addEventListener("click", () => {
     modeIndex = index;
     updateModeSelection();
+    syncModeNavColumnFromSelection();
     if (option.classList.contains("is-disabled")) return;
     const selected = option.dataset.mode;
     if (selected === "back") {
@@ -2675,11 +2914,13 @@ window.addEventListener("resize", setSplashImage);
 window.addEventListener("resize", updateViewportScale);
 canvas.style.visibility = "hidden";
 
-function consumeMenuUp() {
+function consumeMenuUp(repeat = false) {
+  if (repeat) return consumeMenuNavRepeat("up", ["ArrowUp", "KeyW"]);
   return input.consumePress("ArrowUp") || input.consumePress("KeyW");
 }
 
-function consumeMenuDown() {
+function consumeMenuDown(repeat = false) {
+  if (repeat) return consumeMenuNavRepeat("down", ["ArrowDown", "KeyS"]);
   return input.consumePress("ArrowDown") || input.consumePress("KeyS");
 }
 
@@ -2708,6 +2949,7 @@ function consumeMenuBack() {
 
 function handleMenuInput() {
   if (exitConfirmActive) {
+    resetMenuNavRepeat();
     const left = consumeMenuLeft();
     const right = consumeMenuRight();
     const up = consumeMenuUp();
@@ -2727,6 +2969,7 @@ function handleMenuInput() {
     return;
   }
   if (nameEntryActive) {
+    resetMenuNavRepeat();
     const left = consumeMenuLeft();
     const right = consumeMenuRight();
     const up = consumeMenuUp();
@@ -2753,6 +2996,7 @@ function handleMenuInput() {
   }
 
   if (gameOverActive) {
+    resetMenuNavRepeat();
     if (consumeMenuLeft() || consumeMenuRight()) {
       gameOverIndex = gameOverIndex === 0 ? 1 : 0;
       updateGameOverSelection();
@@ -2774,9 +3018,13 @@ function handleMenuInput() {
     return;
   }
 
-  if (!menuActive) return;
+  if (!menuActive) {
+    resetMenuNavRepeat();
+    return;
+  }
 
   if (menuState === "splash") {
+    resetMenuNavRepeat();
     if (consumeMenuBack()) {
       openExitConfirm();
       return;
@@ -2794,12 +3042,18 @@ function handleMenuInput() {
 
   if (menuState === "mode") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
-      modeIndex = Math.max(0, modeIndex - 1);
-      updateModeSelection();
-    } else if (consumeMenuDown()) {
-      modeIndex = Math.min(modeOptions.length - 1, modeIndex + 1);
-      updateModeSelection();
+    const up = consumeMenuUp(true);
+    const down = consumeMenuDown(true);
+    const left = consumeMenuLeft();
+    const right = consumeMenuRight();
+    if (up) {
+      moveModeSelection("up");
+    } else if (down) {
+      moveModeSelection("down");
+    } else if (left) {
+      moveModeSelection("left");
+    } else if (right) {
+      moveModeSelection("right");
     } else if (confirm) {
       if (modeOptions[modeIndex].classList.contains("is-disabled")) return;
       const selected = modeOptions[modeIndex].dataset.mode;
@@ -2820,10 +3074,10 @@ function handleMenuInput() {
 
   if (menuState === "options") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
+    if (consumeMenuUp(true)) {
       optionsIndex = (optionsIndex + OPTIONS_ITEM_COUNT - 1) % OPTIONS_ITEM_COUNT;
       updateOptionsSelection();
-    } else if (consumeMenuDown()) {
+    } else if (consumeMenuDown(true)) {
       optionsIndex = (optionsIndex + 1) % OPTIONS_ITEM_COUNT;
       updateOptionsSelection();
     }
@@ -2906,9 +3160,9 @@ function handleMenuInput() {
 
   if (menuState === "marathon") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
+    if (consumeMenuUp(true)) {
       updateGravity(1);
-    } else if (consumeMenuDown()) {
+    } else if (consumeMenuDown(true)) {
       updateGravity(-1);
     } else if (consumeMenuLeft() || consumeMenuRight()) {
       marathonActionIndex = marathonActionIndex === 0 ? 1 : 0;
@@ -2926,9 +3180,9 @@ function handleMenuInput() {
 
   if (menuState === "burst") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
+    if (consumeMenuUp(true)) {
       updateGravity(1);
-    } else if (consumeMenuDown()) {
+    } else if (consumeMenuDown(true)) {
       updateGravity(-1);
     } else if (consumeMenuLeft() || consumeMenuRight()) {
       burstActionIndex = burstActionIndex === 0 ? 1 : 0;
@@ -2946,9 +3200,9 @@ function handleMenuInput() {
 
   if (menuState === "vanillaClassic") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
+    if (consumeMenuUp(true)) {
       updateGravity(1);
-    } else if (consumeMenuDown()) {
+    } else if (consumeMenuDown(true)) {
       updateGravity(-1);
     } else if (consumeMenuLeft() || consumeMenuRight()) {
       vanillaClassicActionIndex = vanillaClassicActionIndex === 0 ? 1 : 0;
@@ -2965,9 +3219,9 @@ function handleMenuInput() {
   }
   if (menuState === "chillax") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
+    if (consumeMenuUp(true)) {
       updateGravity(1);
-    } else if (consumeMenuDown()) {
+    } else if (consumeMenuDown(true)) {
       updateGravity(-1);
     } else if (consumeMenuLeft() || consumeMenuRight()) {
       chillaxActionIndex = chillaxActionIndex === 0 ? 1 : 0;
@@ -2985,10 +3239,10 @@ function handleMenuInput() {
 
   if (menuState === "redemption") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
+    if (consumeMenuUp(true)) {
       redemptionActionIndex = (redemptionActionIndex + 3) % 4;
       updateRedemptionSelection();
-    } else if (consumeMenuDown()) {
+    } else if (consumeMenuDown(true)) {
       redemptionActionIndex = (redemptionActionIndex + 1) % 4;
       updateRedemptionSelection();
     }
@@ -3014,10 +3268,10 @@ function handleMenuInput() {
 
   if (menuState === "garbage") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
+    if (consumeMenuUp(true)) {
       garbageActionIndex = (garbageActionIndex + 3) % 4;
       updateGarbageSelection();
-    } else if (consumeMenuDown()) {
+    } else if (consumeMenuDown(true)) {
       garbageActionIndex = (garbageActionIndex + 1) % 4;
       updateGarbageSelection();
     }
@@ -3043,9 +3297,9 @@ function handleMenuInput() {
 
   if (menuState === "coop") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
+    if (consumeMenuUp(true)) {
       updateGravity(1);
-    } else if (consumeMenuDown()) {
+    } else if (consumeMenuDown(true)) {
       updateGravity(-1);
     } else if (consumeMenuLeft() || consumeMenuRight()) {
       coopActionIndex = coopActionIndex === 0 ? 1 : 0;
@@ -3063,9 +3317,9 @@ function handleMenuInput() {
 
   if (menuState === "sirtet") {
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp()) {
+    if (consumeMenuUp(true)) {
       updateGravity(1);
-    } else if (consumeMenuDown()) {
+    } else if (consumeMenuDown(true)) {
       updateGravity(-1);
     } else if (consumeMenuLeft() || consumeMenuRight()) {
       sirtetActionIndex = sirtetActionIndex === 0 ? 1 : 0;

@@ -1,4 +1,4 @@
-# Tetris Flip Workflow
+﻿# Tetris Flip Workflow
 
 ## Local Development
 
@@ -108,6 +108,21 @@ $env:CLOUDFRONT_DISTRIBUTION_ID = "YOUR_DIST_ID"
 
 Then `scripts/deploy-aws.ps1` will pick it up automatically.
 
+
+## Shipping (All-in-One)
+
+Run the end-to-end ship script (builds, tags, GitHub release upload, and AWS deploy):
+
+```powershell
+# Dry run
+.\scripts\ship.ps1 -DryRun
+
+# Full ship
+.\scripts\ship.ps1 -Bucket game.adamandreason.com
+
+# Skip steps
+.\scripts\ship.ps1 -SkipLinuxBuild -SkipAndroidBuild
+```
 ## Release Script (Automated)
 
 Use the release script to run builds + deploy with clear step failures:
@@ -122,3 +137,5 @@ Options:
 - `-SkipLinuxBuild`
 - `-SkipWebDeploy`
 - `-AllowDirty`
+
+

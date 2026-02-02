@@ -65,12 +65,32 @@ function Invoke-External {
   $tail = New-Object System.Collections.Generic.Queue[string]
   $maxTailLines = 200
 
-  & $FilePath @Arguments 2>&1 | ForEach-Object {
-    $line = $_.ToString()
-    Write-Host $line
-    $tail.Enqueue($line)
-    while ($tail.Count -gt $maxTailLines) {
-      [void]$tail.Dequeue()
+  # Native commands often write warnings to stderr; don't let $ErrorActionPreference=Stop turn those into hard failures.
+  $prevErrPref = $ErrorActionPreference
+  $prevGlobalErrPref = $global:ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  $global:ErrorActionPreference = "Continue"
+
+  $prevNativeErrPref = $null
+  if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -ErrorAction SilentlyContinue) {
+    $prevNativeErrPref = $global:PSNativeCommandUseErrorActionPreference
+    $global:PSNativeCommandUseErrorActionPreference = $false
+  }
+
+  try {
+    & $FilePath @Arguments 2>&1 | ForEach-Object {
+      $line = $_.ToString()
+      Write-Host $line
+      $tail.Enqueue($line)
+      while ($tail.Count -gt $maxTailLines) {
+        [void]$tail.Dequeue()
+      }
+    }
+  } finally {
+    $ErrorActionPreference = $prevErrPref
+    $global:ErrorActionPreference = $prevGlobalErrPref
+    if ($null -ne $prevNativeErrPref) {
+      $global:PSNativeCommandUseErrorActionPreference = $prevNativeErrPref
     }
   }
 
@@ -79,6 +99,7 @@ function Invoke-External {
     throw "Command failed ($LASTEXITCODE): $FilePath $pretty`n--- command output (last $maxTailLines lines) ---`n$tailText"
   }
 }
+
 function Get-RepoRoot {
   return (Resolve-Path (Join-Path $PSScriptRoot ".."))
 }

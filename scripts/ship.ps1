@@ -233,23 +233,58 @@ function Ensure-GhReleaseExists {
     [switch]$Force
   )
 
-  $exists = $true
+  if ($DryRun) {
+    Write-Host "[dry-run] gh release view $Tag"
+    Write-Host "[dry-run] gh release create $Tag --title \"Tetris Flip $Tag\" --generate-notes --verify-tag (if missing)"
+    return
+  }
+
+  # gh can emit stderr as a PowerShell error record; don’t let that prevent probing for existence.
+  $exists = $false
+  $prevErrPref = $ErrorActionPreference
+  $prevGlobalErrPref = $global:ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  $global:ErrorActionPreference = "Continue"
+
+  $prevNativeErrPref = $null
+  if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -ErrorAction SilentlyContinue) {
+    $prevNativeErrPref = $global:PSNativeCommandUseErrorActionPreference
+    $global:PSNativeCommandUseErrorActionPreference = $false
+  }
+
   try {
-    gh release view $Tag | Out-Null
-  } catch {
-    $exists = $false
+    try {
+      & gh release view $Tag *> $null
+    } catch {
+      # ignore
+    }
+    if ($LASTEXITCODE -eq 0) {
+      $exists = $true
+    }
+  } finally {
+    $ErrorActionPreference = $prevErrPref
+    $global:ErrorActionPreference = $prevGlobalErrPref
+    if ($null -ne $prevNativeErrPref) {
+      $global:PSNativeCommandUseErrorActionPreference = $prevNativeErrPref
+    }
   }
 
   if ($exists -and -not $Force) {
-    # OK: we will upload with --clobber
     return
   }
 
   if (-not $exists) {
-    Invoke-External gh @("release","create",$Tag,"--title","Tetris Flip $Tag","--generate-notes","--verify-tag")
+    try {
+      Invoke-External gh @('release','create',$Tag,'--title',"Tetris Flip $Tag",'--generate-notes','--verify-tag')
+    } catch {
+      if ($_.Exception.Message -match 'already exists') {
+        Write-Host "GitHub release already exists: $Tag"
+        return
+      }
+      throw
+    }
   }
 }
-
 function Build-Windows {
   param([string]$RepoRoot)
 
@@ -432,6 +467,8 @@ try {
 } finally {
   Pop-Location
 }
+
+
 
 
 

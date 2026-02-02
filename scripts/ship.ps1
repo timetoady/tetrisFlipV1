@@ -62,12 +62,23 @@ function Invoke-External {
     return
   }
 
-  & $FilePath @Arguments
+  $tail = New-Object System.Collections.Generic.Queue[string]
+  $maxTailLines = 200
+
+  & $FilePath @Arguments 2>&1 | ForEach-Object {
+    $line = $_.ToString()
+    Write-Host $line
+    $tail.Enqueue($line)
+    while ($tail.Count -gt $maxTailLines) {
+      [void]$tail.Dequeue()
+    }
+  }
+
   if ($LASTEXITCODE -ne 0) {
-    throw "Command failed ($LASTEXITCODE): $FilePath $pretty"
+    $tailText = ($tail.ToArray() -join "`n")
+    throw "Command failed ($LASTEXITCODE): $FilePath $pretty`n--- command output (last $maxTailLines lines) ---`n$tailText"
   }
 }
-
 function Get-RepoRoot {
   return (Resolve-Path (Join-Path $PSScriptRoot ".."))
 }
@@ -400,6 +411,7 @@ try {
 } finally {
   Pop-Location
 }
+
 
 
 

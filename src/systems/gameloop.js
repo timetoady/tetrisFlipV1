@@ -3167,7 +3167,7 @@ export class GameLoop {
       // Keep the panel width in the same ballpark as today, but allow it to grow a little if there's room.
       const desiredPanelW = touchPause ? 360 : 320;
       const maxPanelW = Math.max(260, ctx.canvas.width - 40);
-      const panelW = Math.min(isFullHeightPause ? Math.round(Math.min(maxPanelW, desiredPanelW * 1.1)) : desiredPanelW, maxPanelW);
+      const panelW = Math.min(isFullHeightPause ? Math.round(Math.min(maxPanelW, desiredPanelW * 1.75)) : desiredPanelW, maxPanelW);
 
       // In landscape non-Vanilla, make the pause menu fill most of the available height (finger-friendly).
       const basePanelH = touchPause

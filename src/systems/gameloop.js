@@ -3156,34 +3156,67 @@ export class GameLoop {
       const isLandscapeViewport = viewportW > 0 && viewportH > 0 ? viewportW > viewportH : false;
 
       const touchPause = this.viewportScale < 1;
-      // On non-Vanilla modes in landscape, the pause/exit UI is too small for touch. Enlarge ~50% while keeping it centered.
-      const pauseUiScale = (!isVanilla && isLandscapeViewport && !touchPause) ? 1.5 : 1;
-      const scalePx = (value) => Math.round(value * pauseUiScale);
+      const isLandscapeNonVanilla = !isVanilla && isLandscapeViewport;
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const isFullHeightPause = isLandscapeNonVanilla;
 
-      const desiredPanelW = scalePx(touchPause ? 360 : 320);
-      const panelW = Math.min(desiredPanelW, Math.max(scalePx(260), ctx.canvas.width - scalePx(40)));
-      const panelH = touchPause
-        ? Math.min(scalePx(420), Math.max(scalePx(300), ctx.canvas.height * 0.4))
-        : scalePx(150);
+      const panelOuterPad = isFullHeightPause
+        ? Math.round(clamp(ctx.canvas.height * 0.06, 18, 48))
+        : 0;
+
+      // Keep the panel width in the same ballpark as today, but allow it to grow a little if there's room.
+      const desiredPanelW = touchPause ? 360 : 320;
+      const maxPanelW = Math.max(260, ctx.canvas.width - 40);
+      const panelW = Math.min(isFullHeightPause ? Math.round(Math.min(maxPanelW, desiredPanelW * 1.1)) : desiredPanelW, maxPanelW);
+
+      // In landscape non-Vanilla, make the pause menu fill most of the available height (finger-friendly).
+      const basePanelH = touchPause
+        ? Math.min(420, Math.max(300, ctx.canvas.height * 0.4))
+        : 150;
+      const panelH = isFullHeightPause
+        ? Math.round(clamp(ctx.canvas.height - panelOuterPad * 2, basePanelH, ctx.canvas.height))
+        : basePanelH;
       const panelX = (ctx.canvas.width - panelW) / 2;
       const panelY = (ctx.canvas.height - panelH) / 2;
       ctx.fillStyle = "rgba(10, 10, 10, 0.95)";
       ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-      ctx.lineWidth = Math.max(1, 2 * pauseUiScale);
+      ctx.lineWidth = isFullHeightPause ? 3 : 2;
       ctx.fillRect(panelX, panelY, panelW, panelH);
       ctx.strokeRect(panelX, panelY, panelW, panelH);
       ctx.fillStyle = "#ffffff";
-      ctx.font = `${scalePx(touchPause ? 28 : 24)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+      const titleFontPx = isFullHeightPause
+        ? Math.round(clamp(panelH * 0.075, 26, 54))
+        : (touchPause ? 28 : 24);
+      ctx.font = `${titleFontPx}px "IBM Plex Mono", Menlo, Consolas, monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("PAUSED", ctx.canvas.width / 2, panelY + scalePx(36));
+      const titleY = panelY + (isFullHeightPause ? Math.round(panelH * 0.12) : 36);
+      ctx.fillText("PAUSED", ctx.canvas.width / 2, titleY);
 
-      const buttonW = scalePx(touchPause ? 220 : 90);
-      const buttonH = scalePx(touchPause ? 64 : 32);
-      const gap = scalePx(touchPause ? 26 : 12);
-      const buttonsY = touchPause
-        ? panelY + panelH - (scalePx(36) + buttonH * 3 + gap * 2)
-        : panelY + panelH - scalePx(52);
+      let buttonW = touchPause ? 220 : 90;
+      let buttonH = touchPause ? 64 : 32;
+      let gap = touchPause ? 26 : 12;
+
+      if (isFullHeightPause) {
+        buttonW = Math.round(clamp(panelW * 0.74, 200, panelW - 44));
+        buttonH = Math.round(clamp(panelH * 0.14, 56, 108));
+        gap = Math.round(clamp(panelH * 0.06, 18, 44));
+      }
+
+      const contentTop = isFullHeightPause ? (panelY + Math.round(panelH * 0.22)) : panelY;
+      const contentBottom = isFullHeightPause ? (panelY + panelH - Math.round(panelH * 0.10)) : (panelY + panelH);
+      const availableH = Math.max(0, contentBottom - contentTop);
+      const desiredStackH = buttonH * 3 + gap * 2;
+      if (isFullHeightPause && desiredStackH > availableH && availableH > 0) {
+        const scale = clamp(availableH / desiredStackH, 0.6, 1);
+        buttonH = Math.max(44, Math.floor(buttonH * scale));
+        gap = Math.max(12, Math.floor(gap * scale));
+      }
+
+      const stackH = buttonH * 3 + gap * 2;
+      const buttonsY = isFullHeightPause
+        ? (contentTop + Math.round((availableH - stackH) / 2))
+        : (touchPause ? panelY + panelH - (36 + buttonH * 3 + gap * 2) : panelY + panelH - 52);
       const totalW = buttonW * 3 + gap * 2;
       const startX = panelX + (panelW - totalW) / 2;
       const resumeX = touchPause ? panelX + (panelW - buttonW) / 2 : startX;
@@ -3194,7 +3227,7 @@ export class GameLoop {
       const endY = touchPause ? restartY + buttonH + gap : buttonsY;
       ctx.fillStyle = "#1f1f1f";
       ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-      ctx.lineWidth = Math.max(1, 1.5 * pauseUiScale);
+      ctx.lineWidth = isFullHeightPause ? 2.25 : 1.5;
       ctx.fillRect(resumeX, resumeY, buttonW, buttonH);
       ctx.strokeRect(resumeX, resumeY, buttonW, buttonH);
       ctx.fillRect(restartX, restartY, buttonW, buttonH);
@@ -3202,8 +3235,8 @@ export class GameLoop {
       ctx.fillRect(endX, endY, buttonW, buttonH);
       ctx.strokeRect(endX, endY, buttonW, buttonH);
       ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-      ctx.lineWidth = Math.max(1, 2 * pauseUiScale);
-      const highlightPad = scalePx(2);
+      ctx.lineWidth = isFullHeightPause ? 3 : 2;
+      const highlightPad = isFullHeightPause ? 3 : 2;
       if (this.pauseActionIndex === 0) {
         ctx.strokeRect(resumeX - highlightPad, resumeY - highlightPad, buttonW + highlightPad * 2, buttonH + highlightPad * 2);
       } else if (this.pauseActionIndex === 1) {
@@ -3212,7 +3245,10 @@ export class GameLoop {
         ctx.strokeRect(endX - highlightPad, endY - highlightPad, buttonW + highlightPad * 2, buttonH + highlightPad * 2);
       }
       ctx.fillStyle = "#e6e6e6";
-      ctx.font = `${scalePx(touchPause ? 20 : 14)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+      const buttonFontPx = isFullHeightPause
+        ? Math.round(clamp(buttonH * 0.34, 18, 34))
+        : (touchPause ? 20 : 14);
+      ctx.font = `${buttonFontPx}px "IBM Plex Mono", Menlo, Consolas, monospace`;
       ctx.fillText("RESUME", resumeX + buttonW / 2, resumeY + buttonH / 2);
       ctx.fillText("RESTART", restartX + buttonW / 2, restartY + buttonH / 2);
       ctx.fillText("END", endX + buttonW / 2, endY + buttonH / 2);
@@ -3237,47 +3273,64 @@ export class GameLoop {
       ctx.restore();
 
       if (this.pauseConfirmActive) {
-        const desiredConfirmW = scalePx(touchPause ? 360 : 280);
-        const desiredConfirmH = scalePx(touchPause ? 300 : 120);
-        const confirmW = Math.min(desiredConfirmW, panelW);
-        const confirmH = Math.min(desiredConfirmH, panelH);
+        const desiredConfirmW = touchPause ? 360 : 280;
+        const desiredConfirmH = touchPause ? 300 : 120;
+        const confirmW = isFullHeightPause
+          ? Math.round(clamp(panelW * 0.94, 260, panelW))
+          : Math.min(desiredConfirmW, panelW);
+        const confirmH = isFullHeightPause
+          ? Math.round(clamp(panelH * 0.72, 220, panelH - 24))
+          : Math.min(desiredConfirmH, panelH);
         const confirmX = panelX + (panelW - confirmW) / 2;
         const confirmY = panelY + (panelH - confirmH) / 2;
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = "rgba(5, 5, 5, 0.96)";
         ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
-        ctx.lineWidth = Math.max(1, 2 * pauseUiScale);
+        ctx.lineWidth = isFullHeightPause ? 3 : 2;
         ctx.fillRect(confirmX, confirmY, confirmW, confirmH);
         ctx.strokeRect(confirmX, confirmY, confirmW, confirmH);
         ctx.fillStyle = "#ffffff";
-        ctx.font = `${scalePx(16)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+        const confirmTitleFontPx = isFullHeightPause
+          ? Math.round(clamp(confirmH * 0.085, 18, 34))
+          : 16;
+        ctx.font = `${confirmTitleFontPx}px "IBM Plex Mono", Menlo, Consolas, monospace`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("EXIT TO MENU?", confirmX + confirmW / 2, confirmY + scalePx(30));
-        const btnW = scalePx(touchPause ? 210 : 80);
-        const btnH = scalePx(touchPause ? 58 : 28);
-        const yesX = touchPause
-          ? confirmX + (confirmW - btnW) / 2
-          : confirmX + scalePx(28);
-        const noX = touchPause
-          ? yesX
-          : confirmX + confirmW - btnW - scalePx(28);
-        const btnY = touchPause ? confirmY + scalePx(118) : confirmY + confirmH - scalePx(46);
-        const noY = touchPause ? btnY + btnH + scalePx(30) : btnY;
+        ctx.fillText("EXIT TO MENU?", confirmX + confirmW / 2, confirmY + (isFullHeightPause ? Math.round(confirmH * 0.14) : 30));
+
+        let btnW = touchPause ? 210 : 80;
+        let btnH = touchPause ? 58 : 28;
+        let yesX = touchPause ? confirmX + (confirmW - btnW) / 2 : (confirmX + 28);
+        let noX = touchPause ? yesX : (confirmX + confirmW - btnW - 28);
+        let btnY = touchPause ? confirmY + 118 : (confirmY + confirmH - 46);
+        let noY = touchPause ? (btnY + btnH + 30) : btnY;
+
+        if (isFullHeightPause) {
+          btnW = Math.round(clamp(confirmW * 0.72, 200, confirmW - 40));
+          btnH = Math.round(clamp(confirmH * 0.20, 54, 96));
+          yesX = confirmX + (confirmW - btnW) / 2;
+          noX = yesX;
+          btnY = confirmY + Math.round(confirmH * 0.34);
+          noY = btnY + btnH + Math.round(clamp(confirmH * 0.10, 18, 40));
+        }
+
         ctx.fillStyle = "#1f1f1f";
         ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.lineWidth = Math.max(1, 1.5 * pauseUiScale);
+        ctx.lineWidth = isFullHeightPause ? 2.25 : 1.5;
         ctx.fillRect(yesX, btnY, btnW, btnH);
         ctx.strokeRect(yesX, btnY, btnW, btnH);
         ctx.fillRect(noX, noY, btnW, btnH);
         ctx.strokeRect(noX, noY, btnW, btnH);
         ctx.fillStyle = "#e6e6e6";
-        ctx.font = `${scalePx(touchPause ? 18 : 14)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+        const confirmBtnFontPx = isFullHeightPause
+          ? Math.round(clamp(btnH * 0.34, 18, 32))
+          : (touchPause ? 18 : 14);
+        ctx.font = `${confirmBtnFontPx}px "IBM Plex Mono", Menlo, Consolas, monospace`;
         ctx.fillText("YES", yesX + btnW / 2, btnY + btnH / 2);
         ctx.fillText("NO", noX + btnW / 2, noY + btnH / 2);
         ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-        ctx.lineWidth = Math.max(1, 2 * pauseUiScale);
+        ctx.lineWidth = isFullHeightPause ? 3 : 2;
         const highlightX = this.pauseConfirmIndex === 0 ? yesX : noX;
         const highlightY = this.pauseConfirmIndex === 0 ? btnY : noY;
         ctx.strokeRect(highlightX - highlightPad, highlightY - highlightPad, btnW + highlightPad * 2, btnH + highlightPad * 2);

@@ -2871,6 +2871,9 @@ function positionTouchButtons() {
   if (!touchFlip || !touchPause) return;
   const rect = canvas.getBoundingClientRect();
   const rectScale = rect.width / canvas.width;
+  const touchScale = Number.isFinite(rectScale) && rectScale > 0 ? rectScale : 1;
+  touchFlip.style.setProperty("--touch-scale", touchScale.toFixed(3));
+  touchPause.style.setProperty("--touch-scale", touchScale.toFixed(3));
 
   const isVanillaClassic = activeMode === "vanillaClassic";
   if (isVanillaClassic) {

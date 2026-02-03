@@ -3147,7 +3147,19 @@ export class GameLoop {
         GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE,
         GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE
       );
-      const touchPause = this.viewportScale < 1;
+      const isLandscapeViewport = (typeof window !== "undefined")
+        && (
+          (window.matchMedia && window.matchMedia("(orientation: landscape)").matches)
+          || (window.innerWidth > window.innerHeight)
+        );
+      const isTouchViewport = (typeof window !== "undefined")
+        && (
+          (window.matchMedia && window.matchMedia("(pointer: coarse)").matches)
+          || (typeof navigator !== "undefined" && Number(navigator.maxTouchPoints) > 0)
+        );
+      // Pause/Exit menus should stay finger-friendly on touch devices even when the playfield fits at 1:1 scale.
+      // Keep Vanilla - Classic sizing as-is (it is already tuned to its layouts).
+      const touchPause = this.viewportScale < 1 || (!isVanilla && isLandscapeViewport && isTouchViewport);
       const desiredPanelW = touchPause ? 360 : 320;
       const panelW = Math.min(desiredPanelW, Math.max(260, ctx.canvas.width - 40));
       const panelH = touchPause

@@ -419,15 +419,21 @@ body[data-gameplay="true"] .name-modal {
 }
 
 .touch-icon {
-  width: 72%;
-  height: 72%;
+  width: 66%;
+  height: 66%;
   display: block;
   pointer-events: none;
   flex: 0 0 auto;
 }
 
+.touch-icon--flip {
+  width: 58%;
+  height: 58%;
+}
+
 .touch-icon--pause {
-  width: 64%;
+  width: 60%;
+  height: 60%;
 }
 
 .touch-flip:active {

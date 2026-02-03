@@ -2299,11 +2299,16 @@ function ensureTouchButtons() {
     svg.setAttribute("viewBox", "0 0 24 24");
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("focusable", "false");
-    svg.setAttribute("fill", "none");
-    svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "2.6");
-    svg.setAttribute("stroke-linecap", "round");
-    svg.setAttribute("stroke-linejoin", "round");
+    if (kind === "pause") {
+      svg.setAttribute("fill", "currentColor");
+      svg.setAttribute("stroke", "none");
+    } else {
+      svg.setAttribute("fill", "none");
+      svg.setAttribute("stroke", "currentColor");
+      svg.setAttribute("stroke-linecap", "round");
+      svg.setAttribute("stroke-linejoin", "round");
+      svg.setAttribute("stroke-width", kind === "flip" ? "3.4" : "2.6");
+    }
 
     if (kind === "flip") {
       const poly1 = document.createElementNS(ns, "polyline");
@@ -2317,17 +2322,19 @@ function ensureTouchButtons() {
     }
 
     if (kind === "pause") {
-      const line1 = document.createElementNS(ns, "line");
-      line1.setAttribute("x1", "9");
-      line1.setAttribute("y1", "5.5");
-      line1.setAttribute("x2", "9");
-      line1.setAttribute("y2", "18.5");
-      const line2 = document.createElementNS(ns, "line");
-      line2.setAttribute("x1", "15");
-      line2.setAttribute("y1", "5.5");
-      line2.setAttribute("x2", "15");
-      line2.setAttribute("y2", "18.5");
-      svg.append(line1, line2);
+      const bar1 = document.createElementNS(ns, "rect");
+      bar1.setAttribute("x", "5.0");
+      bar1.setAttribute("y", "4.0");
+      bar1.setAttribute("width", "4.3");
+      bar1.setAttribute("height", "16.0");
+      bar1.setAttribute("rx", "0.7");
+      const bar2 = document.createElementNS(ns, "rect");
+      bar2.setAttribute("x", "15.5");
+      bar2.setAttribute("y", "4.0");
+      bar2.setAttribute("width", "4.3");
+      bar2.setAttribute("height", "16.0");
+      bar2.setAttribute("rx", "0.7");
+      svg.append(bar1, bar2);
       return svg;
     }
 

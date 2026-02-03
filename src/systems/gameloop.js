@@ -3147,43 +3147,43 @@ export class GameLoop {
         GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE,
         GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE
       );
-      const isLandscapeViewport = (typeof window !== "undefined")
-        && (
-          (window.matchMedia && window.matchMedia("(orientation: landscape)").matches)
-          || (window.innerWidth > window.innerHeight)
-        );
-      const isTouchViewport = (typeof window !== "undefined")
-        && (
-          (window.matchMedia && window.matchMedia("(pointer: coarse)").matches)
-          || (typeof navigator !== "undefined" && Number(navigator.maxTouchPoints) > 0)
-        );
-      // Pause/Exit menus should stay finger-friendly on touch devices even when the playfield fits at 1:1 scale.
-      // Keep Vanilla - Classic sizing as-is (it is already tuned to its layouts).
-      const touchPause = this.viewportScale < 1 || (!isVanilla && isLandscapeViewport && isTouchViewport);
-      const desiredPanelW = touchPause ? 360 : 320;
-      const panelW = Math.min(desiredPanelW, Math.max(260, ctx.canvas.width - 40));
+      const viewportW = (typeof window !== "undefined" && window.visualViewport && Number.isFinite(window.visualViewport.width))
+        ? window.visualViewport.width
+        : ((typeof window !== "undefined") ? window.innerWidth : 0);
+      const viewportH = (typeof window !== "undefined" && window.visualViewport && Number.isFinite(window.visualViewport.height))
+        ? window.visualViewport.height
+        : ((typeof window !== "undefined") ? window.innerHeight : 0);
+      const isLandscapeViewport = viewportW > 0 && viewportH > 0 ? viewportW > viewportH : false;
+
+      const touchPause = this.viewportScale < 1;
+      // On non-Vanilla modes in landscape, the pause/exit UI is too small for touch. Enlarge ~50% while keeping it centered.
+      const pauseUiScale = (!isVanilla && isLandscapeViewport && !touchPause) ? 1.5 : 1;
+      const scalePx = (value) => Math.round(value * pauseUiScale);
+
+      const desiredPanelW = scalePx(touchPause ? 360 : 320);
+      const panelW = Math.min(desiredPanelW, Math.max(scalePx(260), ctx.canvas.width - scalePx(40)));
       const panelH = touchPause
-        ? Math.min(420, Math.max(300, ctx.canvas.height * 0.4))
-        : 150;
+        ? Math.min(scalePx(420), Math.max(scalePx(300), ctx.canvas.height * 0.4))
+        : scalePx(150);
       const panelX = (ctx.canvas.width - panelW) / 2;
       const panelY = (ctx.canvas.height - panelH) / 2;
       ctx.fillStyle = "rgba(10, 10, 10, 0.95)";
       ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = Math.max(1, 2 * pauseUiScale);
       ctx.fillRect(panelX, panelY, panelW, panelH);
       ctx.strokeRect(panelX, panelY, panelW, panelH);
       ctx.fillStyle = "#ffffff";
-      ctx.font = `${touchPause ? 28 : 24}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+      ctx.font = `${scalePx(touchPause ? 28 : 24)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("PAUSED", ctx.canvas.width / 2, panelY + 36);
+      ctx.fillText("PAUSED", ctx.canvas.width / 2, panelY + scalePx(36));
 
-      const buttonW = touchPause ? 220 : 90;
-      const buttonH = touchPause ? 64 : 32;
-      const gap = touchPause ? 26 : 12;
+      const buttonW = scalePx(touchPause ? 220 : 90);
+      const buttonH = scalePx(touchPause ? 64 : 32);
+      const gap = scalePx(touchPause ? 26 : 12);
       const buttonsY = touchPause
-        ? panelY + panelH - (36 + buttonH * 3 + gap * 2)
-        : panelY + panelH - 52;
+        ? panelY + panelH - (scalePx(36) + buttonH * 3 + gap * 2)
+        : panelY + panelH - scalePx(52);
       const totalW = buttonW * 3 + gap * 2;
       const startX = panelX + (panelW - totalW) / 2;
       const resumeX = touchPause ? panelX + (panelW - buttonW) / 2 : startX;
@@ -3194,7 +3194,7 @@ export class GameLoop {
       const endY = touchPause ? restartY + buttonH + gap : buttonsY;
       ctx.fillStyle = "#1f1f1f";
       ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = Math.max(1, 1.5 * pauseUiScale);
       ctx.fillRect(resumeX, resumeY, buttonW, buttonH);
       ctx.strokeRect(resumeX, resumeY, buttonW, buttonH);
       ctx.fillRect(restartX, restartY, buttonW, buttonH);
@@ -3202,16 +3202,17 @@ export class GameLoop {
       ctx.fillRect(endX, endY, buttonW, buttonH);
       ctx.strokeRect(endX, endY, buttonW, buttonH);
       ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = Math.max(1, 2 * pauseUiScale);
+      const highlightPad = scalePx(2);
       if (this.pauseActionIndex === 0) {
-        ctx.strokeRect(resumeX - 2, resumeY - 2, buttonW + 4, buttonH + 4);
+        ctx.strokeRect(resumeX - highlightPad, resumeY - highlightPad, buttonW + highlightPad * 2, buttonH + highlightPad * 2);
       } else if (this.pauseActionIndex === 1) {
-        ctx.strokeRect(restartX - 2, restartY - 2, buttonW + 4, buttonH + 4);
+        ctx.strokeRect(restartX - highlightPad, restartY - highlightPad, buttonW + highlightPad * 2, buttonH + highlightPad * 2);
       } else {
-        ctx.strokeRect(endX - 2, endY - 2, buttonW + 4, buttonH + 4);
+        ctx.strokeRect(endX - highlightPad, endY - highlightPad, buttonW + highlightPad * 2, buttonH + highlightPad * 2);
       }
       ctx.fillStyle = "#e6e6e6";
-      ctx.font = `${touchPause ? 20 : 14}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+      ctx.font = `${scalePx(touchPause ? 20 : 14)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
       ctx.fillText("RESUME", resumeX + buttonW / 2, resumeY + buttonH / 2);
       ctx.fillText("RESTART", restartX + buttonW / 2, restartY + buttonH / 2);
       ctx.fillText("END", endX + buttonW / 2, endY + buttonH / 2);
@@ -3236,8 +3237,8 @@ export class GameLoop {
       ctx.restore();
 
       if (this.pauseConfirmActive) {
-        const desiredConfirmW = touchPause ? 360 : 280;
-        const desiredConfirmH = touchPause ? 300 : 120;
+        const desiredConfirmW = scalePx(touchPause ? 360 : 280);
+        const desiredConfirmH = scalePx(touchPause ? 300 : 120);
         const confirmW = Math.min(desiredConfirmW, panelW);
         const confirmH = Math.min(desiredConfirmH, panelH);
         const confirmX = panelX + (panelW - confirmW) / 2;
@@ -3246,40 +3247,40 @@ export class GameLoop {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = "rgba(5, 5, 5, 0.96)";
         ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = Math.max(1, 2 * pauseUiScale);
         ctx.fillRect(confirmX, confirmY, confirmW, confirmH);
         ctx.strokeRect(confirmX, confirmY, confirmW, confirmH);
         ctx.fillStyle = "#ffffff";
-        ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.font = `${scalePx(16)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("EXIT TO MENU?", confirmX + confirmW / 2, confirmY + 30);
-        const btnW = touchPause ? 210 : 80;
-        const btnH = touchPause ? 58 : 28;
+        ctx.fillText("EXIT TO MENU?", confirmX + confirmW / 2, confirmY + scalePx(30));
+        const btnW = scalePx(touchPause ? 210 : 80);
+        const btnH = scalePx(touchPause ? 58 : 28);
         const yesX = touchPause
           ? confirmX + (confirmW - btnW) / 2
-          : confirmX + 28;
+          : confirmX + scalePx(28);
         const noX = touchPause
           ? yesX
-          : confirmX + confirmW - btnW - 28;
-        const btnY = touchPause ? confirmY + 118 : confirmY + confirmH - 46;
-        const noY = touchPause ? btnY + btnH + 30 : btnY;
+          : confirmX + confirmW - btnW - scalePx(28);
+        const btnY = touchPause ? confirmY + scalePx(118) : confirmY + confirmH - scalePx(46);
+        const noY = touchPause ? btnY + btnH + scalePx(30) : btnY;
         ctx.fillStyle = "#1f1f1f";
         ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = Math.max(1, 1.5 * pauseUiScale);
         ctx.fillRect(yesX, btnY, btnW, btnH);
         ctx.strokeRect(yesX, btnY, btnW, btnH);
         ctx.fillRect(noX, noY, btnW, btnH);
         ctx.strokeRect(noX, noY, btnW, btnH);
         ctx.fillStyle = "#e6e6e6";
-        ctx.font = `${touchPause ? 18 : 14}px "IBM Plex Mono", Menlo, Consolas, monospace`;
+        ctx.font = `${scalePx(touchPause ? 18 : 14)}px "IBM Plex Mono", Menlo, Consolas, monospace`;
         ctx.fillText("YES", yesX + btnW / 2, btnY + btnH / 2);
         ctx.fillText("NO", noX + btnW / 2, noY + btnH / 2);
         ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = Math.max(1, 2 * pauseUiScale);
         const highlightX = this.pauseConfirmIndex === 0 ? yesX : noX;
         const highlightY = this.pauseConfirmIndex === 0 ? btnY : noY;
-        ctx.strokeRect(highlightX - 2, highlightY - 2, btnW + 4, btnH + 4);
+        ctx.strokeRect(highlightX - highlightPad, highlightY - highlightPad, btnW + highlightPad * 2, btnH + highlightPad * 2);
         this.pauseConfirmButtons = {
           yes: { x: yesX, y: btnY, w: btnW, h: btnH },
           no: { x: noX, y: noY, w: btnW, h: btnH }

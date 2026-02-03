@@ -747,9 +747,7 @@ body[data-hud-mode="vanillaClassic"] .hud-meter-track {
   pointer-events: none;
   padding: 16px;
   gap: 16px;
-  display: flex;
-  justify-content: flex-start;
-  align-items: stretch;
+  display: block;
   box-sizing: border-box;
 }
 
@@ -757,8 +755,19 @@ body[data-hud-mode="vanillaClassic"] .hud-meter-track {
   display: none !important;
 }
 
+#landscape-hud-left,
 #landscape-hud-right {
-  margin-left: auto;
+  position: fixed;
+  top: 16px;
+  bottom: 16px;
+}
+
+#landscape-hud-left {
+  left: 16px;
+}
+
+#landscape-hud-right {
+  right: 16px;
 }
 
 .landscape-hud-panel {

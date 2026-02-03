@@ -2292,6 +2292,48 @@ menu.addEventListener("click", (event) => {
 });
 
 function ensureTouchButtons() {
+  const createTouchSvg = (kind) => {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("class", `touch-icon touch-icon--${kind}`);
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2.6");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+
+    if (kind === "flip") {
+      const poly1 = document.createElementNS(ns, "polyline");
+      poly1.setAttribute("points", "23 4 23 10 17 10");
+      const poly2 = document.createElementNS(ns, "polyline");
+      poly2.setAttribute("points", "1 20 1 14 7 14");
+      const path = document.createElementNS(ns, "path");
+      path.setAttribute("d", "M3.51 9a9 9 0 0 1 14.13-3.36L23 10M1 14l5.37 4.37A9 9 0 0 0 20.49 15");
+      svg.append(poly1, poly2, path);
+      return svg;
+    }
+
+    if (kind === "pause") {
+      const line1 = document.createElementNS(ns, "line");
+      line1.setAttribute("x1", "9");
+      line1.setAttribute("y1", "5.5");
+      line1.setAttribute("x2", "9");
+      line1.setAttribute("y2", "18.5");
+      const line2 = document.createElementNS(ns, "line");
+      line2.setAttribute("x1", "15");
+      line2.setAttribute("y1", "5.5");
+      line2.setAttribute("x2", "15");
+      line2.setAttribute("y2", "18.5");
+      svg.append(line1, line2);
+      return svg;
+    }
+
+    return svg;
+  };
+
   const wantsFlip = activeMode !== "vanillaClassic";
   if (!wantsFlip) {
     if (touchFlip) {
@@ -2304,7 +2346,12 @@ function ensureTouchButtons() {
     button.className = "touch-flip";
     button.id = "touch-flip";
     button.type = "button";
-    button.textContent = "FLIP!";
+    button.setAttribute("aria-label", "Flip");
+    button.title = "Flip";
+    const label = document.createElement("span");
+    label.className = "sr-only";
+    label.textContent = "Flip";
+    button.append(label, createTouchSvg("flip"));
     button.addEventListener("click", () => {
       input.pressVirtual("Space");
     });
@@ -2316,7 +2363,12 @@ function ensureTouchButtons() {
     button.className = "touch-pause";
     button.id = "touch-pause";
     button.type = "button";
-    button.textContent = "PAUSE";
+    button.setAttribute("aria-label", "Pause");
+    button.title = "Pause";
+    const label = document.createElement("span");
+    label.className = "sr-only";
+    label.textContent = "Pause";
+    button.append(label, createTouchSvg("pause"));
     button.addEventListener("click", () => {
       if (!menuActive) {
         input.pressVirtual("KeyP");

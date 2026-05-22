@@ -1319,17 +1319,18 @@ public class DualScreenHudPlugin extends Plugin {
             }
 
             float density = getResources().getDisplayMetrics().density;
-            float cellSize;
+            float cellSize = Math.min((float) width / cols, (float) height / rows);
             float left;
             float boardTop;
 
-            if (customCellSize > 0f && customViewportW > 0f) {
-                cellSize = customCellSize * density;
+            if (customViewportW > 0f) {
                 float leftOffset = (customViewportW * density - width) / 2f;
-                left = customGridLeft * density - leftOffset;
+                float topCellSizePhys = customCellSize * density;
+                float centerAlignShift = cols * (topCellSizePhys - cellSize) / 2f;
+                float fineTuneShift = 0f;
+                left = customGridLeft * density - leftOffset + centerAlignShift + fineTuneShift;
                 boardTop = (height - (cellSize * rows)) / 2f;
             } else {
-                cellSize = Math.min((float) width / cols, (float) height / rows);
                 left = (width - cellSize * cols) / 2f;
                 boardTop = (height - cellSize * rows) / 2f;
             }

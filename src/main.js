@@ -492,6 +492,7 @@ const MUSIC_VOLUME_MAX = 0.7;
 const SHOW_FPS_KEY = "tetrisflip:debug:showFps";
 const FLIP_P2_HUD_KEY = "tetrisflip:ui:flipP2Hud";
 const DUAL_SCREEN_HUD_KEY = "tetrisflip:android:dualScreenHud";
+const DUAL_SCREEN_TOP_SCALE = 0.85; // Scale factor for the top screen in dual-screen mode
 const DUAL_SCREEN_MODES = [
   { id: "info", label: "Info" },
   { id: "game", label: "Game" },
@@ -2708,7 +2709,7 @@ function getTouchScale() {
   const displayCanvasHeight = isDualScreenGame ? (canvas.height / 2) : canvas.height;
   const scaleH = availableH / displayCanvasHeight;
   if (isDualScreenGame) {
-    return Math.min(scaleW, scaleH) * 0.94;
+    return (viewportH / displayCanvasHeight) * DUAL_SCREEN_TOP_SCALE;
   }
   return Math.min(1, scaleW, scaleH);
 }
@@ -2765,7 +2766,9 @@ function updateViewportScale() {
     const scaledHeight = displayCanvasHeight * viewportScale;
     const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
     let offsetY = 2;
-    if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
+    if (isDualScreenGame) {
+      offsetY = viewportH - scaledHeight;
+    } else if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
       offsetY = Math.max(2, (viewportH - scaledHeight) / 2);
     }
 
@@ -3067,10 +3070,7 @@ function updateLandscapeHud() {
           const displayCanvasHeight = canvas.height / 2;
           const scaledWidth = canvas.width * viewportScale;
           const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
-          let offsetY = 2;
-          if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
-            offsetY = Math.max(2, (viewportH - (displayCanvasHeight * viewportScale)) / 2);
-          }
+          const offsetY = viewportH - (displayCanvasHeight * viewportScale);
           const gridLeftCanvas = game.getGridLeft ? game.getGridLeft() : 28;
           const cellSizeVal = GAME_CONFIG.BLOCK_SIZE * viewportScale;
           const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;
@@ -3110,10 +3110,7 @@ function updateLandscapeHud() {
       const displayCanvasHeight = canvas.height / 2;
       const scaledWidth = canvas.width * viewportScale;
       const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
-      let offsetY = 2;
-      if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
-        offsetY = Math.max(2, (viewportH - (displayCanvasHeight * viewportScale)) / 2);
-      }
+      const offsetY = viewportH - (displayCanvasHeight * viewportScale);
       const gridLeftCanvas = game.getGridLeft ? game.getGridLeft() : 28;
       const cellSizeVal = GAME_CONFIG.BLOCK_SIZE * viewportScale;
       const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;

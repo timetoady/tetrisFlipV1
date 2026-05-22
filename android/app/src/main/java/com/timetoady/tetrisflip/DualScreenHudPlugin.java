@@ -65,15 +65,15 @@ public class DualScreenHudPlugin extends Plugin {
                 if (getBridge() != null && getBridge().getWebView() != null) {
                     getBridge().getWebView().addJavascriptInterface(new Object() {
                         @JavascriptInterface
-                        public void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped) {
-                            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f);
+                        public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped) {
+                            pushFrame(cells, score, level, lines, status, isFlipped, 0.0, 0.0, 0.0);
                         }
 
                         @JavascriptInterface
-                        public void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop) {
+                        public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped, double cellSize, double gridLeft, double gridTop) {
                             getActivity().runOnUiThread(() -> {
                                 if (controller != null && controller.hasPresentation()) {
-                                    controller.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop);
+                                    controller.pushFrame(cells, (int) score, (int) level, (int) lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop);
                                 }
                             });
                         }

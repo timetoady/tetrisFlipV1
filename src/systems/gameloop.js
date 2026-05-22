@@ -529,9 +529,8 @@ export class GameLoop {
 
   getDualScreenBoardState() {
     const cols = GAME_CONFIG.COLS;
-    // The bottom screen (presentation) shows the active field — the bottom half of the canvas.
-    // When !isFlipped: active field = rows 20-39 (FIELD_A owns bottom)
-    // When isFlipped: active field = rows 0-19 (FIELD_B owns bottom after flip)
+    // The bottom screen (presentation) shows the active field (rows 20-39 when not flipped,
+    // and rows 0-19 when flipped) so that the active falling piece is always on the lower screen.
     const startY = this.board.isFlipped ? 0 : 20;
     const totalRows = 20;
 
@@ -551,8 +550,8 @@ export class GameLoop {
       for (const block of blocks) {
         const px = piece.x + block.x;
         const py = piece.y + block.y;
-        if (px >= 0 && px < cols && py >= startY && py < startY + totalRows) {
-          const localY = py - startY;
+        const localY = py - 20;
+        if (px >= 0 && px < cols && localY >= 0 && localY < totalRows) {
           cellValues[localY][px] = piece.type + typeValueOffset;
         }
       }
@@ -564,8 +563,8 @@ export class GameLoop {
       for (const block of blocks) {
         const px = piece.x + block.x;
         const py = ghostY + block.y;
-        if (px >= 0 && px < cols && py >= startY && py < startY + totalRows) {
-          const localY = py - startY;
+        const localY = py - 20;
+        if (px >= 0 && px < cols && localY >= 0 && localY < totalRows) {
           if (cellValues[localY][px] === 0) {
             cellValues[localY][px] = piece.type + 10;
           }
@@ -598,7 +597,7 @@ export class GameLoop {
     }
 
     const { score, level, lines } = this.getScoreState();
-    const status = this.paused ? "Paused" : "Playing";
+    const status = this.paused ? "Paused" : (this.gameOver ? "Game Over" : "Playing");
 
     return {
       cells: flatCells,

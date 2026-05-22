@@ -2780,8 +2780,10 @@ function updateViewportScale() {
         canvasContainer.style.overflow = "";
       }
 
-      const translateY = (isDualScreenGame && isFlipped) ? -displayCanvasHeight : 0;
-      canvas.style.transform = `translateY(${translateY}px)`;
+      // In dual-screen game mode, the top screen always shows the top half
+      // of the canvas (rows 0-19). The flip mechanic moves pieces between
+      // halves on the canvas itself, so no translation is needed.
+      canvas.style.transform = "translateY(0px)";
       canvas.style.transformOrigin = "top left";
     } else {
       canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
@@ -2791,6 +2793,26 @@ function updateViewportScale() {
 
   updateHudDebugBadge();
   positionTouchButtons();
+}
+
+/**
+ * Lightweight per-frame clip sync for dual-screen game mode.
+ * Ensures the top screen always shows the top half of the canvas.
+ * The two physical screens form one continuous display split in half;
+ * the flip mechanic moves pieces between halves on the canvas itself.
+ * Does NOT do any layout recalculation — safe to call every frame.
+ */
+function syncDualScreenClip() {
+  const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  if (!isDualScreenGame) return;
+  const canvasContainer = document.getElementById("canvas-container");
+  if (!canvasContainer) return;
+  // Always show the top half — no translation needed.
+  const current = canvas.style.transform;
+  if (current !== "translateY(0px)") {
+    canvas.style.transform = "translateY(0px)";
+    canvas.style.transformOrigin = "top left";
+  }
 }
 
 
@@ -3026,81 +3048,77 @@ function updateLandscapeHud() {
   if (activeMode === "vanillaClassic" && typeof game.getMomentumState === "function") {
     updateHudMeter(hudMomentumFill, game.getMomentumState("p1"));
   }
-}
-
-function pushDualScreenHud(nowMs) {
+}function pushDualScreenHud(nowMs) {
   if (!DualScreenHud) return;
   const mode = DUAL_SCREEN_MODES[dualScreenModeIndex].id;
   if (mode === "off") return;
 
-  if (mode === "game") {
+  if (mode === "game" && game && !menuActive) {
     if (!window.DualScreenHudBridge) {
       // Bridge not yet registered — fall back to Capacitor plugin bridge for game mode
       if (nowMs - dualScreenHudLastPushMs < 16) return;
       dualScreenHudLastPushMs = nowMs;
-      if (game && !menuActive) {
-        const state = game.getDualScreenBoardState();
-        if (state) {
-          try {
-            const wrapRect = wrap.getBoundingClientRect();
-            const viewportW = wrapRect.width;
-            const viewportH = wrapRect.height;
-            const displayCanvasHeight = canvas.height / 2;
-            const scaledWidth = canvas.width * viewportScale;
-            const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
-            let offsetY = 2;
-            if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
-              offsetY = Math.max(2, (viewportH - (displayCanvasHeight * viewportScale)) / 2);
-            }
-            const gridLeftCanvas = game.getGridLeft ? game.getGridLeft() : 28;
-            const cellSizeVal = GAME_CONFIG.BLOCK_SIZE * viewportScale;
-            const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;
-            const gridTopVal = offsetY;
-
-            DualScreenHud.updateHud({
-              displayMode: "game",
-              board: {
-                cols: 10,
-                rows: 20,
-                cells: state.cells
-              },
-              score: {
-                score: state.score,
-                level: state.level,
-                lines: state.lines
-              },
-              modeLabel: activeMode,
-              status: state.status,
-              isFlipped: state.isFlipped,
-              cellSize: cellSizeVal,
-              gridLeft: gridLeftVal,
-              gridTop: gridTopVal
-            });
-          } catch (err) {
-            console.warn("Failed to push game frame via Capacitor:", err);
+      const state = game.getDualScreenBoardState();
+      if (state) {
+        try {
+          const wrapRect = wrap.getBoundingClientRect();
+          const viewportW = wrapRect.width;
+          const viewportH = wrapRect.height;
+          const displayCanvasHeight = canvas.height / 2;
+          const scaledWidth = canvas.width * viewportScale;
+          const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
+          let offsetY = 2;
+          if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
+            offsetY = Math.max(2, (viewportH - (displayCanvasHeight * viewportScale)) / 2);
           }
+          const gridLeftCanvas = game.getGridLeft ? game.getGridLeft() : 28;
+          const cellSizeVal = GAME_CONFIG.BLOCK_SIZE * viewportScale;
+          const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;
+          const gridTopVal = offsetY;
+
+          DualScreenHud.updateHud({
+            displayMode: "game",
+            board: {
+              cols: 10,
+              rows: 20,
+              cells: state.cells
+            },
+            score: {
+              score: state.score,
+              level: state.level,
+              lines: state.lines
+            },
+            modeLabel: activeMode,
+            status: state.status,
+            isFlipped: state.isFlipped,
+            cellSize: cellSizeVal,
+            gridLeft: gridLeftVal,
+            gridTop: gridTopVal
+          });
+        } catch (err) {
+          console.warn("Failed to push game frame via Capacitor:", err);
         }
       }
       return;
     }
-    if (game && !menuActive) {
-      const state = game.getDualScreenBoardState();
-      if (state) {
-        const wrapRect = wrap.getBoundingClientRect();
-        const viewportW = wrapRect.width;
-        const viewportH = wrapRect.height;
-        const displayCanvasHeight = canvas.height / 2;
-        const scaledWidth = canvas.width * viewportScale;
-        const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
-        let offsetY = 2;
-        if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
-          offsetY = Math.max(2, (viewportH - (displayCanvasHeight * viewportScale)) / 2);
-        }
-        const gridLeftCanvas = game.getGridLeft ? game.getGridLeft() : 28;
-        const cellSizeVal = GAME_CONFIG.BLOCK_SIZE * viewportScale;
-        const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;
-        const gridTopVal = offsetY;
+    const state = game.getDualScreenBoardState();
+    if (state) {
+      const wrapRect = wrap.getBoundingClientRect();
+      const viewportW = wrapRect.width;
+      const viewportH = wrapRect.height;
+      const displayCanvasHeight = canvas.height / 2;
+      const scaledWidth = canvas.width * viewportScale;
+      const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
+      let offsetY = 2;
+      if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
+        offsetY = Math.max(2, (viewportH - (displayCanvasHeight * viewportScale)) / 2);
+      }
+      const gridLeftCanvas = game.getGridLeft ? game.getGridLeft() : 28;
+      const cellSizeVal = GAME_CONFIG.BLOCK_SIZE * viewportScale;
+      const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;
+      const gridTopVal = offsetY;
 
+      try {
         window.DualScreenHudBridge.pushFrame(
           state.cells,
           state.score,
@@ -3112,9 +3130,11 @@ function pushDualScreenHud(nowMs) {
           gridLeftVal,
           gridTopVal
         );
+      } catch (err) {
+        console.warn("Failed to push game frame via JS bridge:", err);
       }
     }
-  } else if (mode === "info") {
+  } else {
     if (nowMs - dualScreenHudLastPushMs < 120) return;
     dualScreenHudLastPushMs = nowMs;
     const payload = getMenuStatePayload();
@@ -3211,12 +3231,12 @@ function getMenuStatePayload() {
     } else if (["marathon", "burst", "vanillaClassic", "chillax", "coop", "sirtet"].includes(menuState)) {
       let actionIndex = 0;
       let gravityVal = 1;
-      if (menuState === "marathon") { actionIndex = marathonActionIndex; gravityVal = gravity; }
-      else if (menuState === "burst") { actionIndex = burstActionIndex; gravityVal = burstGravity; }
-      else if (menuState === "vanillaClassic") { actionIndex = vanillaClassicActionIndex; gravityVal = vanillaClassicGravity; }
-      else if (menuState === "chillax") { actionIndex = chillaxActionIndex; gravityVal = chillaxGravity; }
-      else if (menuState === "coop") { actionIndex = coopActionIndex; gravityVal = coopGravity; }
-      else if (menuState === "sirtet") { actionIndex = sirtetActionIndex; gravityVal = sirtetGravity; }
+      if (menuState === "marathon") { actionIndex = marathonActionIndex; gravityVal = startingGravity; }
+      else if (menuState === "burst") { actionIndex = burstActionIndex; gravityVal = startingGravity; }
+      else if (menuState === "vanillaClassic") { actionIndex = vanillaClassicActionIndex; gravityVal = startingGravity; }
+      else if (menuState === "chillax") { actionIndex = chillaxActionIndex; gravityVal = startingGravity; }
+      else if (menuState === "coop") { actionIndex = coopActionIndex; gravityVal = startingGravity; }
+      else if (menuState === "sirtet") { actionIndex = sirtetActionIndex; gravityVal = startingGravity; }
 
       payload.menu = {
         layout: "mode",
@@ -3896,6 +3916,7 @@ function frame(now) {
     game.update(delta);
   }
   game.draw();
+  syncDualScreenClip();
   updateLandscapeHud();
   pushDualScreenHud(now);
   updateMusicState(now);

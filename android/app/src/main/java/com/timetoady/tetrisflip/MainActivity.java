@@ -12,6 +12,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(DualScreenHudPlugin.class);
         super.onCreate(savedInstanceState);
         enableImmersiveFullscreen();
     }

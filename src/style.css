@@ -1,4 +1,4 @@
-﻿
+
 
 .hud-value--timer {
   font-size: clamp(24px, calc(44px * var(--hud-scale, 1)), 44px);
@@ -67,16 +67,22 @@ body::before {
   position: relative;
   z-index: 1;
 }
-canvas {
+.canvas-container {
   position: relative;
   z-index: 2;
-  display: block;
-  image-rendering: pixelated;
+  overflow: hidden;
+  align-self: center;
   background: #111;
   border: 2px solid #2a2a2a;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+canvas {
+  position: relative;
+  z-index: 1;
+  display: block;
+  image-rendering: pixelated;
+  background: #111;
   touch-action: none;
-  align-self: center;
 }
 .overlay {
   position: fixed;

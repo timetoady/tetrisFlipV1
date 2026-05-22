@@ -25,6 +25,7 @@ export class GameLoop {
     this.onGameOver = callbacks.onGameOver || (() => {});
     this.onGarbageCleared = callbacks.onGarbageCleared || (() => {});
     this.onPauseBack = callbacks.onPauseBack || (() => {});
+    this.onFlip = callbacks.onFlip || (() => {});
     this.board = new Board();
     this.stackCache = null;
     this.stackCacheW = 0;
@@ -523,6 +524,89 @@ export class GameLoop {
       p2Lines: this.p2Lines,
       p2Level: this.p2Level,
       combinedScore: this.score + this.p2Score
+    };
+  }
+
+  getDualScreenBoardState() {
+    const cols = GAME_CONFIG.COLS;
+    // The bottom screen (presentation) shows the active field — the bottom half of the canvas.
+    // When !isFlipped: active field = rows 20-39 (FIELD_A owns bottom)
+    // When isFlipped: active field = rows 0-19 (FIELD_B owns bottom after flip)
+    const startY = this.board.isFlipped ? 0 : 20;
+    const totalRows = 20;
+
+    const cellValues = Array.from({ length: totalRows }, () => new Array(cols).fill(0));
+
+    for (let y = 0; y < totalRows; y++) {
+      const boardY = startY + y;
+      for (let x = 0; x < cols; x++) {
+        const cell = this.board.grid[boardY][x];
+        cellValues[y][x] = cell.value;
+      }
+    }
+
+    const overlayPiece = (piece, typeValueOffset = 0) => {
+      if (!piece) return;
+      const blocks = getBlocks(piece);
+      for (const block of blocks) {
+        const px = piece.x + block.x;
+        const py = piece.y + block.y;
+        if (px >= 0 && px < cols && py >= startY && py < startY + totalRows) {
+          const localY = py - startY;
+          cellValues[localY][px] = piece.type + typeValueOffset;
+        }
+      }
+    };
+
+    const overlayGhostPiece = (piece, ghostY) => {
+      if (!piece || ghostY === piece.y) return;
+      const blocks = getBlocks(piece);
+      for (const block of blocks) {
+        const px = piece.x + block.x;
+        const py = ghostY + block.y;
+        if (px >= 0 && px < cols && py >= startY && py < startY + totalRows) {
+          const localY = py - startY;
+          if (cellValues[localY][px] === 0) {
+            cellValues[localY][px] = piece.type + 10;
+          }
+        }
+      }
+    };
+
+    if (!this.isClearing && this.activePiece) {
+      overlayPiece(this.activePiece, 20);
+      const ghostY = this.getGhostY();
+      overlayGhostPiece(this.activePiece, ghostY);
+    }
+
+    if (!this.isClearing && this.isCoopMode() && this.p2Piece) {
+      overlayPiece(this.p2Piece, 20);
+      const ghostY = this.getGhostYForPiece(
+        this.p2Piece,
+        this.getP2Owner(),
+        -1,
+        this.activePiece
+      );
+      overlayGhostPiece(this.p2Piece, ghostY);
+    }
+
+    let flatCells = "";
+    for (let y = 0; y < totalRows; y++) {
+      for (let x = 0; x < cols; x++) {
+        flatCells += cellValues[y][x].toString(36);
+      }
+    }
+
+    const { score, level, lines } = this.getScoreState();
+    const status = this.paused ? "Paused" : "Playing";
+
+    return {
+      cells: flatCells,
+      score,
+      level,
+      lines,
+      status,
+      isFlipped: this.board.isFlipped
     };
   }
 
@@ -2266,6 +2350,7 @@ export class GameLoop {
       this.updateGridOffsets();
       this.playFlipSound();
       this.flipSinceClear = true;
+      this.onFlip();
       if (this.handleFlipJamForPiece(
         this.activePiece,
         this.getActivePieceOwner(),

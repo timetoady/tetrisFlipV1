@@ -332,6 +332,10 @@
                 <span>Flip P2 HUD</span>
                 <span id="options-flip-p2-hud-value">Off</span>
               </div>
+              <div class="menu-option" data-option="dual-screen-hud" id="options-dual-screen-hud">
+                <span>Dual Screen</span>
+                <span id="options-dual-screen-hud-value">Info</span>
+              </div>
               <div class="menu-actions">
                 <button id="options-back">Back</button>
               </div>
@@ -727,7 +731,9 @@
           </div>
         </div>
       </div>
-      <canvas id="game"></canvas>
+      <div class="canvas-container" id="canvas-container">
+        <canvas id="game"></canvas>
+      </div>
     </div>
     <button class="touch-flip" id="touch-flip" type="button" hidden>
       FLIP!

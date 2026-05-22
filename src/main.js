@@ -1,3 +1,4 @@
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { GAME_CONFIG } from "./constants.js";
 import { createInput } from "./input.js";
 import { GameLoop } from "./systems/gameloop.js";
@@ -107,6 +108,11 @@ if (optionsLayoutDebugRow) optionsLayoutDebugRow.hidden = true;
 const optionsLayoutDebugValue = document.getElementById("options-layout-debug-value");
 const optionsFlipP2HudRow = document.getElementById("options-flip-p2-hud");
 const optionsFlipP2HudValue = document.getElementById("options-flip-p2-hud-value");
+const DualScreenHud = Capacitor.getPlatform() === "web"
+  ? null
+  : registerPlugin("DualScreenHud");
+const optionsDualScreenHudRow = document.getElementById("options-dual-screen-hud");
+const optionsDualScreenHudValue = document.getElementById("options-dual-screen-hud-value");
 const optionsBack = document.getElementById("options-back");
 /** @type {HTMLButtonElement} */
 const helpBack = document.getElementById("help-back");
@@ -413,7 +419,7 @@ let nativeApp = null;
 let pendingEntry = null;
 let nameEntryIndex = 0;
 let optionsIndex = 0;
-const OPTIONS_ITEM_COUNT = 11;
+const OPTIONS_ITEM_COUNT = 12;
 let game = null;
 let activeMode = "marathon";
 let pendingScoreMode = "marathon";
@@ -485,8 +491,18 @@ const VFX_VOLUME_KEY = "tetrisflip:audio:vfxVolume";
 const MUSIC_VOLUME_MAX = 0.7;
 const SHOW_FPS_KEY = "tetrisflip:debug:showFps";
 const FLIP_P2_HUD_KEY = "tetrisflip:ui:flipP2Hud";
+const DUAL_SCREEN_HUD_KEY = "tetrisflip:android:dualScreenHud";
+const DUAL_SCREEN_MODES = [
+  { id: "info", label: "Info" },
+  { id: "game", label: "Game" },
+  { id: "off", label: "Off" }
+];
 let showFps = false;
 let flipP2Hud = false;
+let dualScreenModeIndex = 0;
+let viewportScale = 1;
+let dualScreenHudLastPushMs = 0;
+let dualScreenHudStatus = "idle";
 let fpsFrames = 0;
 let fpsAccumMs = 0;
 const VFX_VOLUME_MAX = 6.0;
@@ -1113,7 +1129,10 @@ function updateOptionsSelection() {
   if (optionsFlipP2HudRow) {
     optionsFlipP2HudRow.classList.toggle("is-selected", optionsIndex === 9);
   }
-  optionsBack.classList.toggle("is-selected", optionsIndex === 10);
+  if (optionsDualScreenHudRow) {
+    optionsDualScreenHudRow.classList.toggle("is-selected", optionsIndex === 10);
+  }
+  optionsBack.classList.toggle("is-selected", optionsIndex === 11);
   const optionItems = [
     optionsLayoutModeRow,
     optionsOrientationRow,
@@ -1125,6 +1144,7 @@ function updateOptionsSelection() {
     optionsHelpRow,
     optionsShowFpsRow,
     optionsFlipP2HudRow,
+    optionsDualScreenHudRow,
     optionsBack
   ];
   scrollMenuItemIntoView(optionItems[optionsIndex]);
@@ -1626,6 +1646,38 @@ function applyFlipP2Hud(enabled, persist = true) {
     game.setFlipP2Hud(flipP2Hud);
   }
 }
+
+function applyDualScreenHud(indexOrId, persist = true) {
+  if (typeof indexOrId === "string") {
+    const found = DUAL_SCREEN_MODES.findIndex((m) => m.id === indexOrId);
+    dualScreenModeIndex = found >= 0 ? found : 0;
+  } else {
+    dualScreenModeIndex = (indexOrId + DUAL_SCREEN_MODES.length) % DUAL_SCREEN_MODES.length;
+  }
+  const mode = DUAL_SCREEN_MODES[dualScreenModeIndex];
+  if (optionsDualScreenHudValue) {
+    optionsDualScreenHudValue.textContent = mode.label;
+  }
+  document.body.dataset.dualScreenMode = mode.id;
+
+  if (persist) {
+    try {
+      localStorage.setItem("tetrisflip:android:dualScreenHud", mode.id);
+    } catch {
+      // ignore
+    }
+  }
+
+  updateViewportScale();
+
+  if (DualScreenHud) {
+    try {
+      DualScreenHud.setEnabled({ enabled: mode.id !== "off" });
+    } catch (err) {
+      console.warn("Failed to notify DualScreenHud plugin:", err);
+    }
+  }
+}
 const MUSIC_RECOVERY_STALL_MS = 6000;
 const MUSIC_RECOVERY_COOLDOWN_MS = 20000;
 
@@ -1970,10 +2022,19 @@ try {
 } catch {
   applyLayoutDebug(false, false);
 }
+try {
+  const stored = localStorage.getItem("tetrisflip:android:dualScreenHud");
+  applyDualScreenHud(stored || "info", false);
+} catch {
+  applyDualScreenHud("info", false);
+}
 game = new GameLoop(ctx, input, {
-onGameOver() {
-  setOverlayMode("gameover");
-  overlay.hidden = false;
+  onFlip() {
+    updateViewportScale();
+  },
+  onGameOver() {
+    setOverlayMode("gameover");
+    overlay.hidden = false;
     gameOverActive = true;
     gameOverIndex = 0;
     updateGameOverSelection();
@@ -2556,6 +2617,13 @@ if (optionsFlipP2HudRow) {
     applyFlipP2Hud(!flipP2Hud);
   });
 }
+if (optionsDualScreenHudRow) {
+  optionsDualScreenHudRow.addEventListener("click", () => {
+    optionsIndex = 10;
+    updateOptionsSelection();
+    applyDualScreenHud(dualScreenModeIndex + 1);
+  });
+}
 
 
 if (helpBack) {
@@ -2586,7 +2654,6 @@ function setSplashImage() {
   splashImage.src = wide ? splashWideSrc : splashTallSrc;
 }
 
-let viewportScale = 1;
 function updateHudDebugBadge() {
   if (!hudDebugBadge || hudDebugBadge.hidden) return;
   const vv = window.visualViewport;
@@ -2637,7 +2704,12 @@ function getTouchScale() {
   const availableH = viewportH - padding * 2;
   if (availableW <= 0 || availableH <= 0) return 1;
   const scaleW = availableW / canvas.width;
-  const scaleH = availableH / canvas.height;
+  const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  const displayCanvasHeight = isDualScreenGame ? (canvas.height / 2) : canvas.height;
+  const scaleH = availableH / displayCanvasHeight;
+  if (isDualScreenGame) {
+    return Math.min(scaleW, scaleH);
+  }
   return Math.min(1, scaleW, scaleH);
 }
 
@@ -2665,10 +2737,19 @@ function updateViewportScale() {
   // Reset layout + transforms first.
   wrap.style.transform = "";
   wrap.style.transformOrigin = "";
+  const canvasContainer = document.getElementById("canvas-container");
+  if (canvasContainer) {
+    canvasContainer.style.transform = "";
+    canvasContainer.style.transformOrigin = "";
+    canvasContainer.style.width = "";
+    canvasContainer.style.height = "";
+    canvasContainer.style.overflow = "";
+  }
   canvas.style.transform = "";
   canvas.style.transformOrigin = "";
 
-  if (menuVisible || viewportScale >= 1) {
+  const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  if (menuVisible || (viewportScale >= 1 && !isDualScreenGame)) {
     wrap.style.placeItems = "";
   } else {
     // When scaling is active, keep overlays centered by transforming the canvas only.
@@ -2676,15 +2757,36 @@ function updateViewportScale() {
     const wrapRect = wrap.getBoundingClientRect();
     const viewportW = wrapRect.width;
     const viewportH = wrapRect.height;
+    const displayCanvasHeight = isDualScreenGame ? (canvas.height / 2) : canvas.height;
+    const isFlipped = game ? game.board.isFlipped : false;
+    document.body.dataset.isFlipped = isFlipped ? "true" : "false";
+
     const scaledWidth = canvas.width * viewportScale;
-    const scaledHeight = canvas.height * viewportScale;
+    const scaledHeight = displayCanvasHeight * viewportScale;
     const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
     let offsetY = 2;
     if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
       offsetY = Math.max(2, (viewportH - scaledHeight) / 2);
     }
-    canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
-    canvas.style.transformOrigin = "top left";
+
+    if (canvasContainer) {
+      canvasContainer.style.width = `${canvas.width}px`;
+      canvasContainer.style.height = `${displayCanvasHeight}px`;
+      canvasContainer.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
+      canvasContainer.style.transformOrigin = "top left";
+      if (isDualScreenGame) {
+        canvasContainer.style.overflow = "hidden";
+      } else {
+        canvasContainer.style.overflow = "";
+      }
+
+      const translateY = (isDualScreenGame && isFlipped) ? -displayCanvasHeight : 0;
+      canvas.style.transform = `translateY(${translateY}px)`;
+      canvas.style.transformOrigin = "top left";
+    } else {
+      canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
+      canvas.style.transformOrigin = "top left";
+    }
   }
 
   updateHudDebugBadge();
@@ -2923,6 +3025,352 @@ function updateLandscapeHud() {
   }
   if (activeMode === "vanillaClassic" && typeof game.getMomentumState === "function") {
     updateHudMeter(hudMomentumFill, game.getMomentumState("p1"));
+  }
+}
+
+function pushDualScreenHud(nowMs) {
+  if (!DualScreenHud) return;
+  const mode = DUAL_SCREEN_MODES[dualScreenModeIndex].id;
+  if (mode === "off") return;
+
+  if (mode === "game") {
+    if (!window.DualScreenHudBridge) {
+      // Bridge not yet registered — fall back to Capacitor plugin bridge for game mode
+      if (nowMs - dualScreenHudLastPushMs < 16) return;
+      dualScreenHudLastPushMs = nowMs;
+      if (game && !menuActive) {
+        const state = game.getDualScreenBoardState();
+        if (state) {
+          try {
+            const wrapRect = wrap.getBoundingClientRect();
+            const viewportW = wrapRect.width;
+            const viewportH = wrapRect.height;
+            const displayCanvasHeight = canvas.height / 2;
+            const scaledWidth = canvas.width * viewportScale;
+            const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
+            let offsetY = 2;
+            if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
+              offsetY = Math.max(2, (viewportH - (displayCanvasHeight * viewportScale)) / 2);
+            }
+            const gridLeftCanvas = game.getGridLeft ? game.getGridLeft() : 28;
+            const cellSizeVal = GAME_CONFIG.BLOCK_SIZE * viewportScale;
+            const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;
+            const gridTopVal = offsetY;
+
+            DualScreenHud.updateHud({
+              displayMode: "game",
+              board: {
+                cols: 10,
+                rows: 20,
+                cells: state.cells
+              },
+              score: {
+                score: state.score,
+                level: state.level,
+                lines: state.lines
+              },
+              modeLabel: activeMode,
+              status: state.status,
+              isFlipped: state.isFlipped,
+              cellSize: cellSizeVal,
+              gridLeft: gridLeftVal,
+              gridTop: gridTopVal
+            });
+          } catch (err) {
+            console.warn("Failed to push game frame via Capacitor:", err);
+          }
+        }
+      }
+      return;
+    }
+    if (game && !menuActive) {
+      const state = game.getDualScreenBoardState();
+      if (state) {
+        const wrapRect = wrap.getBoundingClientRect();
+        const viewportW = wrapRect.width;
+        const viewportH = wrapRect.height;
+        const displayCanvasHeight = canvas.height / 2;
+        const scaledWidth = canvas.width * viewportScale;
+        const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
+        let offsetY = 2;
+        if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
+          offsetY = Math.max(2, (viewportH - (displayCanvasHeight * viewportScale)) / 2);
+        }
+        const gridLeftCanvas = game.getGridLeft ? game.getGridLeft() : 28;
+        const cellSizeVal = GAME_CONFIG.BLOCK_SIZE * viewportScale;
+        const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;
+        const gridTopVal = offsetY;
+
+        window.DualScreenHudBridge.pushFrame(
+          state.cells,
+          state.score,
+          state.level,
+          state.lines,
+          state.status,
+          state.isFlipped,
+          cellSizeVal,
+          gridLeftVal,
+          gridTopVal
+        );
+      }
+    }
+  } else if (mode === "info") {
+    if (nowMs - dualScreenHudLastPushMs < 120) return;
+    dualScreenHudLastPushMs = nowMs;
+    const payload = getMenuStatePayload();
+    try {
+      DualScreenHud.updateHud(payload);
+    } catch (err) {
+      console.warn("Failed to update HUD via Capacitor:", err);
+    }
+  }
+}
+
+function getMenuStatePayload() {
+  if (menuActive) {
+    const payload = {
+      displayMode: "info",
+      status: menuState.toUpperCase()
+    };
+
+    if (menuState === "splash") {
+      payload.menu = {
+        layout: "splash",
+        title: "TETRIS FLIP",
+        prompt: "PRESS TO START",
+        author: "a fan game by Timetoady",
+        tagline: "A DUAL-FIELD FLIPPING PUZZLE GAME",
+        accentPieces: [6, 3, 5]
+      };
+    } else if (menuState === "options") {
+      const optionItems = [
+        optionsLayoutModeRow,
+        optionsOrientationRow,
+        optionsRotateRow,
+        optionsMouseRow,
+        optionsMusicRow,
+        optionsMusicVolumeRow,
+        optionsVfxVolumeRow,
+        optionsHelpRow,
+        optionsShowFpsRow,
+        optionsFlipP2HudRow,
+        optionsDualScreenHudRow,
+        optionsBack
+      ];
+      const selectedRow = optionItems[optionsIndex];
+      let label = "";
+      let val = "";
+      if (selectedRow) {
+        if (selectedRow === optionsBack) {
+          label = "BACK";
+          val = "";
+        } else {
+          const span0 = selectedRow.querySelector("span:first-child");
+          const span1 = selectedRow.querySelector("span:last-child");
+          label = span0 ? (span0.querySelector(".menu-label-full")?.textContent || span0.textContent) : "";
+          val = span1 ? span1.textContent : "";
+        }
+      }
+
+      payload.menu = {
+        layout: "options",
+        title: "OPTIONS",
+        selectedLabel: label,
+        selectedValue: val,
+        description: getOptionDescription(optionsIndex),
+        hint: "Left/Right to change. X confirm, Z back"
+      };
+
+      if (optionsIndex === 2) {
+        const layout = ROTATE_LAYOUTS[rotateLayoutIndex];
+        let cw = "A";
+        let ccw = "B";
+        let badge = "SOUTH/EAST";
+        if (layout.id === "southWest") {
+          cw = "A";
+          ccw = "X";
+          badge = "SOUTH/WEST";
+        } else if (layout.id === "sidewaysSouthEast") {
+          cw = "A (South)";
+          ccw = "B (East)";
+          badge = "SIDEWAYS";
+        } else if (layout.id === "sidewaysSouthWest") {
+          cw = "A (South)";
+          ccw = "X (West)";
+          badge = "SIDEWAYS";
+        }
+        payload.menu.previewKind = "rotate";
+        payload.menu.previewData = {
+          name: layout.label,
+          badge: badge,
+          cw: cw,
+          ccw: ccw,
+          hint: "Tap options to see mappings"
+        };
+      }
+    } else if (["marathon", "burst", "vanillaClassic", "chillax", "coop", "sirtet"].includes(menuState)) {
+      let actionIndex = 0;
+      let gravityVal = 1;
+      if (menuState === "marathon") { actionIndex = marathonActionIndex; gravityVal = gravity; }
+      else if (menuState === "burst") { actionIndex = burstActionIndex; gravityVal = burstGravity; }
+      else if (menuState === "vanillaClassic") { actionIndex = vanillaClassicActionIndex; gravityVal = vanillaClassicGravity; }
+      else if (menuState === "chillax") { actionIndex = chillaxActionIndex; gravityVal = chillaxGravity; }
+      else if (menuState === "coop") { actionIndex = coopActionIndex; gravityVal = coopGravity; }
+      else if (menuState === "sirtet") { actionIndex = sirtetActionIndex; gravityVal = sirtetGravity; }
+
+      payload.menu = {
+        layout: "mode",
+        title: menuState === "vanillaClassic" ? "VANILLA CLASSIC" : menuState.toUpperCase(),
+        description: `Start a game with customized gravity settings.`,
+        selected: actionIndex === 0 ? "START" : "BACK",
+        detail: `Gravity: ${gravityVal}`,
+        hint: "Arrows to choose. X confirm, Z back"
+      };
+    } else if (menuState === "garbage") {
+      let actionLabel = "START";
+      if (garbageActionIndex === 0) actionLabel = "SPEED";
+      else if (garbageActionIndex === 1) actionLabel = "HEIGHT";
+      else if (garbageActionIndex === 2) actionLabel = "START";
+      else if (garbageActionIndex === 3) actionLabel = "BACK";
+
+      payload.menu = {
+        layout: "mode",
+        title: "GARBAGE CHALLENGE",
+        description: "Clear rising rows of garbage blocks as fast as possible.",
+        selected: actionLabel,
+        detail: `Speed: ${garbageSpeed} | Height: ${garbageHeight}`,
+        hint: "Arrows to choose. X confirm, Z back"
+      };
+    } else if (menuState === "redemption") {
+      let actionLabel = "START";
+      if (redemptionActionIndex === 0) actionLabel = "GRAVITY";
+      else if (redemptionActionIndex === 1) actionLabel = "LIVES";
+      else if (redemptionActionIndex === 2) actionLabel = "START";
+      else if (redemptionActionIndex === 3) actionLabel = "BACK";
+
+      payload.menu = {
+        layout: "mode",
+        title: "REDEMPTION MODE",
+        description: "Play with multiple lives. Restores board on top-out.",
+        selected: actionLabel,
+        detail: `Gravity: ${redemptionGravity} | Lives: ${redemptionLives}`,
+        hint: "Arrows to choose. X confirm, Z back"
+      };
+    } else {
+      payload.menu = {
+        layout: "mode",
+        title: menuState.toUpperCase(),
+        description: "",
+        instruction: "",
+        hint: "Arrows to choose. X confirm, Z back"
+      };
+    }
+
+    return payload;
+  } else {
+    if (!game) return { displayMode: "info", status: "IDLE" };
+    const scoreState = game.getScoreState ? game.getScoreState() : { score: 0, level: 0, lines: 0, timeMs: 0 };
+    const coop = typeof game.isCoopMode === "function" ? game.isCoopMode() : false;
+
+    let p2Score = null;
+    let p2Queue = null;
+    if (coop) {
+      p2Score = {
+        score: scoreState.p2Score || 0,
+        level: scoreState.p2Level || 0,
+        lines: scoreState.p2Lines || 0
+      };
+      if (typeof game.getQueueState === "function") {
+        p2Queue = game.getQueueState("p2");
+      }
+    }
+
+    let garbage = null;
+    if (activeMode === "garbage" && typeof game.getGarbageProgress === "function") {
+      const prog = game.getGarbageProgress();
+      garbage = {
+        speed: activeGarbageSpeed,
+        height: activeGarbageHeight,
+        time: formatHudTime(scoreState.timeMs),
+        remaining: prog ? prog.remaining : 0,
+        total: prog ? prog.total : 0
+      };
+    }
+
+    let redemption = null;
+    if (activeMode === "redemption" && typeof game.getLivesState === "function") {
+      const livesState = game.getLivesState();
+      redemption = {
+        lives: livesState ? livesState.lives : 0,
+        maxLives: livesState ? livesState.maxLives : 0
+      };
+    }
+
+    let runStats = null;
+    const showRunStats = !coop && (activeMode === "marathon" || activeMode === "vanillaClassic" || activeMode === "chillax" || activeMode === "sirtet");
+    if (showRunStats && typeof game.getPieceStats === "function") {
+      const stats = game.getPieceStats("p1");
+      runStats = {
+        counts: stats ? stats.counts : null,
+        droughtI: stats ? stats.droughtI : 0,
+        total: stats ? stats.total : 0
+      };
+    }
+
+    let momentum = null;
+    if (activeMode === "vanillaClassic" && typeof game.getMomentumState === "function") {
+      const mState = game.getMomentumState("p1");
+      if (mState) {
+        momentum = {
+          value: mState.value,
+          max: mState.max,
+          burstTimer: mState.burstTimer
+        };
+      }
+    }
+
+    let status = "Playing";
+    if (game.paused) {
+      status = "Paused";
+    } else if (gameOverActive) {
+      status = "Game Over";
+    }
+
+    return {
+      displayMode: "info",
+      status: status,
+      modeLabel: activeMode.charAt(0).toUpperCase() + activeMode.slice(1),
+      score: {
+        score: scoreState.score || 0,
+        level: scoreState.level || 0,
+        lines: scoreState.lines || 0,
+        timeMs: scoreState.timeMs || 0
+      },
+      queue: typeof game.getQueueState === "function" ? game.getQueueState("p1") : null,
+      p2Score: p2Score,
+      p2Queue: p2Queue,
+      garbage: garbage,
+      redemption: redemption,
+      runStats: runStats,
+      momentum: momentum
+    };
+  }
+}
+
+function getOptionDescription(index) {
+  switch (index) {
+    case 0: return "Adjust the overall screen layout and scaling.";
+    case 1: return "Toggle between portrait and landscape screen layout.";
+    case 2: return "Choose rotation button mappings on gamepads/devices.";
+    case 3: return "Configure mouse wheel behavior and click schemes.";
+    case 4: return "Change the background music track.";
+    case 5: return "Change the background music volume level.";
+    case 6: return "Change the sound effects volume level.";
+    case 7: return "Read the game controls and mechanics manual.";
+    case 8: return "Show the real-time frames-per-second performance counter.";
+    case 9: return "Display player 2 statistics on the primary screen layout.";
+    case 10: return "Dual screen setting for AYN Thor-like displays.";
+    default: return "";
   }
 }
 
@@ -3204,7 +3652,14 @@ function handleMenuInput() {
       if ((left || right) || confirm) {
         applyFlipP2Hud(!flipP2Hud);
       }
-    } else if (optionsIndex === 10 && confirm) {
+    } else if (optionsIndex === 10) {
+      if (left || right) {
+        const delta = right ? 1 : -1;
+        applyDualScreenHud(dualScreenModeIndex + delta);
+      } else if (confirm) {
+        applyDualScreenHud(dualScreenModeIndex + 1);
+      }
+    } else if (optionsIndex === 11 && confirm) {
       showScreen("mode");
     }
     if (consumeMenuBack()) {
@@ -3442,6 +3897,7 @@ function frame(now) {
   }
   game.draw();
   updateLandscapeHud();
+  pushDualScreenHud(now);
   updateMusicState(now);
   if (game.getPauseCursor) {
     canvas.style.cursor = game.getPauseCursor() || "";

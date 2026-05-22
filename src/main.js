@@ -2708,7 +2708,7 @@ function getTouchScale() {
   const displayCanvasHeight = isDualScreenGame ? (canvas.height / 2) : canvas.height;
   const scaleH = availableH / displayCanvasHeight;
   if (isDualScreenGame) {
-    return Math.min(scaleW, scaleH);
+    return Math.min(scaleW, scaleH) * 0.94;
   }
   return Math.min(1, scaleW, scaleH);
 }
@@ -3093,7 +3093,8 @@ function updateLandscapeHud() {
             isFlipped: state.isFlipped,
             cellSize: cellSizeVal,
             gridLeft: gridLeftVal,
-            gridTop: gridTopVal
+            gridTop: gridTopVal,
+            viewportW: viewportW
           });
         } catch (err) {
           console.warn("Failed to push game frame via Capacitor:", err);
@@ -3128,7 +3129,8 @@ function updateLandscapeHud() {
           state.isFlipped,
           cellSizeVal,
           gridLeftVal,
-          gridTopVal
+          gridTopVal,
+          viewportW
         );
       } catch (err) {
         console.warn("Failed to push game frame via JS bridge:", err);

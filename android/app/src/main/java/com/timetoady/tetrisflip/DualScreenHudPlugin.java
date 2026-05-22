@@ -66,14 +66,19 @@ public class DualScreenHudPlugin extends Plugin {
                     getBridge().getWebView().addJavascriptInterface(new Object() {
                         @JavascriptInterface
                         public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped) {
-                            pushFrame(cells, score, level, lines, status, isFlipped, 0.0, 0.0, 0.0);
+                            pushFrame(cells, score, level, lines, status, isFlipped, 0.0, 0.0, 0.0, 0.0);
                         }
 
                         @JavascriptInterface
                         public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped, double cellSize, double gridLeft, double gridTop) {
+                            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0.0);
+                        }
+
+                        @JavascriptInterface
+                        public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped, double cellSize, double gridLeft, double gridTop, double viewportW) {
                             getActivity().runOnUiThread(() -> {
                                 if (controller != null && controller.hasPresentation()) {
-                                    controller.pushFrame(cells, (int) score, (int) level, (int) lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop);
+                                    controller.pushFrame(cells, (int) score, (int) level, (int) lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop, (float) viewportW);
                                 }
                             });
                         }
@@ -186,12 +191,16 @@ public class DualScreenHudPlugin extends Plugin {
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped) {
-            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f, 0f);
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0f);
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW) {
             if (enabled && presentation != null) {
-                presentation.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop);
+                presentation.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW);
             }
         }
 
@@ -415,6 +424,7 @@ public class DualScreenHudPlugin extends Plugin {
                 double cellSize = hud.optDouble("cellSize", 0.0);
                 double gridLeft = hud.optDouble("gridLeft", 0.0);
                 double gridTop = hud.optDouble("gridTop", 0.0);
+                double viewportW = hud.optDouble("viewportW", 0.0);
                 if (flatCells != null && flatCells.length() > 0 && board.optJSONArray("cells") == null) {
                     // Flat string path: route to pushFrame
                     JSONObject scoreObj = hud.optJSONObject("score");
@@ -423,7 +433,7 @@ public class DualScreenHudPlugin extends Plugin {
                     int lines = scoreObj != null ? scoreObj.optInt("lines", 0) : 0;
                     String status = hud.optString("status", "Playing");
                     boolean isFlipped = hud.optBoolean("isFlipped", false);
-                    pushFrame(flatCells, score, level, lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop);
+                    pushFrame(flatCells, score, level, lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop, (float) viewportW);
                     return;
                 }
                 infoHud.setVisibility(View.GONE);
@@ -435,7 +445,8 @@ public class DualScreenHudPlugin extends Plugin {
                     hud.optString("status", "Playing"),
                     (float) cellSize,
                     (float) gridLeft,
-                    (float) gridTop
+                    (float) gridTop,
+                    (float) viewportW
                 );
                 return;
             }
@@ -446,16 +457,20 @@ public class DualScreenHudPlugin extends Plugin {
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped) {
-            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f, 0f);
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0f);
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW) {
             if (infoHud != null) {
                 infoHud.setVisibility(View.GONE);
             }
             if (gameBoard != null) {
                 gameBoard.setVisibility(View.VISIBLE);
-                gameBoard.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop);
+                gameBoard.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW);
             }
         }
     }
@@ -1228,16 +1243,21 @@ public class DualScreenHudPlugin extends Plugin {
         private float customCellSize = 0f;
         private float customGridLeft = 0f;
         private float customGridTop = 0f;
+        private float customViewportW = 0f;
 
         GameBoardView(Context context) {
             super(context);
         }
 
         void update(JSONObject board, JSONObject score, String modeLabel, String status) {
-            update(board, score, modeLabel, status, 0f, 0f, 0f);
+            update(board, score, modeLabel, status, 0f, 0f, 0f, 0f);
         }
 
         void update(JSONObject board, JSONObject score, String modeLabel, String status, float cellSize, float gridLeft, float gridTop) {
+            update(board, score, modeLabel, status, cellSize, gridLeft, gridTop, 0f);
+        }
+
+        void update(JSONObject board, JSONObject score, String modeLabel, String status, float cellSize, float gridLeft, float gridTop, float viewportW) {
             this.board = board;
             this.score = score;
             this.modeLabel = modeLabel == null ? "Marathon" : modeLabel;
@@ -1246,6 +1266,7 @@ public class DualScreenHudPlugin extends Plugin {
             this.customCellSize = cellSize;
             this.customGridLeft = gridLeft;
             this.customGridTop = gridTop;
+            this.customViewportW = viewportW;
             if (board != null) {
                 this.cachedColors = board.optJSONArray("colors");
             }
@@ -1253,10 +1274,14 @@ public class DualScreenHudPlugin extends Plugin {
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped) {
-            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f, 0f);
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0f);
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW) {
             this.cellsString = cells;
             this.scoreValue = score;
             this.level = level;
@@ -1266,6 +1291,7 @@ public class DualScreenHudPlugin extends Plugin {
             this.customCellSize = cellSize;
             this.customGridLeft = gridLeft;
             this.customGridTop = gridTop;
+            this.customViewportW = viewportW;
             invalidate();
         }
 
@@ -1292,12 +1318,23 @@ public class DualScreenHudPlugin extends Plugin {
                 rows = Math.max(1, board.optInt("rows", 20));
             }
 
-            // Maximize grid size to fill bottom screen height/width
-            float cellSize = Math.min((float) width / cols, (float) height / rows);
+            float density = getResources().getDisplayMetrics().density;
+            float cellSize;
+            float left;
+            float boardTop;
+
+            if (customCellSize > 0f && customViewportW > 0f) {
+                cellSize = customCellSize * density;
+                float leftOffset = (customViewportW * density - width) / 2f;
+                left = customGridLeft * density - leftOffset;
+                boardTop = (height - (cellSize * rows)) / 2f;
+            } else {
+                cellSize = Math.min((float) width / cols, (float) height / rows);
+                left = (width - cellSize * cols) / 2f;
+                boardTop = (height - cellSize * rows) / 2f;
+            }
             float gridWidth = cellSize * cols;
             float gridHeight = cellSize * rows;
-            float left = (width - gridWidth) / 2f;
-            float boardTop = (height - gridHeight) / 2f;
 
             // Draw continuous grid lines (matching top screen style)
             paint.setStyle(Paint.Style.STROKE);

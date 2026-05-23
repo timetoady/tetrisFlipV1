@@ -199,6 +199,9 @@ const landscapeHudLeftTitle = document.getElementById("landscape-hud-left-title"
 /** @type {HTMLElement | null} */
 const landscapeHudRightTitle = document.getElementById("landscape-hud-right-title");
 const hudScore = document.getElementById("hud-score");
+const dualScreenHeader = document.getElementById("dual-screen-header");
+const dsScoreVal = document.getElementById("ds-score-val");
+const hudScoreLabel = document.getElementById("hud-score-label");
 /** @type {HTMLElement | null} */
 let hudDebugBadge = document.getElementById("hud-debug-badge");
 const hudLevel = document.getElementById("hud-level");
@@ -223,6 +226,11 @@ const hudGarbageTime = document.getElementById("hud-garbage-time");
 const landscapeHudRightRedemption = document.getElementById("landscape-hud-right-redemption");
 const hudRedemptionLives = document.getElementById("hud-redemption-lives");
 const hudRedemptionMax = document.getElementById("hud-redemption-max");
+const landscapeHudRightBurst = document.getElementById("landscape-hud-right-burst");
+const hudBurstCount = document.getElementById("hud-burst-count");
+const hudBurstIBoosts = document.getElementById("hud-burst-iboosts");
+const hudBurstTimer = document.getElementById("hud-burst-timer");
+const hudBurstProgressFill = document.getElementById("hud-burst-progress-fill");
 const hudPieceI = document.getElementById("hud-piece-i");
 const hudPieceJ = document.getElementById("hud-piece-j");
 const hudPieceL = document.getElementById("hud-piece-l");
@@ -503,7 +511,7 @@ let flipP2Hud = false;
 let dualScreenModeIndex = 0;
 window.isDualScreenGameActive = () => {
   const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
-  return isDual && activeMode !== "vanillaClassic";
+  return isDual && activeMode !== "vanillaClassic" && !menuActive;
 };
 let viewportScale = 1;
 let dualScreenHudLastPushMs = 0;
@@ -2929,6 +2937,13 @@ function updateHudMeter(fillEl, state) {
 
 function updateLandscapeHud() {
   if (!landscapeHud || !wrap) return;
+
+  const isDualActive = window.isDualScreenGameActive ? window.isDualScreenGameActive() : false;
+  document.body.dataset.isDualActive = isDualActive ? "true" : "false";
+  if (dualScreenHeader) {
+    dualScreenHeader.hidden = !isDualActive;
+  }
+
   const gameplay = !menuActive;
   const wrapRect = wrap.getBoundingClientRect();
   const wideViewport = wrapRect.width > wrapRect.height;
@@ -2976,7 +2991,8 @@ function updateLandscapeHud() {
   const showRunStats = !coop && (activeMode === "marathon" || activeMode === "vanillaClassic" || activeMode === "chillax" || activeMode === "sirtet");
   const showGarbageHud = !coop && activeMode === "garbage";
   const showRedemptionHud = !coop && activeMode === "redemption";
-  const showMirrorHud = !coop && !showRunStats && !showGarbageHud && !showRedemptionHud;
+  const showBurstHud = !coop && activeMode === "burst";
+  const showMirrorHud = !coop && !showRunStats && !showGarbageHud && !showRedemptionHud && !showBurstHud;
 
   document.body.dataset.hudMode = activeMode;
 
@@ -2990,12 +3006,13 @@ function updateLandscapeHud() {
   if (landscapeHudRightRun) landscapeHudRightRun.hidden = !showRunStats;
   if (landscapeHudRightRedemption) landscapeHudRightRedemption.hidden = !showRedemptionHud;
   if (landscapeHudRightGarbage) landscapeHudRightGarbage.hidden = !showGarbageHud;
-  if (landscapeHudRightPanel) landscapeHudRightPanel.classList.toggle("is-boxed", showRunStats || showGarbageHud);
+  if (landscapeHudRightBurst) landscapeHudRightBurst.hidden = !showBurstHud;
+  if (landscapeHudRightPanel) landscapeHudRightPanel.classList.toggle("is-boxed", showRunStats || showGarbageHud || showBurstHud);
 
   if (landscapeHudRightTitle) {
     landscapeHudRightTitle.textContent = coop
       ? "PLAYER 2"
-      : (showRunStats ? "RUN" : (showGarbageHud ? "GARBAGE" : ""));
+      : (showRunStats ? "RUN" : (showGarbageHud ? "GARBAGE" : (showBurstHud ? "BURST" : "")));
   }
   if (landscapeHudLeftTitle) {
     landscapeHudLeftTitle.textContent = coop ? "PLAYER 1" : "";
@@ -3009,7 +3026,19 @@ function updateLandscapeHud() {
   const p2Level = Number(scoreState.p2Level) || 0;
   const p2Lines = Number(scoreState.p2Lines) || 0;
 
-  if (hudScore) hudScore.textContent = formatHudNumber(p1Score);
+  if (hudScore) {
+    if (isDualActive) {
+      const modeLabel = activeMode === "coop" ? "CO-OP" : activeMode.toUpperCase();
+      hudScore.textContent = modeLabel;
+      if (hudScoreLabel) hudScoreLabel.textContent = "MODE";
+    } else {
+      hudScore.textContent = formatHudNumber(p1Score);
+      if (hudScoreLabel) hudScoreLabel.textContent = "SCORE";
+    }
+  }
+  if (dsScoreVal) {
+    dsScoreVal.textContent = formatHudNumber(p1Score);
+  }
   if (hudLevel) hudLevel.textContent = String(p1Level);
   if (hudLines) hudLines.textContent = String(p1Lines);
 
@@ -3058,6 +3087,23 @@ function updateLandscapeHud() {
     } else {
       if (hudGarbageRemaining) hudGarbageRemaining.textContent = "--";
       if (hudGarbageProgressFill) hudGarbageProgressFill.style.width = "0%";
+    }
+  }
+
+  if (showBurstHud) {
+    if (hudBurstCount) hudBurstCount.textContent = String(game.burstsActivated || 0);
+    if (hudBurstIBoosts) hudBurstIBoosts.textContent = String(game.iBoostsTriggered || 0);
+    if (hudBurstTimer) {
+      if (game.momentumBurstTimer > 0) {
+        hudBurstTimer.textContent = (game.momentumBurstTimer / 1000).toFixed(2) + "s";
+        if (hudBurstProgressFill) {
+          const pct = Math.max(0, Math.min(1, game.momentumBurstTimer / game.momentumBurstDuration));
+          hudBurstProgressFill.style.width = String(Math.round(pct * 100)) + "%";
+        }
+      } else {
+        hudBurstTimer.textContent = "0.00s";
+        if (hudBurstProgressFill) hudBurstProgressFill.style.width = "0%";
+      }
     }
   }
 

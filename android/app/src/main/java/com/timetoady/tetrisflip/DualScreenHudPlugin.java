@@ -2,10 +2,13 @@ package com.timetoady.tetrisflip;
 
 import android.app.Presentation;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.hardware.display.DisplayManager;
@@ -13,6 +16,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
@@ -30,6 +34,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Locale;
 
 @CapacitorPlugin(name = "DualScreenHud")
@@ -56,6 +62,37 @@ public class DualScreenHudPlugin extends Plugin {
     private static final int COLOR_MENU_HILITE_BG = Color.argb(224, 18, 20, 24);
     private static final int COLOR_MENU_INNER_STROKE = Color.argb(72, 255, 255, 255);
     private static final int[] PIECE_TYPES = {1, 2, 3, 4, 5, 6, 7};
+
+    private static Bitmap backgroundBitmap = null;
+
+    private static Bitmap getBackgroundBitmap(Context context) {
+        if (backgroundBitmap == null) {
+            try {
+                InputStream is = context.getAssets().open("public/assets/tetrisflip1.png");
+                backgroundBitmap = BitmapFactory.decodeStream(is);
+                is.close();
+            } catch (Exception e) {
+                Log.e("DualScreenHud", "Error loading background bitmap", e);
+            }
+        }
+        return backgroundBitmap;
+    }
+
+    private static void drawNativeBackground(Canvas canvas, Context context, float width, float height) {
+        canvas.drawColor(COLOR_BG);
+        Bitmap bg = getBackgroundBitmap(context);
+        if (bg != null) {
+            float density = context.getResources().getDisplayMetrics().density;
+            float bgW = Math.min(width * 1.8f, 2400f * density);
+            float bgH = bgW * 1536f / 2410f;
+            float left = (width - bgW) / 2f;
+            float top = -bgH / 2f;
+            RectF dest = new RectF(left, top, left + bgW, top + bgH);
+            Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+            bgPaint.setAlpha((int) (255 * 0.025f)); // opacity 0.025
+            canvas.drawBitmap(bg, null, dest, bgPaint);
+        }
+    }
 
     private static DualScreenHudPlugin instance;
     private DualScreenHudController controller;
@@ -549,7 +586,7 @@ public class DualScreenHudPlugin extends Plugin {
             float height = getHeight();
 
             if (hud == null) {
-                canvas.drawColor(COLOR_BG);
+                drawNativeBackground(canvas, getContext(), width, height);
                 drawBackdrop(canvas, paint, width, height);
                 paint.setColor(COLOR_TEXT);
                 paint.setTypeface(Typeface.MONOSPACE);
@@ -566,7 +603,7 @@ public class DualScreenHudPlugin extends Plugin {
                 return;
             }
 
-            canvas.drawColor(COLOR_BG);
+            drawNativeBackground(canvas, getContext(), width, height);
             drawBackdrop(canvas, paint, width, height);
             JSONObject scoreState = hud.optJSONObject("score");
             JSONObject queue = hud.optJSONObject("queue");
@@ -1420,7 +1457,7 @@ public class DualScreenHudPlugin extends Plugin {
             super.onDraw(canvas);
             int width = getWidth();
             int height = getHeight();
-            canvas.drawColor(COLOR_BG);
+            drawNativeBackground(canvas, getContext(), width, height);
 
             if (cellsString == null && board == null) {
                 paint.setTypeface(Typeface.MONOSPACE);
@@ -1485,6 +1522,34 @@ public class DualScreenHudPlugin extends Plugin {
                 for (int y = 0; y <= rows; y++) {
                     float py = boardTop + y * cellSize;
                     canvas.drawLine(left, py, left + gridWidth, py, paint);
+                }
+
+                // Draw row numbers next to the playfield (dual screen only, not classic mode)
+                if (!isClassic) {
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(Color.argb((int)(0.45f * 255), 255, 255, 255));
+                    paint.setTypeface(Typeface.MONOSPACE);
+                    paint.setTextSize(dp(10));
+                    Paint.FontMetrics fm = paint.getFontMetrics();
+                    float textOffset = -(fm.ascent + fm.descent) / 2f;
+
+                    for (int y = 0; y < rows; y++) {
+                        int fullY = y + 20;
+                        int label = 0;
+                        if (fullY > 21) {
+                            label = -(fullY - 21);
+                        }
+                        String labelStr = String.valueOf(label);
+                        float py = boardTop + y * cellSize + cellSize / 2f + textOffset;
+
+                        // Left side numbers
+                        paint.setTextAlign(Paint.Align.RIGHT);
+                        canvas.drawText(labelStr, left - dp(8), py, paint);
+
+                        // Right side numbers
+                        paint.setTextAlign(Paint.Align.LEFT);
+                        canvas.drawText(labelStr, left + gridWidth + dp(8), py, paint);
+                    }
                 }
 
                 JSONArray cellsJson = (cellsString == null && board != null) ? board.optJSONArray("cells") : null;

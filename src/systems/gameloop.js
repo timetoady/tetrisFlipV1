@@ -473,6 +473,8 @@ export class GameLoop {
     this.resetP2LockState();
     this.garbageTotalCells = 0;
     this.seedGarbage();
+    this.burstsActivated = 0;
+    this.iBoostsTriggered = 0;
     if (this.mode === "redemption") {
       this.lives = this.maxLives;
     } else {
@@ -1650,6 +1652,9 @@ export class GameLoop {
           this[burstKey] = this.momentumBurstDuration;
           this[recoveryKey] = 0;
           momentumBurstTriggered = true;
+          if (valueKey === "momentumValue") {
+            this.burstsActivated = (this.burstsActivated || 0) + 1;
+          }
         }
       }
       this.isClearing = true;
@@ -1714,6 +1719,7 @@ export class GameLoop {
         const chance = this.getBurstIChance(cleared, this.tetrisStreak);
         if (chance > 0 && Math.random() < chance) {
           this.pendingBurstISwap = true;
+          this.iBoostsTriggered = (this.iBoostsTriggered || 0) + 1;
           this.addCallout("I-BOOST!", { color: "#4cc3ff", size: 24 });
         }
       }
@@ -3146,22 +3152,25 @@ export class GameLoop {
       ctx.fillStyle = "#e6e6e6";
       ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
     } else {
-      ctx.fillText("SCORE", hudX, hudY);
-      hudY += 20;
-      ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText(String(this.score).padStart(6, "0"), hudX, hudY);
-      hudY += 32;
-      ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText("LEVEL", hudX, hudY);
-      hudY += 20;
-      ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText(String(this.level), hudX, hudY);
-      hudY += 30;
-      ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText("LINES", hudX, hudY);
-      hudY += 20;
-      ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText(String(this.lines), hudX, hudY);
+      const isDualActive = window.isDualScreenGameActive && window.isDualScreenGameActive();
+      if (!isDualActive) {
+        ctx.fillText("SCORE", hudX, hudY);
+        hudY += 20;
+        ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText(String(this.score).padStart(6, "0"), hudX, hudY);
+        hudY += 32;
+        ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText("LEVEL", hudX, hudY);
+        hudY += 20;
+        ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText(String(this.level), hudX, hudY);
+        hudY += 30;
+        ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText("LINES", hudX, hudY);
+        hudY += 20;
+        ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText(String(this.lines), hudX, hudY);
+      }
     }
     if (this.mode === "redemption" && this.maxLives > 0) {
       const heartSize = 24;
@@ -3187,7 +3196,8 @@ export class GameLoop {
     const nextStep = (isVanilla && vanillaPortrait) ? 72 : (isVanilla ? 72 : 88);
     const maxNext = (isVanilla && vanillaPortrait) ? 3 : (isVanilla ? 2 : 3);
 
-    let panelY = isVanilla ? (vanillaPortrait ? (vanillaPadTop + 8) : (vanillaPadTop + 150)) : 190;
+    const isDualActive = window.isDualScreenGameActive && window.isDualScreenGameActive();
+    let panelY = isVanilla ? (vanillaPortrait ? (vanillaPadTop + 8) : (vanillaPadTop + 150)) : (isDualActive ? 12 : 190);
 
     if (isVanilla && vanillaPortrait) {
       ctx.fillText("LINES", panelX, panelY);
@@ -3267,7 +3277,7 @@ export class GameLoop {
       const touchPause = this.viewportScale < 1;
       const isLandscapeNonVanilla = !isVanilla && isLandscapeViewport;
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-      const isFullHeightPause = isLandscapeNonVanilla;
+      const isFullHeightPause = isLandscapeNonVanilla && touchPause;
 
       const panelOuterPad = isFullHeightPause
         ? Math.round(clamp(ctx.canvas.height * 0.06, 18, 48))

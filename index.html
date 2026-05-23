@@ -31,12 +31,17 @@
       </div>
     </div>
 
+    <div class="dual-screen-header" id="dual-screen-header" hidden>
+      <span class="ds-header-label">SCORE</span>
+      <span class="ds-header-value" id="ds-score-val">000000</span>
+    </div>
+
     <div class="landscape-hud" id="landscape-hud" hidden>
       <div class="landscape-hud-panel" id="landscape-hud-left">
         <div class="hud-title" id="landscape-hud-left-title">PLAYER 1</div>
         <div class="hud-left-layout">
           <div class="hud-left-stats">
-            <div class="hud-label">SCORE</div>
+            <div class="hud-label" id="hud-score-label">SCORE</div>
             <div class="hud-value hud-value--score" id="hud-score">0</div>
             <div class="hud-stat-row">
               <div class="hud-stat-col">
@@ -118,6 +123,25 @@
             <div class="hud-value hud-value--lives" id="hud-redemption-lives">0</div>
             <div class="hud-label">MAX</div>
             <div class="hud-small hud-small--stat" id="hud-redemption-max">0</div>
+          </div>
+        </div>
+        <div id="landscape-hud-right-burst" hidden>
+          <div class="burst-panel">
+            <div class="garbage-row">
+              <div class="hud-label">BURSTS</div>
+              <div class="hud-small hud-small--stat" id="hud-burst-count">0</div>
+            </div>
+            <div class="garbage-row">
+              <div class="hud-label">I-BOOSTS</div>
+              <div class="hud-small hud-small--stat" id="hud-burst-iboosts">0</div>
+            </div>
+            <div class="garbage-row">
+              <div class="hud-label">BURST TIME</div>
+              <div class="hud-value hud-value--timer" id="hud-burst-timer">0.00s</div>
+            </div>
+            <div class="hud-progress-bar" aria-hidden="true">
+              <div class="hud-progress-fill" id="hud-burst-progress-fill"></div>
+            </div>
           </div>
         </div>
         <div id="landscape-hud-right-garbage" hidden>

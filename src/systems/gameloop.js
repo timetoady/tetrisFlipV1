@@ -550,7 +550,7 @@ export class GameLoop {
       for (const block of blocks) {
         const px = piece.x + block.x;
         const py = piece.y + block.y;
-        const localY = py - startY;
+        const localY = py - 20;
         if (px >= 0 && px < cols && localY >= 0 && localY < totalRows) {
           cellValues[localY][px] = piece.type + typeValueOffset;
         }
@@ -563,7 +563,7 @@ export class GameLoop {
       for (const block of blocks) {
         const px = piece.x + block.x;
         const py = ghostY + block.y;
-        const localY = py - startY;
+        const localY = py - 20;
         if (px >= 0 && px < cols && localY >= 0 && localY < totalRows) {
           if (cellValues[localY][px] === 0) {
             cellValues[localY][px] = piece.type + 10;

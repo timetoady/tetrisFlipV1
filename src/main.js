@@ -2768,8 +2768,8 @@ function updateViewportScale() {
   if (!wrap) return;
   const menuVisible = menu && !menu.hidden;
   // Touch buttons sit above the menu (higher z-index); hide them while any menu is open.
-  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
-  const isDualScreenGame = isDual && activeMode !== "vanillaClassic";
+  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id !== "off";
+  const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game" && activeMode !== "vanillaClassic";
   const hideTouchButtons = menuVisible || !touchEnabled || isDual;
   if (touchFlip) touchFlip.hidden = hideTouchButtons;
   if (touchPause) touchPause.hidden = hideTouchButtons;
@@ -3463,7 +3463,7 @@ function getOptionDescription(index) {
 
 function positionTouchButtons() {
   if (!touchPause) return;
-  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id !== "off";
   if (isDual) {
     if (touchFlip) touchFlip.hidden = true;
     touchPause.hidden = true;
@@ -3977,7 +3977,7 @@ function frame(now) {
   handleMenuInput();
   const menuVisible = menu && !menu.hidden;
   // Touch buttons sit above the menu (higher z-index); hide them while any menu is open.
-  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id !== "off";
   const hideTouchButtons = menuVisible || !touchEnabled || isDual;
   if (touchFlip) touchFlip.hidden = hideTouchButtons;
   if (touchPause) touchPause.hidden = hideTouchButtons;

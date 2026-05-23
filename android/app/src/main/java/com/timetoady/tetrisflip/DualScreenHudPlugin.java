@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.hardware.display.DisplayManager;
@@ -13,6 +14,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.view.Display;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -55,10 +57,28 @@ public class DualScreenHudPlugin extends Plugin {
     private static final int COLOR_MENU_INNER_STROKE = Color.argb(72, 255, 255, 255);
     private static final int[] PIECE_TYPES = {1, 2, 3, 4, 5, 6, 7};
 
+    private static DualScreenHudPlugin instance;
     private DualScreenHudController controller;
+
+    public static DualScreenHudPlugin getInstance() {
+        return instance;
+    }
+
+    public static void sendTouchToJs(String action) {
+        DualScreenHudPlugin plugin = getInstance();
+        if (plugin != null && plugin.getBridge() != null && plugin.getBridge().getWebView() != null) {
+            plugin.getActivity().runOnUiThread(() -> {
+                plugin.getBridge().getWebView().evaluateJavascript(
+                    String.format(Locale.US, "if (typeof window.handleDualScreenTouch === 'function') { window.handleDualScreenTouch('%s'); }", action),
+                    null
+                );
+            });
+        }
+    }
 
     @Override
     public void load() {
+        instance = this;
         controller = new DualScreenHudController(getActivity());
         if (getBridge() != null && getBridge().getWebView() != null) {
             getActivity().runOnUiThread(() -> {
@@ -76,9 +96,19 @@ public class DualScreenHudPlugin extends Plugin {
 
                         @JavascriptInterface
                         public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped, double cellSize, double gridLeft, double gridTop, double viewportW) {
+                            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, 0.0, 100.0, 0.0);
+                        }
+
+                        @JavascriptInterface
+                        public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped, double cellSize, double gridLeft, double gridTop, double viewportW, double momentumVal, double momentumMax, double momentumBurst) {
+                            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0.0, false, 0.0, 0.0, "", -1.0, 0.0);
+                        }
+
+                        @JavascriptInterface
+                        public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped, double cellSize, double gridLeft, double gridTop, double viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, double pauseActionIndex, boolean pauseConfirmActive, double pauseConfirmIndex, double clearProgress, String clearRowsStr, double lifeLossProgress, double lifeLossFlashAlpha) {
                             getActivity().runOnUiThread(() -> {
                                 if (controller != null && controller.hasPresentation()) {
-                                    controller.pushFrame(cells, (int) score, (int) level, (int) lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop, (float) viewportW);
+                                    controller.pushFrame(cells, (int) score, (int) level, (int) lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop, (float) viewportW, momentumVal, momentumMax, momentumBurst, paused, (int) pauseActionIndex, pauseConfirmActive, (int) pauseConfirmIndex, (float) clearProgress, clearRowsStr, (float) lifeLossProgress, (float) lifeLossFlashAlpha);
                                 }
                             });
                         }
@@ -191,16 +221,24 @@ public class DualScreenHudPlugin extends Plugin {
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped) {
-            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f, 0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f, 0f, 0.0, 100.0, 0.0);
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop) {
-            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0f, 0.0, 100.0, 0.0);
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, 0.0, 100.0, 0.0);
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0, false, 0, 0.0f, "", -1.0f, 0.0f);
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, int pauseActionIndex, boolean pauseConfirmActive, int pauseConfirmIndex, float clearProgress, String clearRowsStr, float lifeLossProgress, float lifeLossFlashAlpha) {
             if (enabled && presentation != null) {
-                presentation.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW);
+                presentation.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, paused, pauseActionIndex, pauseConfirmActive, pauseConfirmIndex, clearProgress, clearRowsStr, lifeLossProgress, lifeLossFlashAlpha);
             }
         }
 
@@ -457,20 +495,28 @@ public class DualScreenHudPlugin extends Plugin {
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped) {
-            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f, 0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f, 0f, 0.0, 100.0, 0.0);
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop) {
-            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0f, 0.0, 100.0, 0.0);
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, 0.0, 100.0, 0.0);
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0, false, 0, 0.0f, "", -1.0f, 0.0f);
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, int pauseActionIndex, boolean pauseConfirmActive, int pauseConfirmIndex, float clearProgress, String clearRowsStr, float lifeLossProgress, float lifeLossFlashAlpha) {
             if (infoHud != null) {
                 infoHud.setVisibility(View.GONE);
             }
             if (gameBoard != null) {
                 gameBoard.setVisibility(View.VISIBLE);
-                gameBoard.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW);
+                gameBoard.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, paused, pauseActionIndex, pauseConfirmActive, pauseConfirmIndex, clearProgress, clearRowsStr, lifeLossProgress, lifeLossFlashAlpha);
             }
         }
     }
@@ -1234,6 +1280,17 @@ public class DualScreenHudPlugin extends Plugin {
         private String status = "Playing";
         private JSONArray cachedColors = null;
 
+        // Button/touch boundaries and state
+        private final RectF flipButtonRect = new RectF();
+        private final RectF pauseButtonRect = new RectF();
+        private boolean isFlipPressed = false;
+        private boolean isPausePressed = false;
+
+        // Momentum state fields
+        private double momentumVal = 0.0;
+        private double momentumMax = 100.0;
+        private double momentumBurst = 0.0;
+
         // Fast-path bridge fields
         private String cellsString = null;
         private int scoreValue = 0;
@@ -1245,8 +1302,29 @@ public class DualScreenHudPlugin extends Plugin {
         private float customGridTop = 0f;
         private float customViewportW = 0f;
 
+        // Pause and confirmation state fields
+        private boolean paused = false;
+        private int pauseActionIndex = 0;
+        private boolean pauseConfirmActive = false;
+        private int pauseConfirmIndex = 0;
+
+        // Animation fields
+        private float clearProgress = 0f;
+        private String clearRowsStr = "";
+        private float lifeLossProgress = -1.0f;
+        private float lifeLossFlashAlpha = 0f;
+
+        // Native pause menu button Rects
+        private final RectF resumeBtnRect = new RectF();
+        private final RectF restartBtnRect = new RectF();
+        private final RectF endBtnRect = new RectF();
+        private final RectF yesBtnRect = new RectF();
+        private final RectF noBtnRect = new RectF();
+
         GameBoardView(Context context) {
             super(context);
+            setClickable(true);
+            setFocusable(true);
         }
 
         void update(JSONObject board, JSONObject score, String modeLabel, String status) {
@@ -1269,30 +1347,72 @@ public class DualScreenHudPlugin extends Plugin {
             this.customViewportW = viewportW;
             if (board != null) {
                 this.cachedColors = board.optJSONArray("colors");
+                // Check if momentum data was included in initial update
+                JSONObject momentum = board.optJSONObject("momentum");
+                if (momentum != null) {
+                    this.momentumVal = momentum.optDouble("value", 0.0);
+                    this.momentumMax = momentum.optDouble("max", 100.0);
+                    this.momentumBurst = momentum.optDouble("burstTimer", 0.0);
+                }
             }
             invalidate();
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped) {
-            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f, 0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, 0f, 0f, 0f, 0f, 0.0, 100.0, 0.0);
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop) {
-            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, 0f, 0.0, 100.0, 0.0);
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, 0.0, 100.0, 0.0);
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0, false, 0, 0.0f, "", -1.0f, 0.0f);
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, int pauseActionIndex, boolean pauseConfirmActive, int pauseConfirmIndex, float clearProgress, String clearRowsStr, float lifeLossProgress, float lifeLossFlashAlpha) {
             this.cellsString = cells;
             this.scoreValue = score;
             this.level = level;
             this.lines = lines;
             this.status = status == null ? "Playing" : status;
+            this.modeLabel = "Marathon"; // If we receive pushFrame, we are in a non-classic game mode
             this.isFlipped = isFlipped;
             this.customCellSize = cellSize;
             this.customGridLeft = gridLeft;
             this.customGridTop = gridTop;
             this.customViewportW = viewportW;
+            this.momentumVal = momentumVal;
+            this.momentumMax = momentumMax;
+            this.momentumBurst = momentumBurst;
+            this.paused = paused;
+            this.pauseActionIndex = pauseActionIndex;
+            this.pauseConfirmActive = pauseConfirmActive;
+            this.pauseConfirmIndex = pauseConfirmIndex;
+            this.clearProgress = clearProgress;
+            this.clearRowsStr = clearRowsStr == null ? "" : clearRowsStr;
+            this.lifeLossProgress = lifeLossProgress;
+            this.lifeLossFlashAlpha = lifeLossFlashAlpha;
             invalidate();
+        }
+
+        private boolean isClearingRow(int r) {
+            if (clearProgress <= 0f || clearRowsStr == null || clearRowsStr.isEmpty()) {
+                return false;
+            }
+            try {
+                String[] parts = clearRowsStr.split(",");
+                for (String part : parts) {
+                    if (part.trim().equals(String.valueOf(r))) {
+                        return true;
+                    }
+                }
+            } catch (Exception ignored) {}
+            return false;
         }
 
         @Override
@@ -1337,69 +1457,551 @@ public class DualScreenHudPlugin extends Plugin {
             float gridWidth = cellSize * cols;
             float gridHeight = cellSize * rows;
 
-            // Draw continuous grid lines (matching top screen style)
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(1f);
-            paint.setColor(Color.argb(20, 255, 255, 255)); // rgba(255,255,255,0.08)
-            for (int x = 0; x <= cols; x++) {
-                float px = left + x * cellSize;
-                canvas.drawLine(px, boardTop, px, boardTop + gridHeight, paint);
-            }
-            for (int y = 0; y <= rows; y++) {
-                float py = boardTop + y * cellSize;
-                canvas.drawLine(left, py, left + gridWidth, py, paint);
-            }
+            boolean isClassic = modeLabel.equalsIgnoreCase("vanillaClassic");
 
-            JSONArray cellsJson = (cellsString == null && board != null) ? board.optJSONArray("cells") : null;
+            // Draw grid background
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(Color.rgb(17, 17, 17)); // #111111
+                canvas.drawRect(left, boardTop, left + gridWidth, boardTop + gridHeight, paint);
 
-            for (int y = 0; y < rows; y += 1) {
-                JSONArray row = cellsJson == null ? null : cellsJson.optJSONArray(y);
-                for (int x = 0; x < cols; x += 1) {
-                    int value = 0;
-                    if (cellsString != null) {
-                        int idx = y * cols + x;
-                        if (idx < cellsString.length()) {
-                            value = Character.digit(cellsString.charAt(idx), 36);
-                            if (value < 0) value = 0;
+                // Shading overlay based on isFlipped
+                if (isFlipped) {
+                    // Green overlay
+                    paint.setColor(Color.argb((int)(0.06f * 255), 90, 140, 90));
+                } else {
+                    // Blue overlay
+                    paint.setColor(Color.argb((int)(0.06f * 255), 70, 110, 140));
+                }
+                canvas.drawRect(left, boardTop, left + gridWidth, boardTop + gridHeight, paint);
+
+                // Draw continuous grid lines (matching top screen style)
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(1f);
+                paint.setColor(Color.argb(20, 255, 255, 255)); // rgba(255,255,255,0.08)
+                for (int x = 0; x <= cols; x++) {
+                    float px = left + x * cellSize;
+                    canvas.drawLine(px, boardTop, px, boardTop + gridHeight, paint);
+                }
+                for (int y = 0; y <= rows; y++) {
+                    float py = boardTop + y * cellSize;
+                    canvas.drawLine(left, py, left + gridWidth, py, paint);
+                }
+
+                JSONArray cellsJson = (cellsString == null && board != null) ? board.optJSONArray("cells") : null;
+
+                for (int y = 0; y < rows; y += 1) {
+                    JSONArray row = cellsJson == null ? null : cellsJson.optJSONArray(y);
+                    boolean isClearing = isClearingRow(y);
+                    for (int x = 0; x < cols; x += 1) {
+                        int value = 0;
+                        if (cellsString != null) {
+                            int idx = y * cols + x;
+                            if (idx < cellsString.length()) {
+                                value = Character.digit(cellsString.charAt(idx), 36);
+                                if (value < 0) value = 0;
+                            }
+                        } else if (row != null) {
+                            value = row.optInt(x, 0);
                         }
-                    } else if (row != null) {
-                        value = row.optInt(x, 0);
-                    }
 
-                    float x0 = left + x * cellSize;
-                    float y0 = boardTop + y * cellSize;
+                        float x0 = left + x * cellSize;
+                        float y0 = boardTop + y * cellSize;
 
-                    if (value > 0) {
-                        if (value >= 11 && value <= 17) {
-                            // Render ghost block outline and fill matching top screen
-                            int baseColor = pieceColor(cachedColors, value - 10);
-                            int fillCol = Color.argb(41, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor)); // 0.16 * 255 = 40.8 -> 41
-                            int strokeCol = Color.argb(143, 220, 220, 220); // 0.8 * 0.7 = 0.56 * 255 = 142.8 -> 143
+                        if (isClearing) {
+                            if (value > 0) {
+                                canvas.save();
+                                float cx = x0 + cellSize / 2f;
+                                float cy = y0 + cellSize / 2f;
 
-                            float strokeWidth = Math.max(1f, cellSize * (2.5f / 30f));
-                            float fillInset = Math.max(1f, cellSize * (2f / 30f));
-                            float strokeInset = Math.max(0.5f, cellSize * (1f / 30f));
+                                double progressVal = (double) clearProgress;
+                                double angle = Math.PI * progressVal;
+                                float scaleY = (float) Math.cos(angle);
+                                float skewX = (float) (Math.sin(angle) * 0.2);
+                                float cellAlpha = 1.0f - clearProgress;
 
-                            paint.setStyle(Paint.Style.FILL);
-                            paint.setColor(fillCol);
-                            canvas.drawRect(x0 + fillInset, y0 + fillInset, x0 + cellSize - fillInset, y0 + cellSize - fillInset, paint);
+                                android.graphics.Matrix matrix = new android.graphics.Matrix();
+                                matrix.postScale(1.0f, scaleY, cx, cy);
+                                matrix.postSkew(skewX, 0f, cx, cy);
+                                matrix.postRotate((float) Math.toDegrees(angle), cx, cy);
+                                canvas.concat(matrix);
 
-                            paint.setStyle(Paint.Style.STROKE);
-                            paint.setStrokeWidth(strokeWidth);
-                            paint.setColor(strokeCol);
-                            paint.setShadowLayer(dp(2.5f), 0, 0, Color.argb(115, 220, 220, 220));
-                            canvas.drawRect(x0 + strokeInset, y0 + strokeInset, x0 + cellSize - strokeInset, y0 + cellSize - strokeInset, paint);
-                            paint.clearShadowLayer();
-                        } else if (value >= 21 && value <= 27) {
-                            int color = pieceColor(cachedColors, value - 20);
-                            drawCellJava(canvas, x0, y0, cellSize, color, 1.0f);
+                                int baseColor;
+                                if (value >= 11 && value <= 17) {
+                                    baseColor = pieceColor(cachedColors, value - 10);
+                                } else if (value >= 21 && value <= 27) {
+                                    baseColor = pieceColor(cachedColors, value - 20);
+                                } else {
+                                    baseColor = pieceColor(cachedColors, value);
+                                }
+
+                                // Draw block with alpha * (0.65 + 0.35 * cos(angle))
+                                float blockAlpha = cellAlpha * (0.65f + 0.35f * (float) Math.cos(angle));
+                                drawCellJava(canvas, x0, y0, cellSize, baseColor, blockAlpha);
+
+                                // Draw white overlay block with alpha * (1 - shade) * 0.4
+                                paint.setStyle(Paint.Style.FILL);
+                                float overlayAlpha = cellAlpha * (1.0f - (float) Math.cos(angle)) * 0.4f;
+                                paint.setColor(Color.argb((int)(overlayAlpha * 255), 255, 255, 255));
+                                canvas.drawRect(x0, y0, x0 + cellSize, y0 + cellSize, paint);
+
+                                drawCellJava(canvas, cx, cy, cellSize, 0xFF666666, 0.4f);
+                                canvas.restore();
+                            }
                         } else {
-                            int color = pieceColor(cachedColors, value);
-                            drawCellJava(canvas, x0, y0, cellSize, color, 1.0f);
+                            if (value > 0) {
+                                if (value >= 11 && value <= 17) {
+                                    // Render ghost block outline and fill matching top screen
+                                    int baseColor = pieceColor(cachedColors, value - 10);
+                                    int fillCol = Color.argb(41, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor)); // 0.16 * 255 = 40.8 -> 41
+                                    int strokeCol = Color.argb(143, 220, 220, 220); // 0.8 * 0.7 = 0.56 * 255 = 142.8 -> 143
+
+                                    float strokeWidth = Math.max(1f, cellSize * (2.5f / 30f));
+                                    float fillInset = Math.max(1f, cellSize * (2f / 30f));
+                                    float strokeInset = Math.max(0.5f, cellSize * (1f / 30f));
+
+                                    paint.setStyle(Paint.Style.FILL);
+                                    paint.setColor(fillCol);
+                                    canvas.drawRect(x0 + fillInset, y0 + fillInset, x0 + cellSize - fillInset, y0 + cellSize - fillInset, paint);
+
+                                    paint.setStyle(Paint.Style.STROKE);
+                                    paint.setStrokeWidth(strokeWidth);
+                                    paint.setColor(strokeCol);
+                                    paint.setShadowLayer(dp(2.5f), 0, 0, Color.argb(115, 220, 220, 220));
+                                    canvas.drawRect(x0 + strokeInset, y0 + strokeInset, x0 + cellSize - strokeInset, y0 + cellSize - strokeInset, paint);
+                                    paint.clearShadowLayer();
+                                } else if (value >= 21 && value <= 27) {
+                                    int color = pieceColor(cachedColors, value - 20);
+                                    drawCellJava(canvas, x0, y0, cellSize, color, 1.0f);
+                                } else {
+                                    int color = pieceColor(cachedColors, value);
+                                    drawCellJava(canvas, x0, y0, cellSize, color, 1.0f);
+                                }
+                            }
                         }
                     }
                 }
+
+                // Draw explosive flash for cleared rows
+                if (clearProgress > 0f && clearProgress < 1f && clearRowsStr != null && !clearRowsStr.isEmpty()) {
+                    paint.setStyle(Paint.Style.FILL);
+                    float flashAlpha = (float) Math.pow(1f - clearProgress, 2);
+                    paint.setColor(Color.argb((int)(flashAlpha * 255), 255, 255, 255));
+                    try {
+                        String[] parts = clearRowsStr.split(",");
+                        for (String part : parts) {
+                            int r = Integer.parseInt(part.trim());
+                            float y0 = boardTop + r * cellSize;
+                            canvas.drawRect(left, y0, left + gridWidth, y0 + cellSize, paint);
+                        }
+                    } catch (NumberFormatException e) {}
+                }
+
+                // Draw redemption exploding circles
+                if (lifeLossProgress >= 0f) {
+                    JSONArray cellsJsonForLife = (cellsString == null && board != null) ? board.optJSONArray("cells") : null;
+                    for (int y = 14; y <= 19; y++) {
+                        if (y >= rows) continue;
+                        JSONArray row = cellsJsonForLife == null ? null : cellsJsonForLife.optJSONArray(y);
+                        for (int x = 0; x < cols; x++) {
+                            int value = 0;
+                            if (cellsString != null) {
+                                int idx = y * cols + x;
+                                if (idx < cellsString.length()) {
+                                    value = Character.digit(cellsString.charAt(idx), 36);
+                                    if (value < 0) value = 0;
+                                }
+                            } else if (row != null) {
+                                value = row.optInt(x, 0);
+                            }
+
+                            if (value > 0) {
+                                float x0 = left + x * cellSize;
+                                float y0 = boardTop + y * cellSize;
+                                float cx = x0 + cellSize / 2f;
+                                float cy = y0 + cellSize / 2f;
+
+                                double columnDelay = (x / 9.0) * 0.35;
+                                double progress = Math.min(1.0, Math.max(0.0, ((double) lifeLossProgress - columnDelay) / 0.65));
+
+                                if (progress > 0.0) {
+                                    float maxRadius = cellSize * 2.5f;
+                                    float currentRadius = (float) progress * maxRadius;
+                                    float circAlpha = (float) (1.0 - progress);
+
+                                    paint.setStyle(Paint.Style.FILL);
+
+                                    // Outer orange circle
+                                    paint.setColor(Color.argb((int) (circAlpha * 0.95f * 255), 255, 110, 50));
+                                    canvas.drawCircle(cx, cy, currentRadius, paint);
+
+                                    // Inner beige circle (slightly smaller)
+                                    paint.setColor(Color.argb((int) (circAlpha * 0.90f * 255), 255, 245, 220));
+                                    canvas.drawCircle(cx, cy, currentRadius * 0.7f, paint);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Draw redemption flash overlay
+                if (lifeLossFlashAlpha > 0f) {
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(Color.argb((int)(lifeLossFlashAlpha * 0.6f * 255), 255, 60, 60)); // Red flash
+                    canvas.drawRect(left, boardTop, left + gridWidth, boardTop + gridHeight, paint);
+                }
+
+            // Draw controls and momentum bar on the margins
+            drawNativeButtons(canvas, left, gridWidth, width, height);
+
+            // Draw vertical momentum bar under the Pause/Flip buttons on the right margin
+            float rightMarginStart = left + gridWidth;
+            float rightMarginCenterX = rightMarginStart + (width - rightMarginStart) / 2f;
+            boolean wantsFlip = !isClassic;
+            float momentumTop = (wantsFlip ? flipButtonRect.bottom : pauseButtonRect.bottom) + dp(24);
+            drawVerticalMomentumBar(canvas, rightMarginCenterX, momentumTop, dp(70), dp(90));
+
+            if (paused) {
+                // Black out the playfield grid bounds
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(Color.BLACK);
+                canvas.drawRect(left, boardTop, left + gridWidth, boardTop + gridHeight, paint);
+
+                // Draw dark container rect centered in the grid bounds
+                float containerW = gridWidth - dp(24);
+                float containerH = gridHeight * 0.65f;
+                float cLeft = left + (gridWidth - containerW) / 2f;
+                float cTop = boardTop + (gridHeight - containerH) / 2f;
+                RectF containerRect = new RectF(cLeft, cTop, cLeft + containerW, cTop + containerH);
+
+                // Container background & stroke
+                paint.setColor(Color.rgb(18, 20, 24)); // rgba(18,20,24,0.95)
+                canvas.drawRect(containerRect, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(dp(2));
+                paint.setColor(COLOR_STROKE_STRONG);
+                canvas.drawRect(containerRect, paint);
+                paint.setStyle(Paint.Style.FILL);
+
+                // Title
+                paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+                paint.setTextAlign(Paint.Align.CENTER);
+                paint.setTextSize(dp(22));
+                paint.setColor(Color.WHITE);
+                canvas.drawText("PAUSED", containerRect.centerX(), containerRect.top + dp(36), paint);
+
+                if (!pauseConfirmActive) {
+                    // 3 buttons: RESUME, RESTART, END
+                    float btnW = containerW - dp(32);
+                    float btnH = dp(46);
+                    float btnGap = dp(16);
+                    
+                    float btnStartX = containerRect.centerX();
+                    float btnStartY = containerRect.top + dp(70);
+
+                    // Resume button
+                    resumeBtnRect.set(btnStartX - btnW / 2f, btnStartY, btnStartX + btnW / 2f, btnStartY + btnH);
+                    drawMenuGlassButton(canvas, resumeBtnRect, "RESUME", pauseActionIndex == 0, COLOR_CYAN);
+
+                    // Restart button
+                    restartBtnRect.set(btnStartX - btnW / 2f, btnStartY + btnH + btnGap, btnStartX + btnW / 2f, btnStartY + btnH * 2 + btnGap);
+                    drawMenuGlassButton(canvas, restartBtnRect, "RESTART", pauseActionIndex == 1, COLOR_SCORE);
+
+                    // End button
+                    endBtnRect.set(btnStartX - btnW / 2f, btnStartY + (btnH + btnGap) * 2, btnStartX + btnW / 2f, btnStartY + btnH * 3 + btnGap * 2);
+                    drawMenuGlassButton(canvas, endBtnRect, "QUIT GAME", pauseActionIndex == 2, COLOR_WARN);
+
+                    // Clear confirm rects
+                    yesBtnRect.setEmpty();
+                    noBtnRect.setEmpty();
+                } else {
+                    // EXIT TO MENU?
+                    paint.setTypeface(Typeface.MONOSPACE);
+                    paint.setTextSize(dp(14));
+                    paint.setColor(COLOR_TEXT_SOFT);
+                    canvas.drawText("QUIT CURRENT GAME?", containerRect.centerX(), containerRect.top + dp(76), paint);
+
+                    // 2 buttons: YES, NO
+                    float btnW = containerW - dp(32);
+                    float btnH = dp(46);
+                    float btnGap = dp(16);
+
+                    float btnStartX = containerRect.centerX();
+                    float btnStartY = containerRect.top + dp(120);
+
+                    // YES button
+                    yesBtnRect.set(btnStartX - btnW / 2f, btnStartY, btnStartX + btnW / 2f, btnStartY + btnH);
+                    drawMenuGlassButton(canvas, yesBtnRect, "YES, QUIT", pauseConfirmIndex == 0, COLOR_WARN);
+
+                    // NO button
+                    noBtnRect.set(btnStartX - btnW / 2f, btnStartY + btnH + btnGap, btnStartX + btnW / 2f, btnStartY + btnH * 2 + btnGap);
+                    drawMenuGlassButton(canvas, noBtnRect, "NO, KEEP PLAYING", pauseConfirmIndex == 1, COLOR_CYAN);
+
+                    // Clear main pause rects
+                    resumeBtnRect.setEmpty();
+                    restartBtnRect.setEmpty();
+                    endBtnRect.setEmpty();
+                }
+            } else {
+                // Clear all menu rects
+                resumeBtnRect.setEmpty();
+                restartBtnRect.setEmpty();
+                endBtnRect.setEmpty();
+                yesBtnRect.setEmpty();
+                noBtnRect.setEmpty();
             }
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            float x = event.getX();
+            float y = event.getY();
+            int action = event.getActionMasked();
+
+            if (paused) {
+                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+                    if (pauseConfirmActive) {
+                        if (yesBtnRect.contains(x, y)) {
+                            DualScreenHudPlugin.sendTouchToJs("pause_confirm_yes");
+                        } else if (noBtnRect.contains(x, y)) {
+                            DualScreenHudPlugin.sendTouchToJs("pause_confirm_no");
+                        }
+                    } else {
+                        if (resumeBtnRect.contains(x, y)) {
+                            DualScreenHudPlugin.sendTouchToJs("pause_resume");
+                        } else if (restartBtnRect.contains(x, y)) {
+                            DualScreenHudPlugin.sendTouchToJs("pause_restart");
+                        } else if (endBtnRect.contains(x, y)) {
+                            DualScreenHudPlugin.sendTouchToJs("pause_end");
+                        }
+                    }
+                }
+                return true; // Always consume touches when paused
+            }
+
+            boolean wantsFlip = !modeLabel.equalsIgnoreCase("vanillaClassic");
+
+            if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+                if (wantsFlip && flipButtonRect.contains(x, y)) {
+                    isFlipPressed = true;
+                    invalidate();
+                    DualScreenHudPlugin.sendTouchToJs("flip");
+                    return true;
+                }
+                if (pauseButtonRect.contains(x, y)) {
+                    isPausePressed = true;
+                    invalidate();
+                    DualScreenHudPlugin.sendTouchToJs("pause");
+                    return true;
+                }
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP || action == MotionEvent.ACTION_CANCEL) {
+                if (isFlipPressed || isPausePressed) {
+                    isFlipPressed = false;
+                    isPausePressed = false;
+                    invalidate();
+                    return true;
+                }
+            }
+            return super.onTouchEvent(event);
+        }
+
+        private void drawNativeButtons(Canvas canvas, float left, float gridWidth, float width, float height) {
+            boolean wantsFlip = !modeLabel.equalsIgnoreCase("vanillaClassic");
+
+            float rightMarginStart = left + gridWidth;
+            float rightMarginCenterX = rightMarginStart + (width - rightMarginStart) / 2f;
+
+            // Define coordinates
+            float pauseWidth = dp(70);
+            float pauseHeight = dp(46);
+            float pauseCenterX = rightMarginCenterX;
+            float pauseCenterY = dp(44);
+
+            pauseButtonRect.set(pauseCenterX - pauseWidth / 2f, pauseCenterY - pauseHeight / 2f,
+                                pauseCenterX + pauseWidth / 2f, pauseCenterY + pauseHeight / 2f);
+
+            // Draw Pause button
+            drawGlassButton(canvas, pauseButtonRect, "PAUSE", isPausePressed, COLOR_CYAN);
+
+            if (wantsFlip) {
+                float flipWidth = dp(70);
+                float flipHeight = dp(60);
+                float flipCenterX = rightMarginCenterX;
+                float flipCenterY = pauseButtonRect.bottom + dp(16) + flipHeight / 2f;
+
+                flipButtonRect.set(flipCenterX - flipWidth / 2f, flipCenterY - flipHeight / 2f,
+                                   flipCenterX + flipWidth / 2f, flipCenterY + flipHeight / 2f);
+
+                // Draw rectangular Flip button
+                drawGlassButton(canvas, flipButtonRect, "FLIP", isFlipPressed, COLOR_CYAN);
+            } else {
+                flipButtonRect.setEmpty();
+            }
+        }
+
+        private void drawGlassButton(Canvas canvas, RectF rect, String label, boolean isPressed, int accentColor) {
+            // Draw background fill
+            paint.setStyle(Paint.Style.FILL);
+            if (isPressed) {
+                paint.setColor(Color.argb(210, 12, 18, 30));
+            } else {
+                paint.setColor(Color.argb(130, 8, 12, 20));
+            }
+            canvas.drawRect(rect, paint); // Sharp edges!
+
+            // Draw border
+            paint.setStyle(Paint.Style.STROKE);
+            if (isPressed) {
+                paint.setStrokeWidth(dp(2.5f));
+                paint.setColor(accentColor);
+                paint.setShadowLayer(dp(10), 0, 0, accentColor);
+            } else {
+                paint.setStrokeWidth(dp(1.5f));
+                paint.setColor(Color.argb(100, 255, 255, 255));
+            }
+            canvas.drawRect(rect, paint); // Sharp edges!
+            paint.clearShadowLayer();
+
+            float cx = rect.centerX();
+            float cy = rect.centerY();
+            if (isPressed) cy += dp(2);
+
+            paint.setStyle(Paint.Style.FILL);
+            if (isPressed) {
+                paint.setColor(Color.WHITE);
+            } else {
+                paint.setColor(COLOR_TEXT);
+            }
+
+            if ("PAUSE".equals(label)) {
+                float barW = dp(5);
+                float barH = dp(18);
+                float gap = dp(6);
+                canvas.drawRoundRect(new RectF(cx - gap/2f - barW, cy - barH/2f, cx - gap/2f, cy + barH/2f), dp(2), dp(2), paint);
+                canvas.drawRoundRect(new RectF(cx + gap/2f, cy - barH/2f, cx + gap/2f + barW, cy + barH/2f), dp(2), dp(2), paint);
+            } else if ("FLIP".equals(label)) {
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(dp(2.5f));
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                float radius = dp(10);
+                RectF arcRect = new RectF(cx - radius, cy - radius, cx + radius, cy + radius);
+                canvas.drawArc(arcRect, 180, 140, false, paint);
+                canvas.drawArc(arcRect, 0, 140, false, paint);
+                
+                paint.setStyle(Paint.Style.FILL);
+                Path t1 = new Path();
+                float th1 = (float) Math.toRadians(320);
+                float tx1 = cx + (float)Math.cos(th1) * radius;
+                float ty1 = cy + (float)Math.sin(th1) * radius;
+                t1.moveTo(tx1 + dp(4), ty1 - dp(2));
+                t1.lineTo(tx1 - dp(2), ty1 - dp(5));
+                t1.lineTo(tx1 - dp(1), ty1 + dp(3));
+                t1.close();
+                canvas.drawPath(t1, paint);
+                
+                Path t2 = new Path();
+                float th2 = (float) Math.toRadians(140);
+                float tx2 = cx + (float)Math.cos(th2) * radius;
+                float ty2 = cy + (float)Math.sin(th2) * radius;
+                t2.moveTo(tx2 - dp(4), ty2 + dp(2));
+                t2.lineTo(tx2 + dp(2), ty2 + dp(5));
+                t2.lineTo(tx2 + dp(1), ty2 - dp(3));
+                t2.close();
+                canvas.drawPath(t2, paint);
+            } else {
+                paint.setTextAlign(Paint.Align.CENTER);
+                paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+                paint.setTextSize(dp(14));
+                float textOffset = (paint.descent() + paint.ascent()) / 2f;
+                canvas.drawText(label, cx, cy - textOffset, paint);
+            }
+        }
+
+        private void drawMenuGlassButton(Canvas canvas, RectF rect, String label, boolean isSelected, int accentColor) {
+            paint.setStyle(Paint.Style.FILL);
+            if (isSelected) {
+                paint.setColor(Color.argb(220, 16, 22, 34));
+            } else {
+                paint.setColor(Color.argb(120, 8, 12, 18));
+            }
+            canvas.drawRect(rect, paint); // Sharp edges!
+
+            paint.setStyle(Paint.Style.STROKE);
+            if (isSelected) {
+                paint.setStrokeWidth(dp(3f));
+                paint.setColor(Color.WHITE); // thick white border for highlight
+                paint.setShadowLayer(dp(8), 0, 0, Color.WHITE);
+            } else {
+                paint.setStrokeWidth(dp(1.25f));
+                paint.setColor(Color.argb(96, 255, 255, 255));
+            }
+            canvas.drawRect(rect, paint); // Sharp edges!
+            paint.clearShadowLayer();
+
+            // Text
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            paint.setTextSize(dp(13));
+            if (isSelected) {
+                paint.setColor(Color.WHITE);
+            } else {
+                paint.setColor(COLOR_TEXT_SOFT);
+            }
+            float textOffset = (paint.descent() + paint.ascent()) / 2f;
+            canvas.drawText(label, rect.centerX(), rect.centerY() - textOffset, paint);
+        }
+
+        private void drawVerticalMomentumBar(Canvas canvas, float centerX, float top, float barW, float barH) {
+            RectF trackRect = new RectF(centerX - barW / 2f, top, centerX + barW / 2f, top + barH);
+
+            // Calculate percentage
+            float pct = momentumMax > 0 ? (float) (momentumVal / momentumMax) : 0f;
+            pct = Math.max(0f, Math.min(1f, pct));
+
+            // Choose color based on percentage and burst
+            int fillColor = COLOR_CYAN;
+            if (pct >= 0.75f) {
+                fillColor = Color.rgb(255, 107, 90);
+            } else if (pct >= 0.5f) {
+                fillColor = COLOR_SCORE;
+            } else if (pct >= 0.25f) {
+                fillColor = COLOR_OK;
+            }
+            if (momentumBurst > 0) {
+                fillColor = COLOR_WARN;
+            }
+
+            // Draw track background
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(Color.argb(120, 0, 0, 0));
+            canvas.drawRect(trackRect, paint);
+
+            // Draw progress fill (bottom to top)
+            if (pct > 0f) {
+                float fillHeight = barH * pct;
+                float innerPad = dp(2);
+                float fillTop = trackRect.bottom - innerPad - fillHeight;
+                if (fillTop < trackRect.top + innerPad) {
+                    fillTop = trackRect.top + innerPad;
+                }
+                RectF fillRect = new RectF(trackRect.left + innerPad, fillTop, trackRect.right - innerPad, trackRect.bottom - innerPad);
+                paint.setColor(fillColor);
+                canvas.drawRect(fillRect, paint);
+            }
+
+            // Draw track border
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(1.5f));
+            paint.setColor(COLOR_STROKE_STRONG);
+            canvas.drawRect(trackRect, paint);
+
+            // Draw caption "MOMENTUM" below
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            paint.setTextSize(dp(10));
+            paint.setColor(COLOR_TEXT_SOFT);
+            canvas.drawText("MOMENTUM", centerX, trackRect.bottom + dp(14), paint);
         }
 
         private void drawCellJava(Canvas canvas, float x0, float y0, float cellSize, int color, float alpha) {

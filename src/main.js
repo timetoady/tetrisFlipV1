@@ -501,6 +501,10 @@ const DUAL_SCREEN_MODES = [
 let showFps = false;
 let flipP2Hud = false;
 let dualScreenModeIndex = 0;
+window.isDualScreenGameActive = () => {
+  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  return isDual && activeMode !== "vanillaClassic";
+};
 let viewportScale = 1;
 let dualScreenHudLastPushMs = 0;
 let dualScreenHudStatus = "idle";
@@ -1913,6 +1917,46 @@ function setTouchEnabled(enabled) {
 setCanvasSize(activeMode);
 
 const input = createInput(window, canvas);
+window.handleDualScreenTouch = function(action) {
+  if (action === "flip") {
+    input.pressVirtual("Space");
+  } else if (action === "pause") {
+    if (!menuActive) {
+      input.pressVirtual("KeyP");
+    }
+  } else if (action === "pause_resume") {
+    if (game && game.paused) {
+      game.paused = false;
+      if (typeof game.playPauseSound === "function") {
+        game.playPauseSound();
+      }
+    }
+  } else if (action === "pause_restart") {
+    if (game) {
+      game.paused = false;
+      if (typeof game.reset === "function") {
+        game.reset();
+      }
+    }
+  } else if (action === "pause_end") {
+    if (game) {
+      game.pauseConfirmActive = true;
+      game.pauseConfirmIndex = 0;
+    }
+  } else if (action === "pause_confirm_yes") {
+    if (game) {
+      game.pauseConfirmActive = false;
+      game.paused = false;
+      if (typeof game.onPauseBack === "function") {
+        game.onPauseBack();
+      }
+    }
+  } else if (action === "pause_confirm_no") {
+    if (game) {
+      game.pauseConfirmActive = false;
+    }
+  }
+};
 function handleNativeBackButton() {
   if (exitConfirmActive) {
     requestExitApp();
@@ -2705,7 +2749,7 @@ function getTouchScale() {
   const availableH = viewportH - padding * 2;
   if (availableW <= 0 || availableH <= 0) return 1;
   const scaleW = availableW / canvas.width;
-  const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game" && activeMode !== "vanillaClassic";
   const displayCanvasHeight = isDualScreenGame ? (canvas.height / 2) : canvas.height;
   const scaleH = availableH / displayCanvasHeight;
   if (isDualScreenGame) {
@@ -2724,7 +2768,9 @@ function updateViewportScale() {
   if (!wrap) return;
   const menuVisible = menu && !menu.hidden;
   // Touch buttons sit above the menu (higher z-index); hide them while any menu is open.
-  const hideTouchButtons = menuVisible || !touchEnabled;
+  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  const isDualScreenGame = isDual && activeMode !== "vanillaClassic";
+  const hideTouchButtons = menuVisible || !touchEnabled || isDual;
   if (touchFlip) touchFlip.hidden = hideTouchButtons;
   if (touchPause) touchPause.hidden = hideTouchButtons;
   setCanvasSize(activeMode);
@@ -2749,7 +2795,6 @@ function updateViewportScale() {
   canvas.style.transform = "";
   canvas.style.transformOrigin = "";
 
-  const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
   if (menuVisible || (viewportScale >= 1 && !isDualScreenGame)) {
     wrap.style.placeItems = "";
   } else {
@@ -2806,7 +2851,7 @@ function updateViewportScale() {
  * Does NOT do any layout recalculation — safe to call every frame.
  */
 function syncDualScreenClip() {
-  const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game" && activeMode !== "vanillaClassic";
   if (!isDualScreenGame) return;
   const canvasContainer = document.getElementById("canvas-container");
   if (!canvasContainer) return;
@@ -3051,12 +3096,13 @@ function updateLandscapeHud() {
   if (activeMode === "vanillaClassic" && typeof game.getMomentumState === "function") {
     updateHudMeter(hudMomentumFill, game.getMomentumState("p1"));
   }
-}function pushDualScreenHud(nowMs) {
-  if (!DualScreenHud) return;
-  const mode = DUAL_SCREEN_MODES[dualScreenModeIndex].id;
-  if (mode === "off") return;
+}
 
-  if (mode === "game" && game && !menuActive) {
+function pushDualScreenHud(nowMs) {
+  const isDualActive = window.isDualScreenGameActive && window.isDualScreenGameActive();
+  const dualModeId = DUAL_SCREEN_MODES[dualScreenModeIndex].id;
+
+  if (dualModeId === "game" && isDualActive && game && !menuActive) {
     if (!window.DualScreenHudBridge) {
       // Bridge not yet registered — fall back to Capacitor plugin bridge for game mode
       if (nowMs - dualScreenHudLastPushMs < 16) return;
@@ -3067,7 +3113,8 @@ function updateLandscapeHud() {
           const wrapRect = wrap.getBoundingClientRect();
           const viewportW = wrapRect.width;
           const viewportH = wrapRect.height;
-          const displayCanvasHeight = canvas.height / 2;
+          const isDualScreenGame = dualModeId === "game" && activeMode !== "vanillaClassic";
+          const displayCanvasHeight = isDualScreenGame ? (canvas.height / 2) : canvas.height;
           const scaledWidth = canvas.width * viewportScale;
           const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
           const offsetY = viewportH - (displayCanvasHeight * viewportScale);
@@ -3107,7 +3154,8 @@ function updateLandscapeHud() {
       const wrapRect = wrap.getBoundingClientRect();
       const viewportW = wrapRect.width;
       const viewportH = wrapRect.height;
-      const displayCanvasHeight = canvas.height / 2;
+      const isDualScreenGame = dualModeId === "game" && activeMode !== "vanillaClassic";
+      const displayCanvasHeight = isDualScreenGame ? (canvas.height / 2) : canvas.height;
       const scaledWidth = canvas.width * viewportScale;
       const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
       const offsetY = viewportH - (displayCanvasHeight * viewportScale);
@@ -3116,6 +3164,15 @@ function updateLandscapeHud() {
       const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;
       const gridTopVal = offsetY;
 
+      let momVal = 0, momMax = 100, momBurst = 0;
+      if (typeof game.getMomentumState === "function") {
+        const mState = game.getMomentumState("p1");
+        if (mState) {
+          momVal = mState.value;
+          momMax = mState.max;
+          momBurst = mState.burstTimer;
+        }
+      }
       try {
         window.DualScreenHudBridge.pushFrame(
           state.cells,
@@ -3127,7 +3184,18 @@ function updateLandscapeHud() {
           cellSizeVal,
           gridLeftVal,
           gridTopVal,
-          viewportW
+          viewportW,
+          momVal,
+          momMax,
+          momBurst,
+          state.paused || false,
+          state.pauseActionIndex || 0,
+          state.pauseConfirmActive || false,
+          state.pauseConfirmIndex || 0,
+          state.clearProgress || 0.0,
+          state.clearRowsStr || "",
+          state.lifeLossProgress !== undefined ? state.lifeLossProgress : -1.0,
+          state.lifeLossFlashAlpha || 0.0
         );
       } catch (err) {
         console.warn("Failed to push game frame via JS bridge:", err);
@@ -3394,16 +3462,32 @@ function getOptionDescription(index) {
 }
 
 function positionTouchButtons() {
-  if (!touchFlip || !touchPause) return;
+  if (!touchPause) return;
+  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  if (isDual) {
+    if (touchFlip) touchFlip.hidden = true;
+    touchPause.hidden = true;
+    return;
+  }
   const rect = canvas.getBoundingClientRect();
   const rectScale = rect.width / canvas.width;
   const touchScale = Number.isFinite(rectScale) && rectScale > 0 ? rectScale : 1;
-  touchFlip.style.setProperty("--touch-scale", touchScale.toFixed(3));
+  if (touchFlip) touchFlip.style.setProperty("--touch-scale", touchScale.toFixed(3));
   touchPause.style.setProperty("--touch-scale", touchScale.toFixed(3));
 
   const isVanillaClassic = activeMode === "vanillaClassic";
   if (isVanillaClassic) {
-    touchFlip.hidden = true;
+    if (touchFlip) touchFlip.hidden = true;
+    const pauseSize = 84 * rectScale;
+    const pad = 12;
+    touchPause.style.width = `${pauseSize}px`;
+    touchPause.style.height = `${pauseSize}px`;
+    touchPause.style.left = `${Math.round(rect.right - pauseSize - pad)}px`;
+    touchPause.style.top = `${Math.round(rect.top + pad)}px`;
+    return;
+  }
+
+  if (!touchFlip) {
     const pauseSize = 84 * rectScale;
     const pad = 12;
     touchPause.style.width = `${pauseSize}px`;
@@ -3893,7 +3977,8 @@ function frame(now) {
   handleMenuInput();
   const menuVisible = menu && !menu.hidden;
   // Touch buttons sit above the menu (higher z-index); hide them while any menu is open.
-  const hideTouchButtons = menuVisible || !touchEnabled;
+  const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
+  const hideTouchButtons = menuVisible || !touchEnabled || isDual;
   if (touchFlip) touchFlip.hidden = hideTouchButtons;
   if (touchPause) touchPause.hidden = hideTouchButtons;
   setGameplayDataset();

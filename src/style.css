@@ -900,6 +900,10 @@ body[data-hud-mode="vanillaClassic"] .hud-meter-track.hud-meter-track--momentum 
   justify-self: end;
 }
 
+body[data-dual-screen-mode="game"] .hud-meter-track.hud-meter-track--momentum {
+  display: none !important;
+}
+
 body[data-hud-mode="vanillaClassic"] .hud-meter-track--momentum .hud-meter-fill {
   background: #4cc3ff;
   bottom: 0;

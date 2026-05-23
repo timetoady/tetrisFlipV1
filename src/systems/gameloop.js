@@ -550,7 +550,7 @@ export class GameLoop {
       for (const block of blocks) {
         const px = piece.x + block.x;
         const py = piece.y + block.y;
-        const localY = py - 20;
+        const localY = py - startY;
         if (px >= 0 && px < cols && localY >= 0 && localY < totalRows) {
           cellValues[localY][px] = piece.type + typeValueOffset;
         }
@@ -563,7 +563,7 @@ export class GameLoop {
       for (const block of blocks) {
         const px = piece.x + block.x;
         const py = ghostY + block.y;
-        const localY = py - 20;
+        const localY = py - startY;
         if (px >= 0 && px < cols && localY >= 0 && localY < totalRows) {
           if (cellValues[localY][px] === 0) {
             cellValues[localY][px] = piece.type + 10;
@@ -599,13 +599,30 @@ export class GameLoop {
     const { score, level, lines } = this.getScoreState();
     const status = this.paused ? "Paused" : (this.gameOver ? "Game Over" : "Playing");
 
+    const activeOwner = this.board.getActiveOwner();
+    const isClearingActive = this.isClearing && this.clearOwner === activeOwner;
+    const isLifeLossActive = (this.lifeLossAnimTimer > 0 || this.lifeLossFlashTimer > 0) && this.lifeLossOwner === activeOwner;
+
+    const clearProgress = isClearingActive ? (this.clearDuration > 0 ? this.clearTimer / this.clearDuration : 1.0) : 0.0;
+    const clearRowsStr = isClearingActive ? this.clearRows.join(",") : "";
+    const lifeLossProgress = isLifeLossActive ? (this.lifeLossAnimDuration > 0 ? 1 - this.lifeLossAnimTimer / this.lifeLossAnimDuration : 1.0) : -1.0;
+    const lifeLossFlashAlpha = isLifeLossActive ? (this.lifeLossFlashDuration > 0 ? this.lifeLossFlashTimer / this.lifeLossFlashDuration : 0.0) : 0.0;
+
     return {
       cells: flatCells,
       score,
       level,
       lines,
       status,
-      isFlipped: this.board.isFlipped
+      isFlipped: this.board.isFlipped,
+      paused: this.paused,
+      pauseActionIndex: this.pauseActionIndex || 0,
+      pauseConfirmActive: this.pauseConfirmActive || false,
+      pauseConfirmIndex: this.pauseConfirmIndex || 0,
+      clearProgress,
+      clearRowsStr,
+      lifeLossProgress,
+      lifeLossFlashAlpha
     };
   }
 
@@ -3231,6 +3248,10 @@ export class GameLoop {
         GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE,
         GAME_CONFIG.ROWS * GAME_CONFIG.BLOCK_SIZE
       );
+      if (window.isDualScreenGameActive && window.isDualScreenGameActive()) {
+        ctx.restore();
+        return;
+      }
       const viewportW = (typeof window !== "undefined" && window.visualViewport && Number.isFinite(window.visualViewport.width))
         ? window.visualViewport.width
         : ((typeof window !== "undefined") ? window.innerWidth : 0);

@@ -2987,7 +2987,9 @@ export class GameLoop {
       ctx.textBaseline = "middle";
       ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
       ctx.shadowBlur = 8;
-      ctx.fillText("TETRIS!", ctx.canvas.width / 2 + driftX, ctx.canvas.height / 2 - 40 + driftY);
+      const isDualActive = window.isDualScreenGameActive && window.isDualScreenGameActive();
+      const visibleHeight = isDualActive ? (ctx.canvas.height / 2) : ctx.canvas.height;
+      ctx.fillText("TETRIS!", ctx.canvas.width / 2 + driftX, visibleHeight / 2 - 40 + driftY);
       ctx.restore();
     }
 
@@ -2996,8 +2998,10 @@ export class GameLoop {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
+      const isDualActive = window.isDualScreenGameActive && window.isDualScreenGameActive();
+      const visibleHeight = isDualActive ? (ctx.canvas.height / 2) : ctx.canvas.height;
       const baseX = ctx.canvas.width / 2;
-      const baseY = ctx.canvas.height / 2 + 30;
+      const baseY = visibleHeight / 2 + 30;
       for (let i = 0; i < this.callouts.length; i += 1) {
         const callout = this.callouts[i];
         const t = 1 - callout.timer / callout.duration;
@@ -3464,12 +3468,14 @@ export class GameLoop {
     if (this.lifeLossPending) {
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const isDualActive = window.isDualScreenGameActive && window.isDualScreenGameActive();
+      const visibleHeight = isDualActive ? (ctx.canvas.height / 2) : ctx.canvas.height;
       ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      ctx.fillRect(0, 0, ctx.canvas.width, visibleHeight);
       const panelW = 360;
       const panelH = 180;
       const panelX = (ctx.canvas.width - panelW) / 2;
-      const panelY = (ctx.canvas.height - panelH) / 2;
+      const panelY = (visibleHeight - panelH) / 2;
       ctx.fillStyle = "rgba(12, 12, 12, 0.95)";
       ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
       ctx.lineWidth = 2;

@@ -31,6 +31,9 @@ body {
   white-space: nowrap;
   border: 0;
 }
+[hidden] {
+  display: none !important;
+}
 body::before {
   content: "";
   position: fixed;
@@ -901,6 +904,13 @@ body[data-hud-mode="vanillaClassic"] .hud-meter-track.hud-meter-track--momentum 
 }
 
 body[data-dual-screen-mode="game"] .hud-meter-track.hud-meter-track--momentum {
+  display: none !important;
+}
+
+body[data-dual-screen-mode="game"] .touch-flip,
+body[data-dual-screen-mode="game"] .touch-pause,
+body[data-dual-screen-mode="info"] .touch-flip,
+body[data-dual-screen-mode="info"] .touch-pause {
   display: none !important;
 }
 

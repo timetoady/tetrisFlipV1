@@ -1466,11 +1466,11 @@ public class DualScreenHudPlugin extends Plugin {
 
                 // Shading overlay based on isFlipped
                 if (isFlipped) {
-                    // Green overlay
-                    paint.setColor(Color.argb((int)(0.06f * 255), 90, 140, 90));
-                } else {
                     // Blue overlay
                     paint.setColor(Color.argb((int)(0.06f * 255), 70, 110, 140));
+                } else {
+                    // Green overlay
+                    paint.setColor(Color.argb((int)(0.06f * 255), 90, 140, 90));
                 }
                 canvas.drawRect(left, boardTop, left + gridWidth, boardTop + gridHeight, paint);
 

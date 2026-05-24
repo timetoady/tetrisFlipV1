@@ -836,9 +836,8 @@ body[data-hud-mode="vanillaClassic"] .hud-meter-track {
   box-shadow: none;
 }
 
-/* Boxed variant (used for RUN panel so the watermark stays visible). */
 .landscape-hud-panel.is-boxed {
-  padding-top: calc(14px * var(--hud-scale, 1));
+  padding-top: calc(36px * var(--hud-scale, 1));
   border: 2px solid rgba(255, 255, 255, 0.28);
   background: rgba(10, 10, 10, 0.55);
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
@@ -1338,23 +1337,22 @@ body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .piece-count {
   font-size: 16px;
 }
 
-/* Dual Screen Mode styling updates */
 .dual-screen-header {
   position: fixed;
   top: 1.2vh;
-  left: 50%;
+  left: 43.5%;
   transform: translateX(-50%);
   z-index: 1000;
   display: flex;
   align-items: baseline;
-  gap: 16px;
+  gap: 8px;
   pointer-events: none;
 }
 .ds-header-label {
-  font-size: 14px;
+  font-size: 9px;
   color: rgba(230, 230, 230, 0.75);
-  font-weight: 500;
-  letter-spacing: 2px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
 }
 .ds-header-value {
   font-size: 40px;
@@ -1384,24 +1382,59 @@ body[data-is-dual-active="true"] #hud-score {
 }
 
 body[data-is-dual-active="true"] #landscape-hud-right-run {
+  padding-top: calc(36px * var(--hud-scale, 1)) !important;
   padding-bottom: calc(20px * var(--hud-scale, 1)) !important;
 }
 body[data-is-dual-active="true"] #landscape-hud-right-run .piece-stats {
-  gap: 4px !important;
+  gap: 9px !important;
 }
 body[data-is-dual-active="true"] #landscape-hud-right-run .piece-icon {
-  transform: scale(calc(1.4 * var(--hud-scale, 1))) !important;
+  transform: scale(calc(1.75 * var(--hud-scale, 1))) !important;
 }
 body[data-is-dual-active="true"] #landscape-hud-right-run .piece-row {
-  grid-template-columns: calc(100px * var(--hud-scale, 1)) 1fr 44px !important;
-  min-height: calc(44px * var(--hud-scale, 1)) !important;
+  grid-template-columns: calc(112px * var(--hud-scale, 1)) 1fr 44px !important;
+  min-height: calc(52px * var(--hud-scale, 1)) !important;
 }
 body[data-is-dual-active="true"] #landscape-hud-right-run .piece-count {
   font-size: 16px !important;
 }
 body[data-is-dual-active="true"] #landscape-hud-right-run .hud-row {
-  margin-top: 10px !important;
-  padding-top: 6px !important;
+  margin-top: 24px !important;
+  padding-top: 18px !important;
+}
+
+/* Burst side panel layout adjustments */
+#landscape-hud-right-burst {
+  padding-top: calc(24px * var(--hud-scale, 1));
+}
+.burst-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(38px * var(--hud-scale, 1));
+}
+.burst-time-container {
+  display: flex;
+  flex-direction: column;
+  gap: calc(8px * var(--hud-scale, 1));
+}
+
+/* Desktop-specific Classic/Vanilla mode adjustments */
+body[data-is-desktop="true"][data-hud-mode="vanillaClassic"] {
+  --hud-scale: 1.15;
+}
+body[data-is-desktop="true"][data-hud-mode="vanillaClassic"] .landscape-hud-panel {
+  width: clamp(180px, 24vw, 360px) !important;
+  padding: 24px 20px !important;
+  gap: 16px !important;
+}
+body[data-is-desktop="true"][data-hud-mode="vanillaClassic"] .hud-value {
+  font-size: 34px !important;
+}
+body[data-is-desktop="true"][data-hud-mode="vanillaClassic"] .hud-small {
+  font-size: 20px !important;
+}
+body[data-is-desktop="true"][data-hud-mode="vanillaClassic"] .hud-meter-track {
+  height: 120px !important;
 }
 
 

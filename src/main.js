@@ -436,7 +436,8 @@ let activeGarbageHeight = garbageHeight;
 let overlayMode = "gameover";
 let overlayImageQueue = [];
 let overlayImageIndex = 0;
-let touchEnabled = true;
+const hasTouch = (Capacitor.getPlatform() === "android" || Capacitor.getPlatform() === "ios") || window.matchMedia("(pointer: coarse)").matches;
+let touchEnabled = hasTouch;
 
 const ROTATE_LAYOUTS = [
   { id: "southEast", label: "South / East (A/B)" },
@@ -793,7 +794,7 @@ function startGame() {
   // Apply layout choice at the moment gameplay starts (not mid-run).
   const layoutModeId = (LAYOUT_MODES[layoutModeIndex] || LAYOUT_MODES[0]).id;
   applyLayoutConfig(layoutModeId);
-  setTouchEnabled(mode !== "coop" && layoutModeId !== "handheld");
+  setTouchEnabled(mode !== "coop" && layoutModeId !== "handheld" && hasTouch);
   setCanvasSize(mode);
   closeMenu();
   if (game.setMode) {
@@ -2746,9 +2747,7 @@ function updateHudDebugBadge() {
 }
 
 function getTouchScale() {
-  const touch = window.matchMedia("(pointer: coarse)").matches
-    || navigator.maxTouchPoints > 0;
-  if (!touch) return 1;
+  if (!hasTouch) return 1;
   const padding = 2;
   const wrapRect = (wrap && wrap.getBoundingClientRect) ? wrap.getBoundingClientRect() : null;
   const viewportW = wrapRect ? wrapRect.width : ((window.visualViewport && window.visualViewport.width) ? window.visualViewport.width : window.innerWidth);
@@ -2775,16 +2774,34 @@ function setGameplayDataset() {
 function updateViewportScale() {
   if (!wrap) return;
   const menuVisible = menu && !menu.hidden;
+  const isDesktop = !hasTouch;
+  document.body.dataset.isDesktop = isDesktop ? "true" : "false";
+
   // Touch buttons sit above the menu (higher z-index); hide them while any menu is open.
   const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id !== "off";
   const isDualScreenGame = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game" && activeMode !== "vanillaClassic";
-  const hideTouchButtons = menuVisible || !touchEnabled || isDual;
+  const hideTouchButtons = menuVisible || !touchEnabled || isDual || !hasTouch;
   if (touchFlip) touchFlip.hidden = hideTouchButtons;
   if (touchPause) touchPause.hidden = hideTouchButtons;
   setCanvasSize(activeMode);
   setGameplayDataset();
-  viewportScale = menuVisible ? 1 : getTouchScale();
-  document.documentElement.style.setProperty("--hud-scale", String(viewportScale.toFixed(3)));
+
+  const isDesktopClassic = (activeMode === "vanillaClassic") && isDesktop;
+  if (menuVisible) {
+    viewportScale = 1;
+  } else if (isDesktopClassic) {
+    const wrapRect = wrap.getBoundingClientRect();
+    const availableH = wrapRect ? wrapRect.height - 40 : window.innerHeight - 40;
+    viewportScale = Math.min(1.75, Math.max(1.4, availableH / canvas.height));
+  } else {
+    viewportScale = getTouchScale();
+  }
+
+  let hudScale = viewportScale;
+  if (isDesktopClassic) {
+    hudScale = Math.min(1.35, Math.max(1.15, viewportScale * 0.82));
+  }
+  document.documentElement.style.setProperty("--hud-scale", String(hudScale.toFixed(3)));
   if (game && game.setViewportScale) {
     game.setViewportScale(viewportScale);
   }
@@ -2799,15 +2816,23 @@ function updateViewportScale() {
     canvasContainer.style.width = "";
     canvasContainer.style.height = "";
     canvasContainer.style.overflow = "";
+    canvasContainer.style.alignSelf = "";
   }
   canvas.style.transform = "";
   canvas.style.transformOrigin = "";
 
-  if (menuVisible || (viewportScale >= 1 && !isDualScreenGame)) {
+  const scaleActive = viewportScale !== 1;
+  if (menuVisible || (!scaleActive && !isDualScreenGame)) {
     wrap.style.placeItems = "";
+    if (canvasContainer) {
+      canvasContainer.style.alignSelf = "";
+    }
   } else {
     // When scaling is active, keep overlays centered by transforming the canvas only.
     wrap.style.placeItems = "start";
+    if (canvasContainer) {
+      canvasContainer.style.alignSelf = "start";
+    }
     const wrapRect = wrap.getBoundingClientRect();
     const viewportW = wrapRect.width;
     const viewportH = wrapRect.height;
@@ -2821,7 +2846,7 @@ function updateViewportScale() {
     let offsetY = 2;
     if (isDualScreenGame) {
       offsetY = viewportH - scaledHeight;
-    } else if (activeMode === "vanillaClassic" && viewportW <= viewportH) {
+    } else if (activeMode === "vanillaClassic") {
       offsetY = Math.max(2, (viewportH - scaledHeight) / 2);
     }
 
@@ -4022,9 +4047,8 @@ function frame(now) {
   }
   handleMenuInput();
   const menuVisible = menu && !menu.hidden;
-  // Touch buttons sit above the menu (higher z-index); hide them while any menu is open.
   const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id !== "off";
-  const hideTouchButtons = menuVisible || !touchEnabled || isDual;
+  const hideTouchButtons = menuVisible || !touchEnabled || isDual || !hasTouch;
   if (touchFlip) touchFlip.hidden = hideTouchButtons;
   if (touchPause) touchPause.hidden = hideTouchButtons;
   setGameplayDataset();
@@ -4038,7 +4062,7 @@ function frame(now) {
       touchPause = null;
     }
   } else {
-    if (touchEnabled) {
+    if (touchEnabled && hasTouch) {
       ensureTouchButtons();
     }
   }

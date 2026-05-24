@@ -40,7 +40,7 @@ import java.util.Locale;
 
 @CapacitorPlugin(name = "DualScreenHud")
 public class DualScreenHudPlugin extends Plugin {
-    private static final int COLOR_BG = Color.rgb(7, 10, 16);
+    private static final int COLOR_BG = Color.rgb(32, 32, 32);
     private static final int COLOR_PANEL = Color.argb(150, 10, 16, 24);
     private static final int COLOR_PANEL_STRONG = Color.argb(184, 9, 13, 20);
     private static final int COLOR_CYAN = Color.rgb(76, 195, 255);
@@ -89,7 +89,7 @@ public class DualScreenHudPlugin extends Plugin {
             float top = -bgH / 2f;
             RectF dest = new RectF(left, top, left + bgW, top + bgH);
             Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-            bgPaint.setAlpha((int) (255 * 0.025f)); // opacity 0.025
+            bgPaint.setAlpha((int) (255 * 0.045f)); // opacity 0.045
             canvas.drawBitmap(bg, null, dest, bgPaint);
         }
     }

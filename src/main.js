@@ -352,6 +352,7 @@ const screens = document.querySelectorAll("[data-screen]");
 const modeOptions = Array.from(document.querySelectorAll("[data-mode]"));
 let menuState = "splash";
 let menuActive = true;
+let gameStartMs = 0;
 const MENU_NAV_REPEAT_DELAY_MS = 500;
 const MENU_NAV_REPEAT_INTERVAL_MS = 60;
 const menuNavRepeatState = {
@@ -675,6 +676,7 @@ function closeMenu() {
   input.clearPressed();
   updateViewportScale();
   updateMusicState();
+  gameStartMs = performance.now();
 }
 
 if (window.tetrisFlip && typeof window.tetrisFlip.onOpenHelp === "function") {
@@ -2845,7 +2847,7 @@ function updateViewportScale() {
     const offsetX = Math.max(0, (viewportW - scaledWidth) / 2);
     let offsetY = 2;
     if (isDualScreenGame) {
-      offsetY = viewportH - scaledHeight;
+      offsetY = viewportH - scaledHeight - 4;
     } else if (activeMode === "vanillaClassic") {
       offsetY = Math.max(2, (viewportH - scaledHeight) / 2);
     }
@@ -3174,6 +3176,9 @@ function pushDualScreenHud(nowMs) {
   const dualModeId = DUAL_SCREEN_MODES[dualScreenModeIndex].id;
 
   if (dualModeId === "game" && isDualActive && game && !menuActive) {
+    if (nowMs - gameStartMs < 120) {
+      return;
+    }
     if (!window.DualScreenHudBridge) {
       // Bridge not yet registered — fall back to Capacitor plugin bridge for game mode
       if (nowMs - dualScreenHudLastPushMs < 16) return;
@@ -3497,7 +3502,7 @@ function getMenuStatePayload() {
     return {
       displayMode: "info",
       status: status,
-      modeLabel: activeMode.charAt(0).toUpperCase() + activeMode.slice(1),
+      modeLabel: activeMode === "vanillaClassic" ? "Vanilla Classic" : activeMode.charAt(0).toUpperCase() + activeMode.slice(1),
       score: {
         score: scoreState.score || 0,
         level: scoreState.level || 0,

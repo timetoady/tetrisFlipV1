@@ -3227,15 +3227,10 @@ export class GameLoop {
       panelY += nextStep;
     }
 
-    if (isVanilla && vanillaPortrait) {
-      const gridWidth = GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE;
-      const barH = 24;
-      const barY = Math.min(ctx.canvas.height - barH - 12, vanillaPadTop + halfHeight + 32);
-      this.drawMomentumMeter(ctx, gridOffsetX, barY, gridWidth, barH);
-    } else if (isVanilla) {
-      const meterW = holdBoxSize;
+    if (isVanilla) {
+      const meterW = 48;
       const meterH = 96;
-      const meterGap = 18;
+      const meterGap = 24;
       const meterY = Math.min(ctx.canvas.height - meterH - 12, panelY + meterGap);
       this.drawMomentumMeter(ctx, panelX, meterY, meterW, meterH);
     } else {

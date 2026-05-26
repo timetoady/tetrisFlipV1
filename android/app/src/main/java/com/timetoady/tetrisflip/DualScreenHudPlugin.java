@@ -1030,18 +1030,31 @@ public class DualScreenHudPlugin extends Plugin {
                 drawMonoPiece(canvas, nextQueue == null ? -1 : pieceType(nextQueue.opt(i)), nextBox, dp(8));
             }
 
-            float footerTop = rect.bottom - inner - dp(34);
+            float footerTop = rect.bottom - inner - dp(84);
             if (momentum != null) {
-                drawCaption(canvas, rect.left + inner, footerTop, "MOMENTUM");
-                RectF meter = new RectF(rect.left + inner, footerTop + dp(10), rect.right - inner, footerTop + dp(26));
-                drawMeter(canvas, meter, intValue(momentum, "value", 0), intValue(momentum, "max", 100), intValue(momentum, "burstTimer", 0));
+                float nextPiecesBottom = nextStartY + 5f * (nextBoxHeight + nextGap) - nextGap;
+                float barW = dp(32);
+                float barH = dp(72);
+                float barTop = nextPiecesBottom + dp(14);
+                float maxBarBottom = rect.bottom - inner - dp(24);
+                if (barTop + barH > maxBarBottom) {
+                    barTop = maxBarBottom - barH;
+                }
+                RectF meter = new RectF(rect.centerX() - barW / 2f, barTop, rect.centerX() + barW / 2f, barTop + barH);
+                drawVerticalMeter(canvas, meter, intValue(momentum, "value", 0), intValue(momentum, "max", 100), intValue(momentum, "burstTimer", 0));
+                
+                paint.setTypeface(Typeface.MONOSPACE);
+                paint.setTextAlign(Paint.Align.CENTER);
+                paint.setColor(COLOR_TEXT_SOFT);
+                paint.setTextSize(dp(11));
+                canvas.drawText("MOMENTUM", rect.centerX(), meter.bottom + dp(14), paint);
             } else {
-                drawCaption(canvas, rect.left + inner, footerTop, "TIME");
+                drawCaption(canvas, rect.left + inner, footerTop + dp(50), "TIME");
                 paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
                 paint.setTextAlign(Paint.Align.LEFT);
                 paint.setTextSize(dp(15));
                 paint.setColor(COLOR_TEXT);
-                canvas.drawText(formatHudTime(longValue(scoreState, "timeMs", 0L)), rect.left + inner, footerTop + dp(26), paint);
+                canvas.drawText(formatHudTime(longValue(scoreState, "timeMs", 0L)), rect.left + inner, footerTop + dp(76), paint);
             }
         }
 
@@ -1136,19 +1149,21 @@ public class DualScreenHudPlugin extends Plugin {
                 y += rowHeight;
             }
             float summaryTop = rect.bottom - inner - dp(54);
+            float rightX = rect.right - inner;
+
             drawCaption(canvas, x, summaryTop, "I DROUGHT");
             paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             paint.setTextAlign(Paint.Align.LEFT);
-            paint.setTextSize(dp(20));
+            paint.setTextSize(dp(18));
             paint.setColor(COLOR_TEXT);
-            canvas.drawText(String.valueOf(intValue(runStats, "droughtI", 0)), x, summaryTop + dp(24), paint);
-            paint.setTextAlign(Paint.Align.RIGHT);
-            drawCaptionAligned(canvas, rect.right - inner, summaryTop, "TOTAL", Paint.Align.RIGHT);
-            paint.setTextAlign(Paint.Align.RIGHT);
+            canvas.drawText(String.valueOf(intValue(runStats, "droughtI", 0)), x, summaryTop + dp(40), paint);
+
+            drawCaptionAligned(canvas, rightX, summaryTop, "TOTAL", Paint.Align.RIGHT);
             paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
-            paint.setTextSize(dp(20));
+            paint.setTextAlign(Paint.Align.RIGHT);
+            paint.setTextSize(dp(18));
             paint.setColor(COLOR_TEXT);
-            canvas.drawText(String.valueOf(intValue(runStats, "total", 0)), rect.right - inner, summaryTop + dp(24), paint);
+            canvas.drawText(String.valueOf(intValue(runStats, "total", 0)), rightX, summaryTop + dp(40), paint);
         }
 
         private void drawFallbackPanel(Canvas canvas, RectF rect, String modeText, JSONObject scoreState, JSONObject momentum) {
@@ -1282,6 +1297,37 @@ public class DualScreenHudPlugin extends Plugin {
             RectF fill = new RectF(rect.left + dp(2), rect.top + dp(2), rect.left + dp(2) + (rect.width() - dp(4)) * pct, rect.bottom - dp(2));
             paint.setColor(fillColor);
             canvas.drawRoundRect(fill, dp(6), dp(6), paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(1.25f));
+            paint.setColor(COLOR_STROKE_STRONG);
+            canvas.drawRoundRect(rect, dp(8), dp(8), paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+
+        private void drawVerticalMeter(Canvas canvas, RectF rect, int value, int max, int burstTimer) {
+            float pct = max > 0 ? clamp(value / (float) max, 0f, 1f) : 0f;
+            int fillColor = COLOR_CYAN;
+            if (pct >= 0.75f) {
+                fillColor = Color.rgb(255, 107, 90);
+            } else if (pct >= 0.5f) {
+                fillColor = COLOR_SCORE;
+            } else if (pct >= 0.25f) {
+                fillColor = COLOR_OK;
+            }
+            if (burstTimer > 0) {
+                fillColor = COLOR_WARN;
+            }
+
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(Color.argb(110, 0, 0, 0));
+            canvas.drawRoundRect(rect, dp(8), dp(8), paint);
+
+            float fillHeight = (rect.height() - dp(4)) * pct;
+            float fillTop = rect.bottom - dp(2) - fillHeight;
+            RectF fill = new RectF(rect.left + dp(2), fillTop, rect.right - dp(2), rect.bottom - dp(2));
+            paint.setColor(fillColor);
+            canvas.drawRoundRect(fill, dp(6), dp(6), paint);
+
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(dp(1.25f));
             paint.setColor(COLOR_STROKE_STRONG);
@@ -1494,7 +1540,7 @@ public class DualScreenHudPlugin extends Plugin {
             float gridWidth = cellSize * cols;
             float gridHeight = cellSize * rows;
 
-            boolean isClassic = modeLabel.equalsIgnoreCase("vanillaClassic");
+            boolean isClassic = modeLabel.equalsIgnoreCase("vanillaClassic") || modeLabel.toLowerCase(Locale.US).contains("classic");
 
             // Draw grid background
                 paint.setStyle(Paint.Style.FILL);
@@ -1843,7 +1889,7 @@ public class DualScreenHudPlugin extends Plugin {
                 return true; // Always consume touches when paused
             }
 
-            boolean wantsFlip = !modeLabel.equalsIgnoreCase("vanillaClassic");
+            boolean wantsFlip = !modeLabel.equalsIgnoreCase("vanillaClassic") && !modeLabel.toLowerCase(Locale.US).contains("classic");
 
             if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
                 if (wantsFlip && flipButtonRect.contains(x, y)) {
@@ -1870,7 +1916,7 @@ public class DualScreenHudPlugin extends Plugin {
         }
 
         private void drawNativeButtons(Canvas canvas, float left, float gridWidth, float width, float height) {
-            boolean wantsFlip = !modeLabel.equalsIgnoreCase("vanillaClassic");
+            boolean wantsFlip = !modeLabel.equalsIgnoreCase("vanillaClassic") && !modeLabel.toLowerCase(Locale.US).contains("classic");
 
             float rightMarginStart = left + gridWidth;
             float rightMarginCenterX = rightMarginStart + (width - rightMarginStart) / 2f;

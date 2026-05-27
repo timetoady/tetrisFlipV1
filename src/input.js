@@ -104,20 +104,43 @@ export function createInput(target = window, pointerTarget = window) {
     return targetEl.isContentEditable;
   }
 
+  function getEventCode(e) {
+    let code = e.code;
+    if (!code || !DEFAULT_KEYS.has(code)) {
+      if (e.key === "ArrowDown") code = "ArrowDown";
+      else if (e.key === "ArrowUp") code = "ArrowUp";
+      else if (e.key === "ArrowLeft") code = "ArrowLeft";
+      else if (e.key === "ArrowRight") code = "ArrowRight";
+      else if (e.key === "Enter") code = "Enter";
+      else if (e.key === "Escape") code = "Escape";
+      else if (e.key === " " || e.key === "Spacebar") code = "Space";
+      else if (e.key === "z" || e.key === "Z") code = "KeyZ";
+      else if (e.key === "x" || e.key === "X") code = "KeyX";
+      else if (e.key === "c" || e.key === "C") code = "KeyC";
+      else if (e.key === "a" || e.key === "A") code = "KeyA";
+      else if (e.key === "s" || e.key === "S") code = "KeyS";
+      else if (e.key === "d" || e.key === "D") code = "KeyD";
+      else if (e.key === "w" || e.key === "W") code = "KeyW";
+    }
+    return code;
+  }
+
   function onKeyDown(e) {
-    if (!DEFAULT_KEYS.has(e.code)) return;
+    const code = getEventCode(e);
+    if (!DEFAULT_KEYS.has(code)) return;
     if (isEditableTarget(e.target)) return;
     e.preventDefault();
-    if (!keyboardDown.has(e.code)) pressed.add(e.code);
-    keyboardDown.add(e.code);
+    if (!keyboardDown.has(code)) pressed.add(code);
+    keyboardDown.add(code);
   }
 
   function onKeyUp(e) {
-    if (!DEFAULT_KEYS.has(e.code)) return;
+    const code = getEventCode(e);
+    if (!DEFAULT_KEYS.has(code)) return;
     if (isEditableTarget(e.target)) return;
     e.preventDefault();
-    keyboardDown.delete(e.code);
-    pressed.delete(e.code);
+    keyboardDown.delete(code);
+    pressed.delete(code);
   }
 
   function setVirtual(code, isDown) {

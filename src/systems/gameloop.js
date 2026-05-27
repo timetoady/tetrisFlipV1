@@ -275,7 +275,14 @@ export class GameLoop {
   }
 
   getGridOffsetX() {
-    return GAME_CONFIG.GRID_MARGIN + (this.isCoopMode() ? GAME_CONFIG.HUD_WIDTH : 0);
+    // In co-op mode, the left side always reserves space for the P2 HUD panel,
+    // whether or not dual-screen is active.
+    const shift = this.isCoopMode() ? GAME_CONFIG.HUD_WIDTH : 0;
+    return GAME_CONFIG.GRID_MARGIN + shift;
+  }
+
+  getGridLeft() {
+    return this.getGridOffsetX();
   }
 
   setGarbageHeight(height) {
@@ -3027,6 +3034,8 @@ export class GameLoop {
       ctx.restore();
     }
 
+    const isDualActive = window.isDualScreenGameActive && window.isDualScreenGameActive();
+    // In co-op mode, draw the P2 left HUD in both single-screen and dual-screen layouts.
     if (this.isCoopMode()) {
       const p2HudCenterX = (GAME_CONFIG.GRID_MARGIN + GAME_CONFIG.HUD_WIDTH) / 2;
       const p2HudCenterY = ctx.canvas.height / 2;
@@ -3117,7 +3126,8 @@ export class GameLoop {
       ctx.restore();
     }
 
-    if (!hideCanvasHud) {
+    // Draw the P1 right-side HUD: always in non-dual, and also in dual co-op for HOLD/NEXT.
+    if (!hideCanvasHud && (!isDualActive || (isDualActive && this.isCoopMode()))) {
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#e6e6e6";
@@ -3152,7 +3162,6 @@ export class GameLoop {
       ctx.fillStyle = "#e6e6e6";
       ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
     } else {
-      const isDualActive = window.isDualScreenGameActive && window.isDualScreenGameActive();
       if (!isDualActive) {
         ctx.fillText("SCORE", hudX, hudY);
         hudY += 20;
@@ -3196,7 +3205,6 @@ export class GameLoop {
     const nextStep = (isVanilla && vanillaPortrait) ? 72 : (isVanilla ? 72 : 88);
     const maxNext = (isVanilla && vanillaPortrait) ? 3 : (isVanilla ? 2 : 3);
 
-    const isDualActive = window.isDualScreenGameActive && window.isDualScreenGameActive();
     let panelY = isVanilla ? (vanillaPortrait ? (vanillaPadTop + 8) : (vanillaPadTop + 150)) : (isDualActive ? 12 : 190);
 
     if (isVanilla && vanillaPortrait) {

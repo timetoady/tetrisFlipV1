@@ -145,7 +145,16 @@ public class DualScreenHudPlugin extends Plugin {
                         public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped, double cellSize, double gridLeft, double gridTop, double viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, double pauseActionIndex, boolean pauseConfirmActive, double pauseConfirmIndex, double clearProgress, String clearRowsStr, double lifeLossProgress, double lifeLossFlashAlpha) {
                             getActivity().runOnUiThread(() -> {
                                 if (controller != null && controller.hasPresentation()) {
-                                    controller.pushFrame(cells, (int) score, (int) level, (int) lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop, (float) viewportW, momentumVal, momentumMax, momentumBurst, paused, (int) pauseActionIndex, pauseConfirmActive, (int) pauseConfirmIndex, (float) clearProgress, clearRowsStr, (float) lifeLossProgress, (float) lifeLossFlashAlpha);
+                                    controller.pushFrame(cells, (int) score, (int) level, (int) lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop, (float) viewportW, momentumVal, momentumMax, momentumBurst, paused, (int) pauseActionIndex, pauseConfirmActive, (int) pauseConfirmIndex, (float) clearProgress, clearRowsStr, (float) lifeLossProgress, (float) lifeLossFlashAlpha, -1.0, "", "");
+                                }
+                            });
+                        }
+
+                        @JavascriptInterface
+                        public void pushFrame(String cells, double score, double level, double lines, String status, boolean isFlipped, double cellSize, double gridLeft, double gridTop, double viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, double pauseActionIndex, boolean pauseConfirmActive, double pauseConfirmIndex, double clearProgress, String clearRowsStr, double lifeLossProgress, double lifeLossFlashAlpha, double p1Hold, String p1NextStr, String mode) {
+                            getActivity().runOnUiThread(() -> {
+                                if (controller != null && controller.hasPresentation()) {
+                                    controller.pushFrame(cells, (int) score, (int) level, (int) lines, status, isFlipped, (float) cellSize, (float) gridLeft, (float) gridTop, (float) viewportW, momentumVal, momentumMax, momentumBurst, paused, (int) pauseActionIndex, pauseConfirmActive, (int) pauseConfirmIndex, (float) clearProgress, clearRowsStr, (float) lifeLossProgress, (float) lifeLossFlashAlpha, p1Hold, p1NextStr, mode);
                                 }
                             });
                         }
@@ -270,12 +279,16 @@ public class DualScreenHudPlugin extends Plugin {
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst) {
-            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0, false, 0, 0.0f, "", -1.0f, 0.0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0, false, 0, 0.0f, "", -1.0f, 0.0f, -1.0, "", "");
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, int pauseActionIndex, boolean pauseConfirmActive, int pauseConfirmIndex, float clearProgress, String clearRowsStr, float lifeLossProgress, float lifeLossFlashAlpha) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, paused, pauseActionIndex, pauseConfirmActive, pauseConfirmIndex, clearProgress, clearRowsStr, lifeLossProgress, lifeLossFlashAlpha, -1.0, "", "");
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, int pauseActionIndex, boolean pauseConfirmActive, int pauseConfirmIndex, float clearProgress, String clearRowsStr, float lifeLossProgress, float lifeLossFlashAlpha, double p1Hold, String p1NextStr, String mode) {
             if (enabled && presentation != null) {
-                presentation.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, paused, pauseActionIndex, pauseConfirmActive, pauseConfirmIndex, clearProgress, clearRowsStr, lifeLossProgress, lifeLossFlashAlpha);
+                presentation.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, paused, pauseActionIndex, pauseConfirmActive, pauseConfirmIndex, clearProgress, clearRowsStr, lifeLossProgress, lifeLossFlashAlpha, p1Hold, p1NextStr, mode);
             }
         }
 
@@ -544,16 +557,20 @@ public class DualScreenHudPlugin extends Plugin {
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst) {
-            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0, false, 0, 0.0f, "", -1.0f, 0.0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0, false, 0, 0.0f, "", -1.0f, 0.0f, -1.0, "", "");
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, int pauseActionIndex, boolean pauseConfirmActive, int pauseConfirmIndex, float clearProgress, String clearRowsStr, float lifeLossProgress, float lifeLossFlashAlpha) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, paused, pauseActionIndex, pauseConfirmActive, pauseConfirmIndex, clearProgress, clearRowsStr, lifeLossProgress, lifeLossFlashAlpha, -1.0, "", "");
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, int pauseActionIndex, boolean pauseConfirmActive, int pauseConfirmIndex, float clearProgress, String clearRowsStr, float lifeLossProgress, float lifeLossFlashAlpha, double p1Hold, String p1NextStr, String mode) {
             if (infoHud != null) {
                 infoHud.setVisibility(View.GONE);
             }
             if (gameBoard != null) {
                 gameBoard.setVisibility(View.VISIBLE);
-                gameBoard.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, paused, pauseActionIndex, pauseConfirmActive, pauseConfirmIndex, clearProgress, clearRowsStr, lifeLossProgress, lifeLossFlashAlpha);
+                gameBoard.pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, paused, pauseActionIndex, pauseConfirmActive, pauseConfirmIndex, clearProgress, clearRowsStr, lifeLossProgress, lifeLossFlashAlpha, p1Hold, p1NextStr, mode);
             }
         }
     }
@@ -1397,6 +1414,10 @@ public class DualScreenHudPlugin extends Plugin {
         private float lifeLossProgress = -1.0f;
         private float lifeLossFlashAlpha = 0f;
 
+        // P1 HUD fields (co-op / extended bridge)
+        private int p1HoldType = -1;  // -1 = none
+        private int[] p1NextQueue = new int[0];
+
         // Native pause menu button Rects
         private final RectF resumeBtnRect = new RectF();
         private final RectF restartBtnRect = new RectF();
@@ -1454,16 +1475,25 @@ public class DualScreenHudPlugin extends Plugin {
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst) {
-            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0, false, 0, 0.0f, "", -1.0f, 0.0f);
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, false, 0, false, 0, 0.0f, "", -1.0f, 0.0f, -1.0, "", "");
         }
 
         void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, int pauseActionIndex, boolean pauseConfirmActive, int pauseConfirmIndex, float clearProgress, String clearRowsStr, float lifeLossProgress, float lifeLossFlashAlpha) {
+            pushFrame(cells, score, level, lines, status, isFlipped, cellSize, gridLeft, gridTop, viewportW, momentumVal, momentumMax, momentumBurst, paused, pauseActionIndex, pauseConfirmActive, pauseConfirmIndex, clearProgress, clearRowsStr, lifeLossProgress, lifeLossFlashAlpha, -1.0, "", "");
+        }
+
+        void pushFrame(String cells, int score, int level, int lines, String status, boolean isFlipped, float cellSize, float gridLeft, float gridTop, float viewportW, double momentumVal, double momentumMax, double momentumBurst, boolean paused, int pauseActionIndex, boolean pauseConfirmActive, int pauseConfirmIndex, float clearProgress, String clearRowsStr, float lifeLossProgress, float lifeLossFlashAlpha, double p1Hold, String p1NextStr, String mode) {
             this.cellsString = cells;
             this.scoreValue = score;
             this.level = level;
             this.lines = lines;
             this.status = status == null ? "Playing" : status;
-            this.modeLabel = "Marathon"; // If we receive pushFrame, we are in a non-classic game mode
+            // Use the mode argument if provided, otherwise keep existing or default to Marathon
+            if (mode != null && !mode.isEmpty()) {
+                this.modeLabel = mode;
+            } else if (this.modeLabel == null || this.modeLabel.isEmpty()) {
+                this.modeLabel = "Marathon";
+            }
             this.isFlipped = isFlipped;
             this.customCellSize = cellSize;
             this.customGridLeft = gridLeft;
@@ -1480,6 +1510,22 @@ public class DualScreenHudPlugin extends Plugin {
             this.clearRowsStr = clearRowsStr == null ? "" : clearRowsStr;
             this.lifeLossProgress = lifeLossProgress;
             this.lifeLossFlashAlpha = lifeLossFlashAlpha;
+            // Parse P1 hold and next queue from bridge
+            this.p1HoldType = (int) p1Hold;  // -1 = none, 1-7 = piece type
+            if (p1NextStr != null && !p1NextStr.isEmpty()) {
+                try {
+                    String[] parts = p1NextStr.split(",");
+                    int[] queue = new int[parts.length];
+                    for (int i = 0; i < parts.length; i++) {
+                        queue[i] = Integer.parseInt(parts[i].trim());
+                    }
+                    this.p1NextQueue = queue;
+                } catch (NumberFormatException ignored) {
+                    this.p1NextQueue = new int[0];
+                }
+            } else {
+                this.p1NextQueue = new int[0];
+            }
             invalidate();
         }
 
@@ -1526,7 +1572,8 @@ public class DualScreenHudPlugin extends Plugin {
             float left;
             float boardTop;
 
-            if (customViewportW > 0f) {
+            boolean isCoop = modeLabel.equalsIgnoreCase("coop") || modeLabel.toLowerCase(Locale.US).contains("coop");
+            if (customViewportW > 0f && !isCoop) {
                 float leftOffset = (customViewportW * density - width) / 2f;
                 float topCellSizePhys = customCellSize * density;
                 float centerAlignShift = cols * (topCellSizePhys - cellSize) / 2f;

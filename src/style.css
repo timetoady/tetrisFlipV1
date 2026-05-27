@@ -1369,6 +1369,25 @@ body[data-hud-mode="vanillaClassic"] #landscape-hud-right-run .piece-count {
   font-family: "IBM Plex Mono", monospace;
 }
 
+body[data-is-dual-active="true"][data-hud-mode="coop"] #landscape-hud-left {
+  display: flex !important;
+  position: fixed;
+  top: 16px;
+  bottom: 16px;
+  right: calc(50% + (340px * var(--hud-scale, 1) / 2) + 16px);
+  left: auto;
+  transform: rotate(180deg);
+  transform-origin: center center;
+}
+
+body[data-is-dual-active="true"][data-hud-mode="coop"] #landscape-hud-right {
+  display: none !important;
+}
+
+body[data-is-dual-active="true"][data-hud-mode="coop"] #landscape-hud-left-title {
+  display: block !important;
+}
+
 body[data-is-dual-active="true"] #landscape-hud-left-title {
   display: none !important;
 }

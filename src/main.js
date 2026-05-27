@@ -1858,7 +1858,8 @@ function commitNameEntry() {
 }
 
 function getCanvasWidthForMode(mode) {
-  const leftHud = mode === "coop" ? GAME_CONFIG.HUD_WIDTH : 0;
+  // In co-op mode we always need a left HUD panel (for P2 stats) regardless of dual-screen state
+  const leftHud = (mode === "coop") ? GAME_CONFIG.HUD_WIDTH : 0;
   return GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
     + GAME_CONFIG.GRID_MARGIN * 2
     + GAME_CONFIG.HUD_WIDTH
@@ -2863,10 +2864,13 @@ function updateViewportScale() {
         canvasContainer.style.overflow = "";
       }
 
-      // In dual-screen game mode, the top screen always shows the top half
-      // of the canvas (rows 0-19). The flip mechanic moves pieces between
-      // halves on the canvas itself, so no translation is needed.
-      canvas.style.transform = "translateY(0px)";
+      // In dual-screen game mode, the top screen shows the top half (rows 0-19)
+      // when not flipped, and the bottom half (rows 20-39) when flipped.
+      if (isFlipped) {
+        canvas.style.transform = `translateY(${-displayCanvasHeight}px)`;
+      } else {
+        canvas.style.transform = "translateY(0px)";
+      }
       canvas.style.transformOrigin = "top left";
     } else {
       canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
@@ -2880,9 +2884,7 @@ function updateViewportScale() {
 
 /**
  * Lightweight per-frame clip sync for dual-screen game mode.
- * Ensures the top screen always shows the top half of the canvas.
- * The two physical screens form one continuous display split in half;
- * the flip mechanic moves pieces between halves on the canvas itself.
+ * Ensures the top screen shows the correct half based on isFlipped.
  * Does NOT do any layout recalculation — safe to call every frame.
  */
 function syncDualScreenClip() {
@@ -2890,10 +2892,11 @@ function syncDualScreenClip() {
   if (!isDualScreenGame) return;
   const canvasContainer = document.getElementById("canvas-container");
   if (!canvasContainer) return;
-  // Always show the top half — no translation needed.
-  const current = canvas.style.transform;
-  if (current !== "translateY(0px)") {
-    canvas.style.transform = "translateY(0px)";
+  const isFlipped = game ? game.board.isFlipped : false;
+  const displayCanvasHeight = canvas.height / 2;
+  const expectedTransform = isFlipped ? `translateY(${-displayCanvasHeight}px)` : "translateY(0px)";
+  if (canvas.style.transform !== expectedTransform) {
+    canvas.style.transform = expectedTransform;
     canvas.style.transformOrigin = "top left";
   }
 }
@@ -3041,8 +3044,9 @@ function updateLandscapeHud() {
       ? "PLAYER 2"
       : (showRunStats ? "RUN" : (showGarbageHud ? "GARBAGE" : (showBurstHud ? "BURST" : "")));
   }
+  const useP2DataForLeftHud = isDualActive && coop;
   if (landscapeHudLeftTitle) {
-    landscapeHudLeftTitle.textContent = coop ? "PLAYER 1" : "";
+    landscapeHudLeftTitle.textContent = useP2DataForLeftHud ? "PLAYER 2" : (coop ? "PLAYER 1" : "");
   }
 
   const scoreState = game.getScoreState();
@@ -3054,7 +3058,10 @@ function updateLandscapeHud() {
   const p2Lines = Number(scoreState.p2Lines) || 0;
 
   if (hudScore) {
-    if (isDualActive) {
+    if (useP2DataForLeftHud) {
+      hudScore.textContent = formatHudNumber(p2Score);
+      if (hudScoreLabel) hudScoreLabel.textContent = "SCORE";
+    } else if (isDualActive) {
       const modeLabel = activeMode === "coop" ? "CO-OP" : activeMode.toUpperCase();
       hudScore.textContent = modeLabel;
       if (hudScoreLabel) hudScoreLabel.textContent = "MODE";
@@ -3066,8 +3073,8 @@ function updateLandscapeHud() {
   if (dsScoreVal) {
     dsScoreVal.textContent = formatHudNumber(p1Score);
   }
-  if (hudLevel) hudLevel.textContent = String(p1Level);
-  if (hudLines) hudLines.textContent = String(p1Lines);
+  if (hudLevel) hudLevel.textContent = String(useP2DataForLeftHud ? p2Level : p1Level);
+  if (hudLines) hudLines.textContent = String(useP2DataForLeftHud ? p2Lines : p1Lines);
 
   if (showRunStats && typeof game.getPieceStats === "function") {
     const stats = game.getPieceStats("p1");
@@ -3148,13 +3155,14 @@ function updateLandscapeHud() {
     const p1Queue = game.getQueueState("p1");
     const p2Queue = coop ? game.getQueueState("p2") : (showMirrorHud ? p1Queue : null);
 
-    setMiniPieceIcon(hudHoldIcon, p1Queue ? p1Queue.holdType : null);
-    const p1Next = (p1Queue && Array.isArray(p1Queue.nextQueue)) ? p1Queue.nextQueue : [];
-    setMiniPieceIcon(hudNext0, p1Next[0]);
-    setMiniPieceIcon(hudNext1, p1Next[1]);
-    setMiniPieceIcon(hudNext2, p1Next[2]);
-    setMiniPieceIcon(hudNext3, p1Next[3]);
-    setMiniPieceIcon(hudNext4, p1Next[4]);
+    const leftQueue = useP2DataForLeftHud ? p2Queue : p1Queue;
+    setMiniPieceIcon(hudHoldIcon, leftQueue ? leftQueue.holdType : null);
+    const leftNext = (leftQueue && Array.isArray(leftQueue.nextQueue)) ? leftQueue.nextQueue : [];
+    setMiniPieceIcon(hudNext0, leftNext[0]);
+    setMiniPieceIcon(hudNext1, leftNext[1]);
+    setMiniPieceIcon(hudNext2, leftNext[2]);
+    setMiniPieceIcon(hudNext3, leftNext[3]);
+    setMiniPieceIcon(hudNext4, leftNext[4]);
 
     if (coop || showMirrorHud) {
       setMiniPieceIcon(hudP2HoldIcon, p2Queue ? p2Queue.holdType : null);
@@ -3179,6 +3187,20 @@ function pushDualScreenHud(nowMs) {
     if (nowMs - gameStartMs < 120) {
       return;
     }
+    const qState = game.getQueueState ? game.getQueueState("p1") : null;
+    const p1Hold = qState ? (qState.holdType || 0) : 0;
+    const p1NextStr = qState ? qState.nextQueue.join(",") : "";
+
+    let momVal = 0, momMax = 100, momBurst = 0;
+    if (typeof game.getMomentumState === "function") {
+      const mState = game.getMomentumState("p1");
+      if (mState) {
+        momVal = mState.value;
+        momMax = mState.max;
+        momBurst = mState.burstTimer;
+      }
+    }
+
     if (!window.DualScreenHudBridge) {
       // Bridge not yet registered — fall back to Capacitor plugin bridge for game mode
       if (nowMs - dualScreenHudLastPushMs < 16) return;
@@ -3217,7 +3239,13 @@ function pushDualScreenHud(nowMs) {
             cellSize: cellSizeVal,
             gridLeft: gridLeftVal,
             gridTop: gridTopVal,
-            viewportW: viewportW
+            viewportW: viewportW,
+            queue: qState,
+            momentum: {
+              value: momVal,
+              max: momMax,
+              burstTimer: momBurst
+            }
           });
         } catch (err) {
           console.warn("Failed to push game frame via Capacitor:", err);
@@ -3240,15 +3268,6 @@ function pushDualScreenHud(nowMs) {
       const gridLeftVal = offsetX + gridLeftCanvas * viewportScale;
       const gridTopVal = offsetY;
 
-      let momVal = 0, momMax = 100, momBurst = 0;
-      if (typeof game.getMomentumState === "function") {
-        const mState = game.getMomentumState("p1");
-        if (mState) {
-          momVal = mState.value;
-          momMax = mState.max;
-          momBurst = mState.burstTimer;
-        }
-      }
       try {
         window.DualScreenHudBridge.pushFrame(
           state.cells,
@@ -3271,7 +3290,10 @@ function pushDualScreenHud(nowMs) {
           state.clearProgress || 0.0,
           state.clearRowsStr || "",
           state.lifeLossProgress !== undefined ? state.lifeLossProgress : -1.0,
-          state.lifeLossFlashAlpha || 0.0
+          state.lifeLossFlashAlpha || 0.0,
+          p1Hold,
+          p1NextStr,
+          activeMode
         );
       } catch (err) {
         console.warn("Failed to push game frame via JS bridge:", err);

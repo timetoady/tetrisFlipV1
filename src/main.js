@@ -2864,13 +2864,10 @@ function updateViewportScale() {
         canvasContainer.style.overflow = "";
       }
 
-      // In dual-screen game mode, the top screen shows the top half (rows 0-19)
-      // when not flipped, and the bottom half (rows 20-39) when flipped.
-      if (isFlipped) {
-        canvas.style.transform = `translateY(${-displayCanvasHeight}px)`;
-      } else {
-        canvas.style.transform = "translateY(0px)";
-      }
+      // In dual-screen game mode, the top screen always shows the top half of
+      // the canvas (rows 0-19 = the inactive/mirror field). The Java lower screen
+      // handles showing the active field, switching sides on flip via startY.
+      canvas.style.transform = "translateY(0px)";
       canvas.style.transformOrigin = "top left";
     } else {
       canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${viewportScale})`;
@@ -2892,11 +2889,10 @@ function syncDualScreenClip() {
   if (!isDualScreenGame) return;
   const canvasContainer = document.getElementById("canvas-container");
   if (!canvasContainer) return;
-  const isFlipped = game ? game.board.isFlipped : false;
-  const displayCanvasHeight = canvas.height / 2;
-  const expectedTransform = isFlipped ? `translateY(${-displayCanvasHeight}px)` : "translateY(0px)";
-  if (canvas.style.transform !== expectedTransform) {
-    canvas.style.transform = expectedTransform;
+  // The top screen always shows the top half of the canvas (inactive/mirror field).
+  // The Java lower screen handles the active-field side-switch on flip.
+  if (canvas.style.transform !== "translateY(0px)") {
+    canvas.style.transform = "translateY(0px)";
     canvas.style.transformOrigin = "top left";
   }
 }

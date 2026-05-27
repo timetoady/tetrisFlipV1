@@ -3126,8 +3126,8 @@ export class GameLoop {
       ctx.restore();
     }
 
-    // Draw the P1 right-side HUD: always in non-dual, and also in dual co-op for HOLD/NEXT.
-    if (!hideCanvasHud && (!isDualActive || (isDualActive && this.isCoopMode()))) {
+    // Draw the P1 right-side HUD: always drawn if canvas HUD isn't explicitly hidden.
+    if (!hideCanvasHud) {
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#e6e6e6";

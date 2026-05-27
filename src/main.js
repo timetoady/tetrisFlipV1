@@ -201,6 +201,10 @@ const landscapeHudRightTitle = document.getElementById("landscape-hud-right-titl
 const hudScore = document.getElementById("hud-score");
 const dualScreenHeader = document.getElementById("dual-screen-header");
 const dsScoreVal = document.getElementById("ds-score-val");
+const dualScreenHeaderP2 = document.getElementById("dual-screen-header-p2");
+const dsP2ScoreVal = document.getElementById("ds-p2-score-val");
+const dsModeTitle = document.getElementById("ds-mode-title");
+const dsP2ModeTitle = document.getElementById("ds-p2-mode-title");
 const hudScoreLabel = document.getElementById("hud-score-label");
 /** @type {HTMLElement | null} */
 let hudDebugBadge = document.getElementById("hud-debug-badge");
@@ -3068,6 +3072,28 @@ function updateLandscapeHud() {
   }
   if (dsScoreVal) {
     dsScoreVal.textContent = formatHudNumber(p1Score);
+  }
+  if (dsP2ScoreVal) {
+    dsP2ScoreVal.textContent = formatHudNumber(p2Score);
+  }
+  if (dsModeTitle) {
+    if (coop) {
+      dsModeTitle.textContent = "CO-OP";
+      dsModeTitle.hidden = false;
+    } else {
+      dsModeTitle.hidden = true;
+    }
+  }
+  if (dsP2ModeTitle) {
+    if (coop) {
+      dsP2ModeTitle.textContent = "CO-OP";
+      dsP2ModeTitle.hidden = false;
+    } else {
+      dsP2ModeTitle.hidden = true;
+    }
+  }
+  if (dualScreenHeaderP2) {
+    dualScreenHeaderP2.hidden = !(isDualActive && coop);
   }
   if (hudLevel) hudLevel.textContent = String(useP2DataForLeftHud ? p2Level : p1Level);
   if (hudLines) hudLines.textContent = String(useP2DataForLeftHud ? p2Lines : p1Lines);

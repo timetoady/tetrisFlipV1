@@ -3413,7 +3413,8 @@ function getMenuStatePayload() {
           badge: badge,
           cw: cw,
           ccw: ccw,
-          hint: "Tap options to see mappings"
+          hint: "Tap options to see mappings",
+          layoutId: layout.id
         };
       }
     } else if (["marathon", "burst", "vanillaClassic", "chillax", "coop", "sirtet"].includes(menuState)) {

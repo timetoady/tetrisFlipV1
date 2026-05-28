@@ -877,6 +877,7 @@ public class DualScreenHudPlugin extends Plugin {
             String cw = previewData.optString("cw", "A");
             String ccw = previewData.optString("ccw", "B");
             String hint = previewData.optString("hint", "");
+            String layoutId = previewData.optString("layoutId", "");
 
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(Color.argb(172, 12, 14, 18));
@@ -910,12 +911,24 @@ public class DualScreenHudPlugin extends Plugin {
             canvas.drawText(name, rect.left + dp(10), rect.top + dp(42), paint);
 
             float columnTop = rect.top + dp(60);
-            float midX = rect.centerX();
             drawRotateColumn(canvas, rect.left + dp(10), columnTop, "CW", cw);
-            drawRotateColumn(canvas, midX + dp(6), columnTop, "CCW", ccw);
+            drawRotateColumn(canvas, rect.left + dp(130), columnTop, "CCW", ccw);
+
+            if (!layoutId.isEmpty()) {
+                Bitmap bmp = getControllerBitmap(getContext(), layoutId);
+                if (bmp != null) {
+                    RectF imageRect = new RectF(rect.centerX() + dp(10), rect.top + dp(32), rect.right - dp(10), rect.bottom - dp(10));
+                    Paint bmpPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+                    drawBitmapFitRect(canvas, bmp, imageRect, bmpPaint);
+                }
+            }
 
             if (!hint.isEmpty()) {
-                drawCenteredMenuText(canvas, hint, rect.centerX(), rect.bottom - dp(12), COLOR_TEXT_DIM, dp(10), dp(8), rect.width() - dp(20));
+                paint.setTypeface(Typeface.MONOSPACE);
+                paint.setTextAlign(Paint.Align.LEFT);
+                paint.setColor(COLOR_TEXT_DIM);
+                paint.setTextSize(dp(9));
+                canvas.drawText(hint, rect.left + dp(10), rect.bottom - dp(12), paint);
             }
         }
 
@@ -929,6 +942,50 @@ public class DualScreenHudPlugin extends Plugin {
             paint.setColor(COLOR_TEXT);
             paint.setTextSize(dp(17));
             canvas.drawText(value, x, y + dp(22), paint);
+        }
+
+        private final java.util.Map<String, Bitmap> controllerBitmaps = new java.util.HashMap<>();
+
+        private Bitmap getControllerBitmap(Context context, String layoutId) {
+            String filename;
+            if ("sidewaysSouthEast".equals(layoutId)) {
+                filename = "handheld1.ui.png";
+            } else if ("sidewaysSouthWest".equals(layoutId)) {
+                filename = "handheld2.ui.png";
+            } else if ("southWest".equals(layoutId)) {
+                filename = "standard controller.ui.png";
+            } else {
+                filename = "alternate controller.ui.png";
+            }
+
+            if (!controllerBitmaps.containsKey(layoutId)) {
+                try (InputStream is = context.getAssets().open("public/assets/" + filename)) {
+                    Bitmap bmp = BitmapFactory.decodeStream(is);
+                    controllerBitmaps.put(layoutId, bmp);
+                } catch (IOException e) {
+                    Log.e("DualScreenHud", "Error loading controller bitmap: " + filename, e);
+                    controllerBitmaps.put(layoutId, null);
+                }
+            }
+            return controllerBitmaps.get(layoutId);
+        }
+
+        private void drawBitmapFitRect(Canvas canvas, Bitmap bmp, RectF destRect, Paint paint) {
+            if (bmp == null) return;
+            float bmpW = bmp.getWidth();
+            float bmpH = bmp.getHeight();
+            float destW = destRect.width();
+            float destH = destRect.height();
+            
+            float scale = Math.min(destW / bmpW, destH / bmpH);
+            float finalW = bmpW * scale;
+            float finalH = bmpH * scale;
+            
+            float left = destRect.left + (destW - finalW) / 2f;
+            float top = destRect.top + (destH - finalH) / 2f;
+            
+            RectF target = new RectF(left, top, left + finalW, top + finalH);
+            canvas.drawBitmap(bmp, null, target, paint);
         }
 
         private void drawSplashAccentPiece(Canvas canvas, JSONArray accentPieces, int index, float left, float top, float cell, int color) {

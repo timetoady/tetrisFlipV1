@@ -2605,56 +2605,56 @@ if (optionsBack) {
 if (optionsLayoutModeRow) {
   optionsLayoutModeRow.addEventListener("click", () => {
     optionsIndex = 0;
-    updateOptionsSelection();
     applyLayoutMode(layoutModeIndex + 1);
+    updateOptionsSelection();
   });
 }
 
 if (optionsOrientationRow) {
   optionsOrientationRow.addEventListener("click", () => {
     optionsIndex = 1;
-    updateOptionsSelection();
     applyOrientationMode(orientationIndex + 1);
+    updateOptionsSelection();
   });
 }
 
 if (optionsRotateRow) {
   optionsRotateRow.addEventListener("click", () => {
     optionsIndex = 2;
-    updateOptionsSelection();
     applyRotateLayout(rotateLayoutIndex + 1);
+    updateOptionsSelection();
   });
 }
 
 if (optionsMouseRow) {
   optionsMouseRow.addEventListener("click", () => {
     optionsIndex = 3;
-    updateOptionsSelection();
     applyMouseScheme(mouseSchemeIndex + 1);
+    updateOptionsSelection();
   });
 }
 
 if (optionsMusicRow) {
   optionsMusicRow.addEventListener("click", () => {
     optionsIndex = 4;
-    updateOptionsSelection();
     applyMusicTrack(musicTrackIndex + 1);
+    updateOptionsSelection();
   });
 }
 
 if (optionsMusicVolumeRow) {
   optionsMusicVolumeRow.addEventListener("click", () => {
     optionsIndex = 5;
-    updateOptionsSelection();
     applyMusicVolume(musicVolumeIndex + 1);
+    updateOptionsSelection();
   });
 }
 
 if (optionsVfxVolumeRow) {
   optionsVfxVolumeRow.addEventListener("click", () => {
     optionsIndex = 6;
-    updateOptionsSelection();
     applyVfxVolume(vfxVolumeIndex + 1);
+    updateOptionsSelection();
   });
 }
 
@@ -2668,22 +2668,22 @@ if (optionsHelpRow) {
 if (optionsShowFpsRow) {
   optionsShowFpsRow.addEventListener("click", () => {
     optionsIndex = 8;
-    updateOptionsSelection();
     applyShowFps(!showFps);
+    updateOptionsSelection();
   });
 }
 if (optionsFlipP2HudRow) {
   optionsFlipP2HudRow.addEventListener("click", () => {
     optionsIndex = 9;
-    updateOptionsSelection();
     applyFlipP2Hud(!flipP2Hud);
+    updateOptionsSelection();
   });
 }
 if (optionsDualScreenHudRow) {
   optionsDualScreenHudRow.addEventListener("click", () => {
     optionsIndex = 10;
-    updateOptionsSelection();
     applyDualScreenHud(dualScreenModeIndex + 1);
+    updateOptionsSelection();
   });
 }
 
@@ -3850,74 +3850,96 @@ function handleMenuInput() {
       }
     }
 
+    let optionChanged = false;
     if (optionsIndex === 0) {
       if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyLayoutMode(layoutModeIndex + delta);
+        optionChanged = true;
       } else if (confirm) {
         applyLayoutMode(layoutModeIndex + 1);
+        optionChanged = true;
       }
     } else if (optionsIndex === 1) {
       if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyOrientationMode(orientationIndex + delta);
+        optionChanged = true;
       } else if (confirm) {
         applyOrientationMode(orientationIndex + 1);
+        optionChanged = true;
       }
     } else if (optionsIndex === 2) {
       if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyRotateLayout(rotateLayoutIndex + delta);
+        optionChanged = true;
       } else if (confirm) {
         applyRotateLayout(rotateLayoutIndex + 1);
+        optionChanged = true;
       }
     } else if (optionsIndex === 3) {
       if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyMouseScheme(mouseSchemeIndex + delta);
+        optionChanged = true;
       } else if (confirm) {
         applyMouseScheme(mouseSchemeIndex + 1);
+        optionChanged = true;
       }
     } else if (optionsIndex === 4) {
       if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyMusicTrack(musicTrackIndex + delta);
+        optionChanged = true;
       } else if (confirm) {
         applyMusicTrack(musicTrackIndex + 1);
+        optionChanged = true;
       }
     } else if (optionsIndex === 5) {
       if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyMusicVolume(musicVolumeIndex + delta);
+        optionChanged = true;
       } else if (confirm) {
         applyMusicVolume(musicVolumeIndex + 1);
+        optionChanged = true;
       }
     } else if (optionsIndex === 6) {
       if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyVfxVolume(vfxVolumeIndex + delta);
+        optionChanged = true;
       } else if (confirm) {
         applyVfxVolume(vfxVolumeIndex + 1);
+        optionChanged = true;
       }
     } else if (optionsIndex === 7 && confirm) {
       showScreen("help");
     } else if (optionsIndex === 8) {
       if ((!isLandscape && (left || right)) || confirm) {
         applyShowFps(!showFps);
+        optionChanged = true;
       }
     } else if (optionsIndex === 9) {
       if ((!isLandscape && (left || right)) || confirm) {
         applyFlipP2Hud(!flipP2Hud);
+        optionChanged = true;
       }
     } else if (optionsIndex === 10) {
       if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyDualScreenHud(dualScreenModeIndex + delta);
+        optionChanged = true;
       } else if (confirm) {
         applyDualScreenHud(dualScreenModeIndex + 1);
+        optionChanged = true;
       }
     } else if (optionsIndex === 11 && confirm) {
       showScreen("mode");
+    }
+    if (optionChanged) {
+      updateOptionsSelection();
     }
     if (consumeMenuBack()) {
       showScreen("mode");

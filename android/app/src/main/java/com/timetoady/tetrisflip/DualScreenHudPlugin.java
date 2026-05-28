@@ -876,9 +876,9 @@ public class DualScreenHudPlugin extends Plugin {
             String badge = previewData.optString("badge", "");
             String cw = previewData.optString("cw", "A");
             String ccw = previewData.optString("ccw", "B");
-            String hint = previewData.optString("hint", "");
             String layoutId = previewData.optString("layoutId", "");
 
+            // Background + border
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(Color.argb(172, 12, 14, 18));
             canvas.drawRect(rect, paint);
@@ -888,47 +888,56 @@ public class DualScreenHudPlugin extends Plugin {
             canvas.drawRect(rect, paint);
             paint.setStyle(Paint.Style.FILL);
 
+            // ── Header: "ROTATE MAP" left, badge right (slim strip) ─────
+            float headerBottom = rect.top + dp(26);
             paint.setTypeface(Typeface.MONOSPACE);
             paint.setTextAlign(Paint.Align.LEFT);
             paint.setColor(COLOR_TEXT_SOFT);
-            paint.setTextSize(dp(10));
-            canvas.drawText("ROTATE MAP", rect.left + dp(10), rect.top + dp(16), paint);
+            paint.setTextSize(dp(9));
+            canvas.drawText("ROTATE MAP", rect.left + dp(8), rect.top + dp(16), paint);
 
             if (!badge.isEmpty()) {
-                RectF badgeRect = new RectF(rect.right - dp(78), rect.top + dp(6), rect.right - dp(10), rect.top + dp(24));
+                RectF badgeRect = new RectF(rect.right - dp(68), rect.top + dp(5), rect.right - dp(8), headerBottom);
                 drawMenuSelectionBox(canvas, badgeRect);
                 paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
                 paint.setTextAlign(Paint.Align.CENTER);
                 paint.setColor(COLOR_TEXT);
-                paint.setTextSize(dp(9));
-                canvas.drawText(badge, badgeRect.centerX(), badgeRect.top + dp(12), paint);
+                paint.setTextSize(dp(8));
+                canvas.drawText(badge, badgeRect.centerX(), badgeRect.top + dp(11), paint);
             }
 
+            // ── Name row ──────────────────────────────────────────────────
+            float nameBaseline = headerBottom + dp(14);
             paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             paint.setTextAlign(Paint.Align.LEFT);
             paint.setColor(COLOR_TEXT);
-            paint.setTextSize(dp(18));
-            canvas.drawText(name, rect.left + dp(10), rect.top + dp(42), paint);
+            paint.setTextSize(fitTextSize(name, rect.width() - dp(16), dp(14), dp(9), paint.getTypeface()));
+            canvas.drawText(name, rect.left + dp(8), nameBaseline, paint);
 
-            float columnTop = rect.top + dp(60);
-            drawRotateColumn(canvas, rect.left + dp(10), columnTop, "CW", cw);
-            drawRotateColumn(canvas, rect.left + dp(130), columnTop, "CCW", ccw);
+            // ── Footer: CW left, CCW right (one line) ─────────────────────
+            float footerBaseline = rect.bottom - dp(7);
+            paint.setTypeface(Typeface.MONOSPACE);
+            paint.setColor(COLOR_TEXT_SOFT);
+            paint.setTextSize(dp(9));
+            paint.setTextAlign(Paint.Align.LEFT);
+            canvas.drawText("CW: " + cw, rect.left + dp(8), footerBaseline, paint);
+            paint.setTextAlign(Paint.Align.RIGHT);
+            canvas.drawText("CCW: " + ccw, rect.right - dp(8), footerBaseline, paint);
 
+            // ── Controller image fills space between name and footer ───────
             if (!layoutId.isEmpty()) {
                 Bitmap bmp = getControllerBitmap(getContext(), layoutId);
                 if (bmp != null) {
-                    RectF imageRect = new RectF(rect.centerX() + dp(10), rect.top + dp(32), rect.right - dp(10), rect.bottom - dp(10));
-                    Paint bmpPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-                    drawBitmapFitRect(canvas, bmp, imageRect, bmpPaint);
+                    float imgTop    = nameBaseline + dp(4);
+                    float imgBottom = footerBaseline - dp(14);
+                    float imgLeft   = rect.left  + dp(8);
+                    float imgRight  = rect.right - dp(8);
+                    if (imgBottom > imgTop + dp(20)) {
+                        RectF imageRect = new RectF(imgLeft, imgTop, imgRight, imgBottom);
+                        Paint bmpPaint  = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+                        drawBitmapFitRect(canvas, bmp, imageRect, bmpPaint);
+                    }
                 }
-            }
-
-            if (!hint.isEmpty()) {
-                paint.setTypeface(Typeface.MONOSPACE);
-                paint.setTextAlign(Paint.Align.LEFT);
-                paint.setColor(COLOR_TEXT_DIM);
-                paint.setTextSize(dp(9));
-                canvas.drawText(hint, rect.left + dp(10), rect.bottom - dp(12), paint);
             }
         }
 

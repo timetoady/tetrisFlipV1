@@ -128,7 +128,13 @@ canvas {
   color: var(--fg);
 }
 .menu-screen.is-active {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
 }
 .menu-screen:not(.is-active) {
   pointer-events: none;
@@ -632,8 +638,34 @@ body[data-gameplay="true"] .name-modal {
   .menu-wide {
     max-width: 680px;
   }
-  .menu-screen[data-screen="options"] .menu-panel {
-    max-width: 620px;
+  .menu-screen[data-screen="options"] .options-panel {
+    max-width: 680px !important;
+    width: 92vw;
+  }
+  .menu-screen[data-screen="options"] .options-scroll {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(6, auto);
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px 24px;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .menu-screen[data-screen="options"] .options-controller {
+    display: none !important;
+  }
+  .menu-screen[data-screen="options"] .menu-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0;
+    padding: 6px 8px;
+    box-sizing: border-box;
+  }
+  .menu-screen[data-screen="options"] .menu-sub {
+    grid-column: 1 / -1;
+    grid-row: 7;
+    text-align: center;
+    margin-top: 12px;
   }
   .splash-image {
     width: 100%;
@@ -680,32 +712,20 @@ body {
 }
 
 @media (orientation: landscape) and (pointer: coarse) and (max-height: 520px) {
-  .menu-screen[data-screen="mode"] .menu-panel,
-  .menu-screen[data-screen="options"] .menu-panel {
+  .menu-screen[data-screen="mode"] .menu-panel {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px 18px;
     align-items: start;
   }
 
-
   .menu-screen[data-screen="mode"] .menu-title,
-  .menu-screen[data-screen="options"] .menu-title,
   .menu-screen[data-screen="mode"] .menu-actions,
-  .menu-screen[data-screen="options"] .menu-actions,
-  .menu-screen[data-screen="mode"] .menu-sub,
-  .menu-screen[data-screen="options"] .menu-sub,
-  .menu-screen[data-screen="options"] .options-controller {
+  .menu-screen[data-screen="mode"] .menu-sub {
     grid-column: 1 / -1;
   }
-  .menu-screen[data-screen="mode"] .menu-option,
-  .menu-screen[data-screen="options"] .menu-option {
+  .menu-screen[data-screen="mode"] .menu-option {
     margin: 2px 0;
-  }
-  .menu-screen[data-screen="options"] .options-controller {
-    max-width: 260px;
-    max-height: 24vh;
-    margin: 6px auto;
   }
 }
 

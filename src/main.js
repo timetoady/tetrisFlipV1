@@ -1168,13 +1168,14 @@ function updateOptionsSelection() {
     optionsBack
   ];
   scrollMenuItemIntoView(optionItems[optionsIndex]);
+  dualScreenHudLastPushMs = 0;
+  pushDualScreenHud(Date.now());
 }
 
 function updateGameOverSelection() {
   retry.classList.toggle("is-selected", gameOverIndex === 0);
   back.classList.toggle("is-selected", gameOverIndex === 1);
 }
-
 function getClosestTierIndices(targetIndex, length) {
   const order = [];
   for (let offset = 1; offset < length; offset += 1) {
@@ -3804,62 +3805,94 @@ function handleMenuInput() {
     }
     return;
   }
-
   if (menuState === "options") {
+    const isLandscape = window.innerWidth > window.innerHeight;
     const confirm = consumeMenuConfirm();
-    if (consumeMenuUp(true)) {
-      optionsIndex = (optionsIndex + OPTIONS_ITEM_COUNT - 1) % OPTIONS_ITEM_COUNT;
-      updateOptionsSelection();
-    } else if (consumeMenuDown(true)) {
-      optionsIndex = (optionsIndex + 1) % OPTIONS_ITEM_COUNT;
-      updateOptionsSelection();
-    }
+    const up = consumeMenuUp(true);
+    const down = consumeMenuDown(true);
     const left = consumeMenuLeft();
     const right = consumeMenuRight();
+
+    if (isLandscape) {
+      if (up) {
+        if (optionsIndex < 6) {
+          optionsIndex = (optionsIndex - 1 + 6) % 6;
+        } else {
+          optionsIndex = 6 + (optionsIndex - 6 - 1 + 6) % 6;
+        }
+        updateOptionsSelection();
+      } else if (down) {
+        if (optionsIndex < 6) {
+          optionsIndex = (optionsIndex + 1) % 6;
+        } else {
+          optionsIndex = 6 + (optionsIndex - 6 + 1) % 6;
+        }
+        updateOptionsSelection();
+      } else if (left) {
+        if (optionsIndex >= 6) {
+          optionsIndex -= 6;
+          updateOptionsSelection();
+        }
+      } else if (right) {
+        if (optionsIndex < 6) {
+          optionsIndex += 6;
+          updateOptionsSelection();
+        }
+      }
+    } else {
+      if (up) {
+        optionsIndex = (optionsIndex + OPTIONS_ITEM_COUNT - 1) % OPTIONS_ITEM_COUNT;
+        updateOptionsSelection();
+      } else if (down) {
+        optionsIndex = (optionsIndex + 1) % OPTIONS_ITEM_COUNT;
+        updateOptionsSelection();
+      }
+    }
+
     if (optionsIndex === 0) {
-      if (left || right) {
+      if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyLayoutMode(layoutModeIndex + delta);
       } else if (confirm) {
         applyLayoutMode(layoutModeIndex + 1);
       }
     } else if (optionsIndex === 1) {
-      if (left || right) {
+      if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyOrientationMode(orientationIndex + delta);
       } else if (confirm) {
         applyOrientationMode(orientationIndex + 1);
       }
     } else if (optionsIndex === 2) {
-      if (left || right) {
+      if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyRotateLayout(rotateLayoutIndex + delta);
       } else if (confirm) {
         applyRotateLayout(rotateLayoutIndex + 1);
       }
     } else if (optionsIndex === 3) {
-      if (left || right) {
+      if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyMouseScheme(mouseSchemeIndex + delta);
       } else if (confirm) {
         applyMouseScheme(mouseSchemeIndex + 1);
       }
     } else if (optionsIndex === 4) {
-      if (left || right) {
+      if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyMusicTrack(musicTrackIndex + delta);
       } else if (confirm) {
         applyMusicTrack(musicTrackIndex + 1);
       }
     } else if (optionsIndex === 5) {
-      if (left || right) {
+      if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyMusicVolume(musicVolumeIndex + delta);
       } else if (confirm) {
         applyMusicVolume(musicVolumeIndex + 1);
       }
     } else if (optionsIndex === 6) {
-      if (left || right) {
+      if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyVfxVolume(vfxVolumeIndex + delta);
       } else if (confirm) {
@@ -3868,15 +3901,15 @@ function handleMenuInput() {
     } else if (optionsIndex === 7 && confirm) {
       showScreen("help");
     } else if (optionsIndex === 8) {
-      if ((left || right) || confirm) {
+      if ((!isLandscape && (left || right)) || confirm) {
         applyShowFps(!showFps);
       }
     } else if (optionsIndex === 9) {
-      if ((left || right) || confirm) {
+      if ((!isLandscape && (left || right)) || confirm) {
         applyFlipP2Hud(!flipP2Hud);
       }
     } else if (optionsIndex === 10) {
-      if (left || right) {
+      if (!isLandscape && (left || right)) {
         const delta = right ? 1 : -1;
         applyDualScreenHud(dualScreenModeIndex + delta);
       } else if (confirm) {

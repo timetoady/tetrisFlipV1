@@ -3093,7 +3093,7 @@ function updateLandscapeHud() {
     }
   }
   if (dualScreenHeaderP2) {
-    dualScreenHeaderP2.hidden = !(isDualActive && coop);
+    dualScreenHeaderP2.hidden = true;
   }
   if (hudLevel) hudLevel.textContent = String(useP2DataForLeftHud ? p2Level : p1Level);
   if (hudLines) hudLines.textContent = String(useP2DataForLeftHud ? p2Lines : p1Lines);

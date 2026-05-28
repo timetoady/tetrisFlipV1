@@ -22,10 +22,10 @@ export class GameLoop {
   constructor(ctx, input, callbacks = {}) {
     this.ctx = ctx;
     this.input = input;
-    this.onGameOver = callbacks.onGameOver || (() => {});
-    this.onGarbageCleared = callbacks.onGarbageCleared || (() => {});
-    this.onPauseBack = callbacks.onPauseBack || (() => {});
-    this.onFlip = callbacks.onFlip || (() => {});
+    this.onGameOver = callbacks.onGameOver || (() => { });
+    this.onGarbageCleared = callbacks.onGarbageCleared || (() => { });
+    this.onPauseBack = callbacks.onPauseBack || (() => { });
+    this.onFlip = callbacks.onFlip || (() => { });
     this.board = new Board();
     this.stackCache = null;
     this.stackCacheW = 0;
@@ -711,14 +711,14 @@ export class GameLoop {
       const { yes, no } = this.pauseConfirmButtons;
       const padding = 10;
       if (x >= yes.x - padding && x <= yes.x + yes.w + padding &&
-          y >= yes.y - padding && y <= yes.y + yes.h + padding) {
+        y >= yes.y - padding && y <= yes.y + yes.h + padding) {
         this.pauseConfirmActive = false;
         this.paused = false;
         this.onPauseBack();
         return;
       }
       if (x >= no.x - padding && x <= no.x + no.w + padding &&
-          y >= no.y - padding && y <= no.y + no.h + padding) {
+        y >= no.y - padding && y <= no.y + no.h + padding) {
         this.pauseConfirmActive = false;
         return;
       }
@@ -726,14 +726,14 @@ export class GameLoop {
     if (!this.pauseButtons) return;
     const { resume, restart, end } = this.pauseButtons;
     if (x >= resume.x && x <= resume.x + resume.w &&
-        y >= resume.y && y <= resume.y + resume.h) {
+      y >= resume.y && y <= resume.y + resume.h) {
       this.pauseActionIndex = 0;
       this.pauseConfirmActive = false;
       this.paused = false;
       return;
     }
     if (x >= restart.x && x <= restart.x + restart.w &&
-        y >= restart.y && y <= restart.y + restart.h) {
+      y >= restart.y && y <= restart.y + restart.h) {
       this.pauseActionIndex = 1;
       this.pauseConfirmActive = false;
       this.paused = false;
@@ -741,7 +741,7 @@ export class GameLoop {
       return;
     }
     if (x >= end.x && x <= end.x + end.w &&
-        y >= end.y && y <= end.y + end.h) {
+      y >= end.y && y <= end.y + end.h) {
       this.pauseActionIndex = 2;
       this.pauseConfirmActive = true;
       this.pauseConfirmIndex = 0;
@@ -894,7 +894,7 @@ export class GameLoop {
     }
     if (this.audioCtx.state === "suspended") {
       // Avoid unhandled promise rejections on Android/WebView when resume is denied.
-      this.audioCtx.resume().catch(() => {});
+      this.audioCtx.resume().catch(() => { });
     }
     return this.audioCtx;
   }
@@ -940,9 +940,9 @@ export class GameLoop {
       return { x, y: bottomRow - maxBlockY };
     }
     if (this.isOwnerActive(owner)) {
-        const spawnStart = halfRows - GAME_CONFIG.SPAWN_BUFFER / 2;
-        return { x, y: spawnStart };
-      }
+      const spawnStart = halfRows - GAME_CONFIG.SPAWN_BUFFER / 2;
+      return { x, y: spawnStart };
+    }
     const maxBlockY = this.getMaxBlockY(tempPiece);
     const bottomRow = halfRows - 1;
     return { x, y: bottomRow - maxBlockY };
@@ -984,7 +984,7 @@ export class GameLoop {
     }
     if (blocked) {
       if (this.mode === "redemption" && this.lives > 0
-          && !this.lifeLossPending && !this.lifeLossAnimating) {
+        && !this.lifeLossPending && !this.lifeLossAnimating) {
         this.queueLifeLoss(this.board.getActiveOwner());
       } else {
         this.gameOver = true;
@@ -1191,7 +1191,7 @@ export class GameLoop {
     osc.stop(now + 0.32);
     osc2.stop(now + 0.34);
   }
-  
+
   playLifeShiftSound(durationSeconds = 0.6) {
     const ctx = this.ensureAudioContext();
     if (!ctx) return;
@@ -2164,8 +2164,8 @@ export class GameLoop {
         this.lockDelayMs - extraMoves * this.lockDegradeStepMs
       );
       if (this.p2LockTimer >= effectiveDelay ||
-          this.p2LockMoves >= this.lockMoveLimit ||
-          this.p2GroundedTimer >= this.groundedMaxMs) {
+        this.p2LockMoves >= this.lockMoveLimit ||
+        this.p2GroundedTimer >= this.groundedMaxMs) {
         this.lockPiece("p2");
         return;
       }
@@ -2268,9 +2268,9 @@ export class GameLoop {
           this.pauseConfirmIndex = this.pauseConfirmIndex === 0 ? 1 : 0;
         }
         if (this.input.consumePress("KeyX") ||
-            this.input.consumePress("Enter") ||
-            this.input.consumePress("KeyJ") ||
-            this.input.consumePress("KeyK")) {
+          this.input.consumePress("Enter") ||
+          this.input.consumePress("KeyJ") ||
+          this.input.consumePress("KeyK")) {
           if (this.pauseConfirmIndex === 0) {
             this.pauseConfirmActive = false;
             this.paused = false;
@@ -2293,9 +2293,9 @@ export class GameLoop {
           this.pauseActionIndex = (this.pauseActionIndex + dir + 3) % 3;
         }
         if (this.input.consumePress("KeyX") ||
-            this.input.consumePress("Enter") ||
-            this.input.consumePress("KeyJ") ||
-            this.input.consumePress("KeyK")) {
+          this.input.consumePress("Enter") ||
+          this.input.consumePress("KeyJ") ||
+          this.input.consumePress("KeyK")) {
           if (this.pauseActionIndex === 0) {
             this.paused = false;
           } else if (this.pauseActionIndex === 1) {
@@ -2372,9 +2372,9 @@ export class GameLoop {
     }
 
     if (!this.isVanillaClassicMode() && (
-        this.input.consumePress("Space") ||
-        this.input.consumePress("ShiftLeft") ||
-        this.input.consumePress("ShiftRight"))) {
+      this.input.consumePress("Space") ||
+      this.input.consumePress("ShiftLeft") ||
+      this.input.consumePress("ShiftRight"))) {
       this.board.flip();
       this.updateGridOffsets();
       this.playFlipSound();
@@ -2408,7 +2408,7 @@ export class GameLoop {
     if (leftPressed) {
       const moved = this.tryMoveHorizontal(-1);
       if (!moved && this.isCoopMode() && this.p2Piece &&
-          this.piecesOverlap(this.activePiece, this.p2Piece, -1, 0)) {
+        this.piecesOverlap(this.activePiece, this.p2Piece, -1, 0)) {
         this.playThudSound();
       }
       this.leftHold = 0;
@@ -2418,7 +2418,7 @@ export class GameLoop {
     if (rightPressed) {
       const moved = this.tryMoveHorizontal(1);
       if (!moved && this.isCoopMode() && this.p2Piece &&
-          this.piecesOverlap(this.activePiece, this.p2Piece, 1, 0)) {
+        this.piecesOverlap(this.activePiece, this.p2Piece, 1, 0)) {
         this.playThudSound();
       }
       this.rightHold = 0;
@@ -2433,7 +2433,7 @@ export class GameLoop {
           this.leftRepeat -= GAME_CONFIG.DAS_ARR;
           if (!this.tryMoveHorizontal(-1)) {
             if (this.isCoopMode() && this.p2Piece &&
-                this.piecesOverlap(this.activePiece, this.p2Piece, -1, 0)) {
+              this.piecesOverlap(this.activePiece, this.p2Piece, -1, 0)) {
               this.playThudSound();
             }
             break;
@@ -2453,7 +2453,7 @@ export class GameLoop {
           this.rightRepeat -= GAME_CONFIG.DAS_ARR;
           if (!this.tryMoveHorizontal(1)) {
             if (this.isCoopMode() && this.p2Piece &&
-                this.piecesOverlap(this.activePiece, this.p2Piece, 1, 0)) {
+              this.piecesOverlap(this.activePiece, this.p2Piece, 1, 0)) {
               this.playThudSound();
             }
             break;
@@ -2534,8 +2534,8 @@ export class GameLoop {
         this.lockDelayMs - extraMoves * this.lockDegradeStepMs
       );
       if (this.lockTimer >= effectiveDelay ||
-          this.lockMoves >= this.lockMoveLimit ||
-          this.groundedTimer >= this.groundedMaxMs) {
+        this.lockMoves >= this.lockMoveLimit ||
+        this.groundedTimer >= this.groundedMaxMs) {
         this.lockPiece();
       }
     } else {
@@ -3038,39 +3038,44 @@ export class GameLoop {
     // In co-op mode, draw the P2 left HUD in both single-screen and dual-screen layouts.
     if (this.isCoopMode()) {
       const p2HudCenterX = (GAME_CONFIG.GRID_MARGIN + GAME_CONFIG.HUD_WIDTH) / 2;
-      const p2HudCenterY = ctx.canvas.height / 2;
+      const p2HudCenterY = isDualActive ? (ctx.canvas.height / 4) : (ctx.canvas.height / 2);
       const p2HudFlipped = this.flipP2Hud;
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      if (p2HudFlipped) {
-        ctx.translate(p2HudCenterX, p2HudCenterY);
-        ctx.rotate(Math.PI);
-        ctx.translate(-p2HudCenterX, -p2HudCenterY);
-      }
-      ctx.fillStyle = "#e6e6e6";
-      ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-      const leftHudX = GAME_CONFIG.GRID_MARGIN + 12;
-      let leftHudY = 12;
-      ctx.fillText("SCORE", leftHudX, leftHudY);
-      leftHudY += 20;
-      ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText(String(this.p2Score).padStart(6, "0"), leftHudX, leftHudY);
-      leftHudY += 32;
-      ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText("LEVEL", leftHudX, leftHudY);
-      leftHudY += 20;
-      ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText(String(this.p2Level), leftHudX, leftHudY);
-      leftHudY += 30;
-      ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText("LINES", leftHudX, leftHudY);
-      leftHudY += 20;
-      ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText(String(this.p2Lines), leftHudX, leftHudY);
-      ctx.restore();
 
+      // Stats block: only draw SCORE, LEVEL, LINES on canvas if not in dual-screen mode
+      if (!isDualActive) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        if (p2HudFlipped) {
+          ctx.translate(p2HudCenterX, p2HudCenterY);
+          ctx.rotate(Math.PI);
+          ctx.translate(-p2HudCenterX, -p2HudCenterY);
+        }
+        ctx.fillStyle = "#e6e6e6";
+        ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        const leftHudX = GAME_CONFIG.GRID_MARGIN + 12;
+        let leftHudY = 12;
+        ctx.fillText("SCORE", leftHudX, leftHudY);
+        leftHudY += 20;
+        ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText(String(this.p2Score).padStart(6, "0"), leftHudX, leftHudY);
+        leftHudY += 32;
+        ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText("LEVEL", leftHudX, leftHudY);
+        leftHudY += 20;
+        ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText(String(this.p2Level), leftHudX, leftHudY);
+        leftHudY += 30;
+        ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText("LINES", leftHudX, leftHudY);
+        leftHudY += 20;
+        ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText(String(this.p2Lines), leftHudX, leftHudY);
+        ctx.restore();
+      }
+
+      // Pieces block: HOLD, NEXT, TIMER, MOMENTUM
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       if (p2HudFlipped) {
@@ -3083,7 +3088,7 @@ export class GameLoop {
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
       const leftPanelX = GAME_CONFIG.GRID_MARGIN + 12;
-      let leftPanelY = 190;
+      let leftPanelY = isDualActive ? 12 : 190;
       ctx.fillText("HOLD", leftPanelX, leftPanelY);
       leftPanelY += 18;
       const holdBox = { x: leftPanelX, y: leftPanelY, w: 96, h: 96 };
@@ -3093,12 +3098,14 @@ export class GameLoop {
       ctx.strokeRect(holdBox.x, holdBox.y, holdBox.w, holdBox.h);
       ctx.restore();
       this.drawMiniPiece(ctx, this.p2HoldType, holdBox.x, holdBox.y, holdBox.w, holdBox.h);
-      leftPanelY += 116;
+
+      leftPanelY += isDualActive ? 110 : 116;
       ctx.fillText("NEXT", leftPanelX, leftPanelY);
       leftPanelY += 18;
+      const nextSpacing = isDualActive ? 76 : 88;
       for (let i = 0; i < this.p2Queue.length && i < 3; i += 1) {
         this.drawMiniPiece(ctx, this.p2Queue[i], leftPanelX, leftPanelY, 80, 80);
-        leftPanelY += 88;
+        leftPanelY += nextSpacing;
       }
       leftPanelY += 8;
       const p2TimeLeftMs = Math.max(0, this.p2PlacementTimer);
@@ -3110,18 +3117,22 @@ export class GameLoop {
       leftPanelY += 18;
       ctx.font = "24px \"IBM Plex Mono\", Menlo, Consolas, monospace";
       ctx.fillText(`${p2Seconds}s`, leftPanelX, leftPanelY);
+
       const holdBoxSize = 96;
-      const nextStart = 190 + 18 + 96 + 116 + 18;
-      const nextEnd = nextStart + (3 * 88);
+      const nextStart = (isDualActive ? 12 : 190) + 18 + 96 + (isDualActive ? 110 : 116) + 18;
+      const nextEnd = nextStart + (3 * nextSpacing);
       const pauseTop = nextEnd + 12;
       const buttonGap = 18;
       const flipTop = pauseTop + holdBoxSize + buttonGap;
       const meterOffsetX = 12;
       const meterOffsetY = 48 + (GAME_CONFIG.MOMENTUM_OFFSET_Y || 0);
-      const meterTop = flipTop + holdBoxSize + 18 + meterOffsetY;
-      this.drawMomentumMeter(ctx, leftPanelX + meterOffsetX, meterTop, holdBoxSize, 140, {
+      const meterTop = isDualActive ? (leftPanelY + 64) : (flipTop + holdBoxSize + 18 + meterOffsetY);
+      const meterHeight = isDualActive ? 100 : 140;
+
+      this.drawMomentumMeter(ctx, leftPanelX + meterOffsetX, meterTop, holdBoxSize, meterHeight, {
         value: this.p2MomentumValue,
-        burstTimer: this.p2MomentumBurstTimer
+        burstTimer: this.p2MomentumBurstTimer,
+        labelX: leftPanelX
       });
       ctx.restore();
     }
@@ -3130,129 +3141,129 @@ export class GameLoop {
     if (!hideCanvasHud) {
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "#e6e6e6";
-    ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    const hudX = gridOffsetX
-      + GAME_CONFIG.GRID_MARGIN
-      + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
-      + 12;
-    let hudY = isVanilla ? (vanillaPadTop + 12) : 12;
-    if (isVanilla && vanillaPortrait) {
-      const topY = 12;
-      const scoreX = gridOffsetX;
-      const levelX = hudX;
-
-      ctx.fillStyle = "rgba(230, 230, 230, 0.95)";
-      ctx.font = "18px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText("SCORE", scoreX, topY);
-      ctx.fillText("LEVEL", levelX, topY);
-
-      ctx.fillStyle = "#4cc3ff";
-      ctx.shadowColor = "rgba(76, 195, 255, 0.42)";
-      ctx.shadowBlur = 22;
-      ctx.font = "700 38px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText(String(this.score).padStart(6, "0"), scoreX, topY + 22);
-      ctx.font = "700 34px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText(String(this.level), levelX, topY + 24);
-
-      ctx.shadowBlur = 0;
-      ctx.shadowColor = "transparent";
       ctx.fillStyle = "#e6e6e6";
       ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-    } else {
-      if (!isDualActive) {
-        ctx.fillText("SCORE", hudX, hudY);
-        hudY += 20;
-        ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-        ctx.fillText(String(this.score).padStart(6, "0"), hudX, hudY);
-        hudY += 32;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      const hudX = gridOffsetX
+        + GAME_CONFIG.GRID_MARGIN
+        + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
+        + 12;
+      let hudY = isVanilla ? (vanillaPadTop + 12) : 12;
+      if (isVanilla && vanillaPortrait) {
+        const topY = 12;
+        const scoreX = gridOffsetX;
+        const levelX = hudX;
+
+        ctx.fillStyle = "rgba(230, 230, 230, 0.95)";
+        ctx.font = "18px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText("SCORE", scoreX, topY);
+        ctx.fillText("LEVEL", levelX, topY);
+
+        ctx.fillStyle = "#4cc3ff";
+        ctx.shadowColor = "rgba(76, 195, 255, 0.42)";
+        ctx.shadowBlur = 22;
+        ctx.font = "700 38px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText(String(this.score).padStart(6, "0"), scoreX, topY + 22);
+        ctx.font = "700 34px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText(String(this.level), levelX, topY + 24);
+
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = "transparent";
+        ctx.fillStyle = "#e6e6e6";
         ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-        ctx.fillText("LEVEL", hudX, hudY);
-        hudY += 20;
-        ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-        ctx.fillText(String(this.level), hudX, hudY);
-        hudY += 30;
-        ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-        ctx.fillText("LINES", hudX, hudY);
-        hudY += 20;
-        ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-        ctx.fillText(String(this.lines), hudX, hudY);
+      } else {
+        if (!isDualActive) {
+          ctx.fillText("SCORE", hudX, hudY);
+          hudY += 20;
+          ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+          ctx.fillText(String(this.score).padStart(6, "0"), hudX, hudY);
+          hudY += 32;
+          ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+          ctx.fillText("LEVEL", hudX, hudY);
+          hudY += 20;
+          ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+          ctx.fillText(String(this.level), hudX, hudY);
+          hudY += 30;
+          ctx.font = "16px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+          ctx.fillText("LINES", hudX, hudY);
+          hudY += 20;
+          ctx.font = "20px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+          ctx.fillText(String(this.lines), hudX, hudY);
+        }
       }
-    }
-    if (this.mode === "redemption" && this.maxLives > 0) {
-      const heartSize = 24;
-      const heartGap = 8;
-      const heartsX = hudX + GAME_CONFIG.HUD_WIDTH - heartSize - 24;
-      const heartsY = 12;
-      this.drawLives(ctx, heartsX, heartsY, heartSize, heartGap);
-    }
-    ctx.restore();
+      if (this.mode === "redemption" && this.maxLives > 0) {
+        const heartSize = 24;
+        const heartGap = 8;
+        const heartsX = hudX + GAME_CONFIG.HUD_WIDTH - heartSize - 24;
+        const heartsY = 12;
+        this.drawLives(ctx, heartsX, heartsY, heartSize, heartGap);
+      }
+      ctx.restore();
 
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "#e6e6e6";
-    ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    const panelX = gridOffsetX
-      + GAME_CONFIG.GRID_MARGIN
-      + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
-      + 12;
-    const holdBoxSize = 96;
-    const nextSize = (isVanilla && vanillaPortrait) ? 64 : (isVanilla ? 64 : 80);
-    const nextStep = (isVanilla && vanillaPortrait) ? 72 : (isVanilla ? 72 : 88);
-    const maxNext = (isVanilla && vanillaPortrait) ? 3 : (isVanilla ? 2 : 3);
-
-    let panelY = isVanilla ? (vanillaPortrait ? (vanillaPadTop + 8) : (vanillaPadTop + 150)) : (isDualActive ? 12 : 190);
-
-    if (isVanilla && vanillaPortrait) {
-      ctx.fillText("LINES", panelX, panelY);
-      panelY += 18;
-      ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      ctx.fillText(String(this.lines), panelX, panelY);
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = "#e6e6e6";
       ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
-      panelY += 34;
-    }
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      const panelX = gridOffsetX
+        + GAME_CONFIG.GRID_MARGIN
+        + GAME_CONFIG.COLS * GAME_CONFIG.BLOCK_SIZE
+        + 12;
+      const holdBoxSize = 96;
+      const nextSize = (isVanilla && vanillaPortrait) ? 64 : (isVanilla ? 64 : 80);
+      const nextStep = (isVanilla && vanillaPortrait) ? 72 : (isVanilla ? 72 : 88);
+      const maxNext = (isVanilla && vanillaPortrait) ? 3 : (isVanilla ? 2 : 3);
 
-    ctx.fillText("HOLD", panelX, panelY);
-    panelY += 18;
-    const holdBox = { x: panelX, y: panelY, w: holdBoxSize, h: holdBoxSize };
-    this.holdBoxRect = holdBox;
-    ctx.save();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(holdBox.x, holdBox.y, holdBox.w, holdBox.h);
-    ctx.restore();
-    this.drawMiniPiece(ctx, this.holdType, holdBox.x, holdBox.y, holdBox.w, holdBox.h);
-    panelY += holdBoxSize + 20;
+      let panelY = isVanilla ? (vanillaPortrait ? (vanillaPadTop + 8) : (vanillaPadTop + 150)) : (isDualActive ? 12 : 190);
 
-    ctx.fillText("NEXT", panelX, panelY);
-    panelY += 18;
-    for (let i = 0; i < this.nextQueue.length && i < maxNext; i += 1) {
-      this.drawMiniPiece(ctx, this.nextQueue[i], panelX, panelY, nextSize, nextSize);
-      panelY += nextStep;
-    }
+      if (isVanilla && vanillaPortrait) {
+        ctx.fillText("LINES", panelX, panelY);
+        panelY += 18;
+        ctx.font = "22px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        ctx.fillText(String(this.lines), panelX, panelY);
+        ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
+        panelY += 34;
+      }
 
-    if (isVanilla) {
-      const meterW = 48;
-      const meterH = 96;
-      const meterGap = 24;
-      const meterY = Math.min(ctx.canvas.height - meterH - 12, panelY + meterGap);
-      this.drawMomentumMeter(ctx, panelX, meterY, meterW, meterH);
-    } else {
-      const nextStart = 190 + 18 + 96 + 116 + 18;
-      const nextEnd = nextStart + (3 * 88);
-      const pauseTop = nextEnd + 12;
-      const buttonGap = 18;
-      const flipTop = pauseTop + holdBoxSize + buttonGap;
-      const meterOffsetX = 12;
-      const meterOffsetY = 48 + (GAME_CONFIG.MOMENTUM_OFFSET_Y || 0);
-      const meterTop = flipTop + holdBoxSize + 18 + meterOffsetY;
-      this.drawMomentumMeter(ctx, panelX + meterOffsetX, meterTop, holdBoxSize, 140);
-    }
-    ctx.restore();
+      ctx.fillText("HOLD", panelX, panelY);
+      panelY += 18;
+      const holdBox = { x: panelX, y: panelY, w: holdBoxSize, h: holdBoxSize };
+      this.holdBoxRect = holdBox;
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(holdBox.x, holdBox.y, holdBox.w, holdBox.h);
+      ctx.restore();
+      this.drawMiniPiece(ctx, this.holdType, holdBox.x, holdBox.y, holdBox.w, holdBox.h);
+      panelY += holdBoxSize + 20;
+
+      ctx.fillText("NEXT", panelX, panelY);
+      panelY += 18;
+      for (let i = 0; i < this.nextQueue.length && i < maxNext; i += 1) {
+        this.drawMiniPiece(ctx, this.nextQueue[i], panelX, panelY, nextSize, nextSize);
+        panelY += nextStep;
+      }
+
+      if (isVanilla) {
+        const meterW = 48;
+        const meterH = 96;
+        const meterGap = 24;
+        const meterY = Math.min(ctx.canvas.height - meterH - 12, panelY + meterGap);
+        this.drawMomentumMeter(ctx, panelX, meterY, meterW, meterH);
+      } else {
+        const nextStart = 190 + 18 + 96 + 116 + 18;
+        const nextEnd = nextStart + (3 * 88);
+        const pauseTop = nextEnd + 12;
+        const buttonGap = 18;
+        const flipTop = pauseTop + holdBoxSize + buttonGap;
+        const meterOffsetX = 12;
+        const meterOffsetY = 48 + (GAME_CONFIG.MOMENTUM_OFFSET_Y || 0);
+        const meterTop = flipTop + holdBoxSize + 18 + meterOffsetY;
+        this.drawMomentumMeter(ctx, panelX + meterOffsetX, meterTop, holdBoxSize, 140);
+      }
+      ctx.restore();
     }
 
     if (this.paused) {
@@ -3538,19 +3549,19 @@ export class GameLoop {
       ctx.restore();
     }
   }
-  
+
   handleLifeLossClick(x, y) {
     if (!this.lifeLossPending || !this.lifeLossButtons) return false;
     const { use, quit } = this.lifeLossButtons;
     const padding = 10;
     if (x >= use.x - padding && x <= use.x + use.w + padding &&
-        y >= use.y - padding && y <= use.y + use.h + padding) {
+      y >= use.y - padding && y <= use.y + use.h + padding) {
       this.lifeLossChoiceIndex = 0;
       this.triggerLifeLoss();
       return true;
     }
     if (x >= quit.x - padding && x <= quit.x + quit.w + padding &&
-        y >= quit.y - padding && y <= quit.y + quit.h + padding) {
+      y >= quit.y - padding && y <= quit.y + quit.h + padding) {
       this.lifeLossChoiceIndex = 1;
       this.gameOver = true;
       this.onGameOver();
@@ -3627,7 +3638,8 @@ export class GameLoop {
     ctx.font = "14px \"IBM Plex Mono\", Menlo, Consolas, monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "bottom";
-    ctx.fillText("MOMENTUM", x, y - 8);
+    const labelX = (options && Number.isFinite(options.labelX)) ? options.labelX : x;
+    ctx.fillText("MOMENTUM", labelX, y - 8);
     ctx.restore();
   }
 

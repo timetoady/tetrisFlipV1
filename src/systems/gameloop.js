@@ -557,10 +557,11 @@ export class GameLoop {
     const overlayPiece = (piece, typeValueOffset = 0) => {
       if (!piece) return;
       const blocks = getBlocks(piece);
+      const offset = (piece === this.activePiece) ? halfRows : startY;
       for (const block of blocks) {
         const px = piece.x + block.x;
         const py = piece.y + block.y;
-        const localY = py - startY;
+        const localY = py - offset;
         if (px >= 0 && px < cols && localY >= 0 && localY < totalRows) {
           cellValues[localY][px] = piece.type + typeValueOffset;
         }
@@ -570,10 +571,11 @@ export class GameLoop {
     const overlayGhostPiece = (piece, ghostY) => {
       if (!piece || ghostY === piece.y) return;
       const blocks = getBlocks(piece);
+      const offset = (piece === this.activePiece) ? halfRows : startY;
       for (const block of blocks) {
         const px = piece.x + block.x;
         const py = ghostY + block.y;
-        const localY = py - startY;
+        const localY = py - offset;
         if (px >= 0 && px < cols && localY >= 0 && localY < totalRows) {
           if (cellValues[localY][px] === 0) {
             cellValues[localY][px] = piece.type + 10;

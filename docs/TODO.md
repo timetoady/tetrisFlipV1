@@ -84,3 +84,9 @@
 - [x] No gravity increase Marathon mode (Chillax Mode)
 - [x] Make broswer hostable version, put in S3, use game.adamandreason.com subdomain.
 - [x] Bugfix: slightly taller default Window on app version
+
+## Future UI & Desktop Refinements
+
+- [ ] PC/Desktop Title Visibility: For regular single-screen mode (without landscape HUD), display the title of the current mode clearly on screen.
+- [ ] Vanilla Classic Scaling & Quality: Vanilla/Classic mode displays too large and blurry on desktop resolutions. Scale it down slightly and render high-fidelity crisp text.
+- [ ] PC Options Menu Landscape Layout Controller Images: In the landscape layout options menu on PC, add a way to view/display the controller orientation images that are currently hidden.

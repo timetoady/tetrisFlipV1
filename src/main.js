@@ -519,6 +519,9 @@ window.isDualScreenGameActive = () => {
   const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
   return isDual && activeMode !== "vanillaClassic" && !menuActive;
 };
+function isDualScreenActive() {
+  return DUAL_SCREEN_MODES[dualScreenModeIndex].id !== "off";
+}
 let viewportScale = 1;
 let dualScreenHudLastPushMs = 0;
 let dualScreenHudStatus = "idle";
@@ -602,6 +605,7 @@ if (overlayImage) {
 }
 
 function showScreen(name) {
+  dualScreenHudLastPushMs = 0;
   screens.forEach((screen) => {
     screen.classList.toggle("is-active", screen.dataset.screen === name);
   });
@@ -851,6 +855,7 @@ function updateModeSelection() {
   modeOptions.forEach((option, index) => {
     option.classList.toggle("is-selected", index === modeIndex);
   });
+  dualScreenHudLastPushMs = 0;
 }
 
 function getModeMenuLayout() {
@@ -1121,6 +1126,7 @@ function updateOptionsSelection() {
   if (!optionsBack) return;
   if (optionsLayoutModeRow) {
     optionsLayoutModeRow.classList.toggle("is-selected", optionsIndex === 0);
+    optionsLayoutModeRow.classList.toggle("is-disabled", isDualScreenActive());
   }
   if (optionsOrientationRow) {
     optionsOrientationRow.classList.toggle("is-selected", optionsIndex === 1);
@@ -1470,6 +1476,9 @@ function applyLayoutConfig(modeId) {
 
 function applyLayoutMode(index) {
   if (!optionsLayoutModeValue) return;
+  if (isDualScreenActive()) {
+    index = 0; // force Standard
+  }
   layoutModeIndex = (index + LAYOUT_MODES.length) % LAYOUT_MODES.length;
   const mode = LAYOUT_MODES[layoutModeIndex];
   optionsLayoutModeValue.textContent = mode.label;
@@ -1676,6 +1685,9 @@ function applyDualScreenHud(indexOrId, persist = true) {
     dualScreenModeIndex = (indexOrId + DUAL_SCREEN_MODES.length) % DUAL_SCREEN_MODES.length;
   }
   const mode = DUAL_SCREEN_MODES[dualScreenModeIndex];
+  if (mode.id !== "off") {
+    applyLayoutMode(0);
+  }
   if (optionsDualScreenHudValue) {
     optionsDualScreenHudValue.textContent = mode.label;
   }
@@ -2604,6 +2616,7 @@ if (optionsBack) {
 
 if (optionsLayoutModeRow) {
   optionsLayoutModeRow.addEventListener("click", () => {
+    if (isDualScreenActive()) return;
     optionsIndex = 0;
     applyLayoutMode(layoutModeIndex + 1);
     updateOptionsSelection();
@@ -3248,7 +3261,7 @@ function pushDualScreenHud(nowMs) {
             displayMode: "game",
             board: {
               cols: 10,
-              rows: 20,
+              rows: Math.floor(GAME_CONFIG.ROWS / 2),
               cells: state.cells
             },
             score: {
@@ -3465,6 +3478,17 @@ function getMenuStatePayload() {
         detail: `Gravity: ${redemptionGravity} | Lives: ${redemptionLives}`,
         hint: "Arrows to choose. X confirm, Z back"
       };
+    } else if (menuState === "mode") {
+      const modeId = modeOptions[modeIndex] ? modeOptions[modeIndex].dataset.mode : "";
+      payload.menu = {
+        layout: "mode",
+        title: "MODE SELECT",
+        instruction: getModeName(modeId),
+        description: getModeDescription(modeId),
+        selected: "",
+        detail: "",
+        hint: "Arrows to choose, X confirm, Z back"
+      };
     } else {
       payload.menu = {
         layout: "mode",
@@ -3580,6 +3604,49 @@ function getOptionDescription(index) {
     case 9: return "Display player 2 statistics on the primary screen layout.";
     case 10: return "Dual screen setting for AYN Thor-like displays.";
     default: return "";
+  }
+}
+
+function getModeName(id) {
+  switch (id) {
+    case "marathon": return "MARATHON";
+    case "burst": return "BURST";
+    case "vanillaClassic": return "VANILLA CLASSIC";
+    case "garbage": return "GARBAGE";
+    case "chillax": return "CHILLAX";
+    case "redemption": return "REDEMPTION";
+    case "coop": return "CO-OP";
+    case "sirtet": return "SIRTET";
+    case "options": return "OPTIONS";
+    case "back": return "BACK";
+    default: return (id || "").toUpperCase();
+  }
+}
+
+function getModeDescription(id) {
+  switch (id) {
+    case "marathon":
+      return "Standard endless play with level progression and rising speed. Gravity increases as you clear lines. The playfield is split into top/bottom fields; you can flip which field is active so pieces fall into the current bottom.";
+    case "burst":
+      return "Marathon-style Flip mode with an extra-chaotic Burst. While Burst is active, each line clear can I-Boost your next spawn by swapping in an I piece from your upcoming bag.";
+    case "vanillaClassic":
+      return "Traditional marathon Tetris without flips on a standard playfield. Flip inputs are disabled in this mode.";
+    case "garbage":
+      return "A timed clear challenge. Pick speed (0-35) and garbage height (1-9). Both fields spawn with garbage; clear it all to win.";
+    case "chillax":
+      return "A relaxed marathon with a locked speed. Your starting gravity stays fixed for the whole run so you can practice at a steady pace. Score still counts, but the level does not climb.";
+    case "redemption":
+      return "Survive with limited lives. When a piece cannot spawn, you can spend a life to clear part of the stack and keep playing. The run ends when you are out of lives.";
+    case "coop":
+      return "Two players control simultaneous pieces on opposite fields. One field falls while the other rises. Flips are shared, so communicate and time swaps to save each other.";
+    case "sirtet":
+      return "Reverse gravity mode. Pieces rise instead of fall and the active field is inverted, turning familiar setups into new puzzles.";
+    case "options":
+      return "Configure game settings, layout, volume, rotation layouts, and controller mappings.";
+    case "back":
+      return "Return to the main title splash screen.";
+    default:
+      return "";
   }
 }
 
@@ -3852,13 +3919,15 @@ function handleMenuInput() {
 
     let optionChanged = false;
     if (optionsIndex === 0) {
-      if (!isLandscape && (left || right)) {
-        const delta = right ? 1 : -1;
-        applyLayoutMode(layoutModeIndex + delta);
-        optionChanged = true;
-      } else if (confirm) {
-        applyLayoutMode(layoutModeIndex + 1);
-        optionChanged = true;
+      if (!isDualScreenActive()) {
+        if (!isLandscape && (left || right)) {
+          const delta = right ? 1 : -1;
+          applyLayoutMode(layoutModeIndex + delta);
+          optionChanged = true;
+        } else if (confirm) {
+          applyLayoutMode(layoutModeIndex + 1);
+          optionChanged = true;
+        }
       }
     } else if (optionsIndex === 1) {
       if (!isLandscape && (left || right)) {

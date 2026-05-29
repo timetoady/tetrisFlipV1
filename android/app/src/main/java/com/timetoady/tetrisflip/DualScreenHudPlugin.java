@@ -169,6 +169,11 @@ public class DualScreenHudPlugin extends Plugin {
         boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", true));
         getActivity().runOnUiThread(() -> {
             controller.setEnabled(enabled);
+            if (enabled) {
+                getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            } else {
+                getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+            }
             JSObject ret = new JSObject();
             ret.put("enabled", controller.isEnabled());
             ret.put("active", controller.hasPresentation());
@@ -204,6 +209,9 @@ public class DualScreenHudPlugin extends Plugin {
         super.handleOnResume();
         if (controller != null) {
             controller.refreshDisplays();
+            if (controller.isEnabled()) {
+                getActivity().setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            }
         }
     }
 
@@ -723,12 +731,12 @@ public class DualScreenHudPlugin extends Plugin {
             drawMenuTitle(canvas, panel, title, dp(16));
 
             if (!instruction.isEmpty()) {
-                drawCenteredMenuText(canvas, instruction, panel.centerX(), panel.top + dp(42), COLOR_TEXT_DIM, dp(11), dp(9), panel.width() - dp(40));
+                drawCenteredMenuText(canvas, instruction, panel.centerX(), panel.top + dp(42), COLOR_TEXT, dp(16), dp(12), panel.width() - dp(40));
             }
 
-            float descriptionTop = panel.top + (instruction.isEmpty() ? dp(44) : dp(62));
+            float descriptionTop = panel.top + (instruction.isEmpty() ? dp(44) : dp(68));
             if (!description.isEmpty()) {
-                drawMenuDescription(canvas, panel, description, descriptionTop, dp(12), dp(15));
+                drawMenuDescription(canvas, panel, description, descriptionTop, dp(15.5f), dp(20.5f));
             }
 
             if (!selected.isEmpty()) {
@@ -821,17 +829,49 @@ public class DualScreenHudPlugin extends Plugin {
 
         private void drawMenuDescription(Canvas canvas, RectF panel, String description, float startY, float size, float lineHeight) {
             paint.setTypeface(Typeface.MONOSPACE);
-            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setTextAlign(Paint.Align.LEFT);
             paint.setColor(COLOR_TEXT_SOFT);
             paint.setTextSize(size);
-            String[] descriptionLines = description.split("\\n");
+            
+            float maxWidth = panel.width() - dp(40);
+            java.util.List<String> wrappedLines = wrapTextToList(description, maxWidth, paint);
+            
             float y = startY;
-            for (String line : descriptionLines) {
+            float startX = panel.left + dp(20);
+            for (String line : wrappedLines) {
                 if (!line.isEmpty()) {
-                    drawCenteredMenuText(canvas, line, panel.centerX(), y, COLOR_TEXT_SOFT, size, dp(9), panel.width() - dp(40));
+                    canvas.drawText(line, startX, y, paint);
                 }
                 y += lineHeight;
             }
+        }
+
+        private java.util.List<String> wrapTextToList(String text, float maxWidth, Paint paint) {
+            java.util.List<String> result = new java.util.ArrayList<>();
+            if (text == null || text.isEmpty()) return result;
+            String[] paragraphs = text.split("\n");
+            for (String para : paragraphs) {
+                String[] words = para.split("\\s+");
+                StringBuilder currentLine = new StringBuilder();
+                for (String word : words) {
+                    if (word.isEmpty()) continue;
+                    if (currentLine.length() == 0) {
+                        currentLine.append(word);
+                    } else {
+                        String testLine = currentLine.toString() + " " + word;
+                        if (paint.measureText(testLine) <= maxWidth) {
+                            currentLine.append(" ").append(word);
+                        } else {
+                            result.add(currentLine.toString());
+                            currentLine = new StringBuilder(word);
+                        }
+                    }
+                }
+                if (currentLine.length() > 0) {
+                    result.add(currentLine.toString());
+                }
+            }
+            return result;
         }
 
         private void drawMenuSelectionBox(Canvas canvas, RectF selectedBox) {
@@ -1627,9 +1667,13 @@ public class DualScreenHudPlugin extends Plugin {
             }
 
             int cols = 10;
-            int rows = 20;
-            if (cellsString == null && board != null) {
+            if (board != null) {
                 cols = Math.max(1, board.optInt("cols", 10));
+            }
+            int rows = 20;
+            if (cellsString != null) {
+                rows = cellsString.length() / cols;
+            } else if (board != null) {
                 rows = Math.max(1, board.optInt("rows", 20));
             }
 
@@ -1692,11 +1736,18 @@ public class DualScreenHudPlugin extends Plugin {
                     Paint.FontMetrics fm = paint.getFontMetrics();
                     float textOffset = -(fm.ascent + fm.descent) / 2f;
 
+                    int fullRows = rows * 2;
+                    int startY = isFlipped ? 0 : rows;
+                    int spawnStart = fullRows / 2 - 2;
+                    int spawnEnd = spawnStart + 3;
+
                     for (int y = 0; y < rows; y++) {
-                        int fullY = y + 20;
+                        int actualY = startY + y;
                         int label = 0;
-                        if (fullY > 21) {
-                            label = -(fullY - 21);
+                        if (actualY < spawnStart) {
+                            label = spawnStart - actualY;
+                        } else if (actualY > spawnEnd) {
+                            label = -(actualY - spawnEnd);
                         }
                         String labelStr = String.valueOf(label);
                         float py = boardTop + y * cellSize + cellSize / 2f + textOffset;

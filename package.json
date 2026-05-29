@@ -1,7 +1,7 @@
 {
   "name": "tetris-flip-v1",
   "private": true,
-  "version": "2.1.2",
+  "version": "2.5.0",
   "description": "Tetris Flip is a single-player puzzle game with a dual-field flip mechanic.",
   "author": "Timetoady",
   "type": "module",
@@ -66,11 +66,3 @@
     "lodash": "4.17.23"
   }
 }
-
-
-
-
-
-
-
-

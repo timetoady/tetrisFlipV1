@@ -514,7 +514,7 @@ const DUAL_SCREEN_MODES = [
 ];
 let showFps = false;
 let flipP2Hud = false;
-let dualScreenModeIndex = 0;
+let dualScreenModeIndex = 2; // Default to 'off'
 window.isDualScreenGameActive = () => {
   const isDual = DUAL_SCREEN_MODES[dualScreenModeIndex].id === "game";
   return isDual && activeMode !== "vanillaClassic" && !menuActive;
@@ -2098,9 +2098,9 @@ try {
 }
 try {
   const stored = localStorage.getItem("tetrisflip:android:dualScreenHud");
-  applyDualScreenHud(stored || "info", false);
+  applyDualScreenHud(stored || "off", false);
 } catch {
-  applyDualScreenHud("info", false);
+  applyDualScreenHud("off", false);
 }
 game = new GameLoop(ctx, input, {
   onFlip() {
